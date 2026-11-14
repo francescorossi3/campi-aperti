@@ -6,6 +6,12 @@
 
 ---
 
+## Novità v2
+
+- **Satellite in tempo reale**: mosaico Sentinel-2 più recente (finestra 10–90 giorni, nuvole < 20 %) in colori naturali, falsi colori, NDVI, NDRE, NDMI — da Microsoft Planetary Computer, aggiornato ogni 2–5 giorni.
+- **Confini reali dei campi 2025** (Fields of The World, CC BY 4.0), indipendenti dal catasto: PMTiles per l'Italia letti a pezzi dal browser.
+- **Clic su un campo → serie temporali** sotto la mappa: NDVI, NDRE, NDMI (media del campo, nuvole e ombre escluse con la classe SCL), pioggia, temperatura e previsione a 7 giorni (ERA5 Copernicus via Open-Meteo), radar Sentinel-1 VV/VH su richiesta; partenza **da San Martino**, **dal 1° gennaio** o **ultimi 12 mesi**; somma piogge, gradi giorno, ultimo e massimo NDVI; **CSV** scaricabile.
+
 ## Cosa fa (v1)
 
 - **Catasto** dell'Agenzia delle Entrate (CC BY 4.0): fogli di mappa con numero (zoom ≥ 13), confini delle particelle e fabbricati (zoom ≥ 16). Clic su un punto → link alla scheda della particella (comune, foglio, numero).

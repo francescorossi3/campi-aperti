@@ -8,6 +8,8 @@ const EEA = "https://image.discomap.eea.europa.eu/arcgis/rest/services/";
 const CATASTO_WMS = "https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01.php";
 
 const LAYER_GROUPS = [
+  { id: "live", it: "Satellite in tempo reale (Sentinel-2)", en: "Real-time satellite (Sentinel-2)" },
+  { id: "fields", it: "Campi agricoli", en: "Agricultural fields" },
   { id: "catasto", it: "Catasto (Agenzia delle Entrate)", en: "Cadastre (Italian Revenue Agency)" },
   { id: "landcover", it: "Copertura del suolo", en: "Land cover" },
   { id: "trees", it: "Alberi e foreste", en: "Trees and forests" },
@@ -18,6 +20,53 @@ const LAYER_GROUPS = [
 ];
 
 const LAYERS = [
+  // ---------------- TEMPO REALE / REAL TIME ----------------
+  {
+    id: "s2_rgb", group: "live", type: "s2live", minZoom: 10, opacity: 1,
+    render: "&assets=visual&asset_bidx=visual%7C1%2C2%2C3",
+    it: { name: "Colori naturali", desc: "L'immagine Sentinel-2 più recente senza nuvole, a 10 m. Si aggiorna ogni 2–5 giorni." },
+    en: { name: "Natural colour", desc: "The most recent cloud-free Sentinel-2 image, 10 m. Updated every 2–5 days." },
+    source: "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer", link: "https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",
+  },
+  {
+    id: "s2_ndvi", group: "live", type: "s2live", minZoom: 10, opacity: 0.85, on: false,
+    expr: "(B08-B04)/(B08+B04-2000)", rescale: "0,0.9", colormap: "rdylgn",
+    legendHtml: '<div class="grad" style="background:linear-gradient(90deg,#a50026,#f46d43,#fee08b,#d9ef8b,#66bd63,#006837)"></div><div class="grad-l"><span>0</span><span>0,45</span><span>0,9</span></div>',
+    it: { name: "NDVI — vigore della vegetazione", desc: "Indice di vegetazione: rosso suolo nudo, verde coltura vigorosa." },
+    en: { name: "NDVI — vegetation vigour", desc: "Vegetation index: red bare soil, green vigorous crop." },
+    source: "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer", link: "https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",
+  },
+  {
+    id: "s2_ndre", group: "live", type: "s2live", minZoom: 10, opacity: 0.85,
+    expr: "(B8A-B05)/(B8A+B05-2000)", rescale: "0,0.6", colormap: "rdylgn",
+    legendHtml: '<div class="grad" style="background:linear-gradient(90deg,#a50026,#f46d43,#fee08b,#d9ef8b,#66bd63,#006837)"></div><div class="grad-l"><span>0</span><span>0,3</span><span>0,6</span></div>',
+    it: { name: "NDRE — clorofilla e azoto", desc: "Usa la banda red-edge: più sensibile del NDVI su colture già sviluppate, utile per la concimazione azotata." },
+    en: { name: "NDRE — chlorophyll and nitrogen", desc: "Uses the red-edge band: more sensitive than NDVI on developed crops, useful for nitrogen fertilisation." },
+    source: "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer", link: "https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",
+  },
+  {
+    id: "s2_ndmi", group: "live", type: "s2live", minZoom: 10, opacity: 0.85,
+    expr: "(B8A-B11)/(B8A+B11-2000)", rescale: "-0.3,0.5", colormap: "rdbu",
+    legendHtml: '<div class="grad" style="background:linear-gradient(90deg,#67001f,#d6604d,#fddbc7,#d1e5f0,#4393c3,#053061)"></div><div class="grad-l"><span>-0,3</span><span>0,1</span><span>0,5</span></div>',
+    it: { name: "NDMI — acqua nella vegetazione", desc: "Contenuto d'acqua di foglie e suolo: valori bassi (rosso) segnalano stress idrico." },
+    en: { name: "NDMI — vegetation water", desc: "Water content of leaves and soil: low values (red) flag water stress." },
+    source: "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer", link: "https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",
+  },
+  {
+    id: "s2_false", group: "live", type: "s2live", minZoom: 10, opacity: 1,
+    render: "&assets=B08&assets=B04&assets=B03&rescale=1000,5000",
+    it: { name: "Falsi colori (infrarosso)", desc: "Vicino infrarosso in rosso: la vegetazione sana appare rosso acceso, il suolo nudo grigio-azzurro." },
+    en: { name: "False colour (infrared)", desc: "Near infrared as red: healthy vegetation looks bright red, bare soil grey-blue." },
+    source: "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer", link: "https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",
+  },
+
+  // ---------------- CAMPI / FIELDS ----------------
+  {
+    id: "ftw2025", group: "fields", type: "fields", minZoom: 12, opacity: 1, on: true,
+    it: { name: "Confini dei campi 2025", desc: "Campi riconosciuti da immagini Sentinel-2 con intelligenza artificiale (Fields of The World), indipendenti dal catasto: un campo può coprire più particelle e viceversa. Clicca su un campo per le sue serie temporali. Visibile da zoom 12." },
+    en: { name: "Field boundaries 2025", desc: "Fields detected from Sentinel-2 imagery with AI (Fields of The World), independent of the cadastre: a field can span several parcels and vice versa. Click a field for its time series. Visible from zoom 12." },
+    source: "Fields of The World 2025 — CC BY 4.0", link: "https://source.coop/ftw/global-data",
+  },
   // ---------------- CATASTO ----------------
   {
     id: "cat_particelle", group: "catasto", type: "catasto",

@@ -19,7 +19,7 @@ const I18N = {
     legend: "Legenda",
     source: "Fonte",
     more: "Scheda del dataset",
-    info_hint: "Clicca sulla mappa per leggere i dati del punto: particella catastale e valori dei layer accesi.",
+    info_hint: "Clicca su un campo: si apre sotto la mappa la sua serie temporale (indici Sentinel-2, pioggia, temperatura) e qui trovi catasto e valori dei layer accesi.",
     info_coords: "Coordinate",
     info_parcel: "Particella catastale",
     info_parcel_how: "I confini delle particelle compaiono da zoom 16, i fogli con il loro numero da zoom 13. Il servizio dell'Agenzia delle Entrate non si può incorporare: la scheda (comune, foglio, particella) si apre in una nuova finestra.",
@@ -38,17 +38,18 @@ const I18N = {
     coming: "in arrivo",
     about_html: `
       <p><b>Campi Aperti</b> raccoglie in un'unica mappa i dati aperti utili a chi coltiva e a chi fa ricerca: catasto, prodotti del <i>Copernicus Land Monitoring Service</i>, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.</p>
+      <p><b>Cosa puoi fare:</b> vedere le immagini Sentinel-2 più recenti (colori, NDVI, NDRE, NDMI), i confini reali dei campi e il catasto; cliccando un campo ottieni le serie temporali da San Martino, dal 1° gennaio o degli ultimi 12 mesi, con pioggia, temperatura, previsione a 7 giorni e radar Sentinel-1, e puoi scaricarle in CSV.</p>
       <p>Il sito è gratuito, senza registrazione e open source. Tutti i dati vengono letti direttamente dai servizi ufficiali che li pubblicano: nulla passa da server privati.</p>
       <h4>Prossime versioni</h4>
       <ul>
-        <li>Scheda campo: serie temporali di indici Sentinel-2, pioggia e temperatura, con partenza da San Martino (11 novembre) o dal 1° gennaio.</li>
+        <li>Prodotti CLMS HR-VPP ufficiali (LAI, FAPAR, PPI a 10 m) e prodotti globali 300 m.</li>
         <li>Rese agricole ISTAT per provincia e coltura.</li>
         <li>Servizi: stima resa dell'olivo, frantoio più vicino, potenziale di crediti di carbonio, colture adatte al campo.</li>
         <li>Articoli di divulgazione scientifica su ogni dataset.</li>
       </ul>
       <h4>Avvertenza</h4>
       <p>La mappa catastale ha valore indicativo e non sostituisce le visure ufficiali. I layer Copernicus hanno risoluzione da 5 m a 500 m e anni di riferimento diversi.</p>`,
-    credits: "Dati: Agenzia delle Entrate (CC BY 4.0), Copernicus Land Monitoring Service / EEA, OpenStreetMap, EOX, Esri.",
+    credits: "Dati: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Fields of The World (CC BY 4.0), Agenzia delle Entrate (CC BY 4.0), OpenStreetMap, EOX, Esri.",
   },
   en: {
     title: "Open Fields Italy",
@@ -69,7 +70,7 @@ const I18N = {
     legend: "Legend",
     source: "Source",
     more: "Dataset page",
-    info_hint: "Click the map to read the data at that point: cadastral parcel and values of the active layers.",
+    info_hint: "Click a field: its time series (Sentinel-2 indices, rainfall, temperature) opens below the map, and here you get the cadastre and active layer values.",
     info_coords: "Coordinates",
     info_parcel: "Cadastral parcel",
     info_parcel_how: "Parcel boundaries appear from zoom 16, sheets with their number from zoom 13. The Revenue Agency service cannot be embedded: the parcel record (municipality, sheet, parcel) opens in a new window.",
@@ -88,17 +89,18 @@ const I18N = {
     coming: "coming",
     about_html: `
       <p><b>Open Fields Italy</b> brings together on one map the open data useful to farmers and researchers: cadastre, <i>Copernicus Land Monitoring Service</i> products, weather and, in coming versions, crop yields and services for farmers.</p>
+      <p><b>What you can do:</b> view the latest Sentinel-2 images (colour, NDVI, NDRE, NDMI), real field boundaries and the cadastre; clicking a field gives its time series since St Martin's Day, since 1 January or over the last 12 months, with rainfall, temperature, a 7-day forecast and Sentinel-1 radar, downloadable as CSV.</p>
       <p>The site is free, needs no sign-up and is open source. All data are read directly from the official services that publish them: nothing goes through private servers.</p>
       <h4>Coming next</h4>
       <ul>
-        <li>Field page: Sentinel-2 index time series, rainfall and temperature, starting from St Martin's Day (11 November) or from 1 January.</li>
+        <li>Official CLMS HR-VPP products (10 m LAI, FAPAR, PPI) and 300 m global products.</li>
         <li>ISTAT crop yields by province and crop.</li>
         <li>Services: olive yield estimate, nearest olive mill, carbon credit potential, crops suited to the field.</li>
         <li>Science outreach articles on every dataset.</li>
       </ul>
       <h4>Disclaimer</h4>
       <p>The cadastral map is indicative and does not replace official cadastral records. Copernicus layers range from 5 m to 500 m resolution and have different reference years.</p>`,
-    credits: "Data: Agenzia delle Entrate (CC BY 4.0), Copernicus Land Monitoring Service / EEA, OpenStreetMap, EOX, Esri.",
+    credits: "Data: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Fields of The World (CC BY 4.0), Agenzia delle Entrate (CC BY 4.0), OpenStreetMap, EOX, Esri.",
   },
 };
 
@@ -110,11 +112,14 @@ const CATALOG_EXTRA = [
   { it: "Meteo: pioggia e temperatura (Meteo Accuracy)", en: "Weather: rainfall and temperature (Meteo Accuracy)",
     dit: "Confronto tra provider meteo e modello GPR, dal repository Meteo Accuracy.", den: "Comparison of weather providers and GPR model, from the Meteo Accuracy repository.",
     link: "https://github.com/francescorossi3/meteo-accuracy", status: "coming" },
-  { it: "Sentinel-2 L2A (indici di vegetazione)", en: "Sentinel-2 L2A (vegetation indices)",
-    dit: "Immagini a 10 m ogni 5 giorni: NDVI e altri indici per ogni campo.", den: "10 m imagery every 5 days: NDVI and other indices for every field.",
-    link: "https://dataspace.copernicus.eu/", status: "coming" },
+  { it: "Sentinel-1 RTC (radar)", en: "Sentinel-1 RTC (radar)",
+    dit: "Retrodiffusione VV/VH ogni 2–6 giorni anche con le nuvole: nella scheda campo con il pulsante “radar”.", den: "VV/VH backscatter every 2–6 days even under clouds: in the field panel with the “radar” button.",
+    link: "https://planetarycomputer.microsoft.com/dataset/sentinel-1-rtc", status: "on" },
+  { it: "Meteo ERA5 / ERA5-Land + previsioni", en: "ERA5 / ERA5-Land weather + forecasts",
+    dit: "Pioggia, temperatura ed evapotraspirazione giornaliere per ogni campo, dal 1940 a oggi più 7 giorni di previsione.", den: "Daily rainfall, temperature and evapotranspiration for every field, from 1940 to today plus a 7-day forecast.",
+    link: "https://open-meteo.com/en/docs/historical-weather-api", status: "on" },
   { it: "HR-VPP — fenologia a 10 m", en: "HR-VPP — 10 m phenology",
-    dit: "Inizio, picco e fine della stagione per ogni campo, dal 2017, da Sentinel-2.", den: "Start, peak and end of season for every field, since 2017, from Sentinel-2.",
+    dit: "Prodotto CLMS ufficiale: NDVI, LAI, FAPAR e PPI giornalieri a 10 m in tempo quasi reale. Richiede un account gratuito Copernicus Data Space e un piccolo proxy: per ora gli indici equivalenti si calcolano direttamente da Sentinel-2.", den: "Official CLMS product: daily 10 m NDVI, LAI, FAPAR and PPI in near real time. Needs a free Copernicus Data Space account and a small proxy: for now equivalent indices are computed straight from Sentinel-2.",
     link: "https://land.copernicus.eu/en/products/vegetation", status: "coming" },
   { it: "Crop Types — tipi di coltura", en: "Crop Types",
     dit: "Mappa europea delle colture principali a 10 m (CLMS HRL Croplands).", den: "European 10 m map of main crop types (CLMS HRL Croplands).",

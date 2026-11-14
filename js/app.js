@@ -77,6 +77,8 @@ const leafletLayers = {};
 const state = { on: new Set() };
 
 function makeLayer(def) {
+  if (def.type === "s2live") return Live.makeS2Layer(def);
+  if (def.type === "fields") return Live.makeFieldsLayer(def);
   const common = { opacity: def.opacity ?? 0.7, zIndex: 10, crossOrigin: false };
   if (def.type === "catasto") {
     return new CatastoTiles(def, { ...common, pane: "catasto", minZoom: def.minZoom || 0, maxZoom: 19, tileSize: 256,
@@ -142,6 +144,7 @@ function readHash() {
 const legendCache = {};
 async function loadLegend(def, el) {
   const box = el.querySelector(".legend");
+  if (box && def.legendHtml) { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${def.legendHtml}`; return; }
   if (!box || box.dataset.loaded || !def.url) return;
   box.dataset.loaded = "1";
   try {
@@ -185,8 +188,8 @@ function renderLayerPanel() {
   const list = document.getElementById("layerList");
   list.innerHTML = LAYER_GROUPS.map((g, gi) => {
     const items = LAYERS.filter((l) => l.group === g.id);
-    return `<details class="group" ${gi < 2 || items.some((l) => state.on.has(l.id)) ? "open" : ""}>
-      <summary>${g[LANG]}</summary>
+    return `<details class="group" data-group="${g.id}" ${gi < 3 || items.some((l) => state.on.has(l.id)) ? "open" : ""}>
+      <summary>${g[LANG]}</summary>${g.id === "live" ? Live.windowControl() : ""}
       ${items.map((l) => `
         <div class="layer ${state.on.has(l.id) ? "on" : ""}" data-id="${l.id}">
           <div class="layer-head">
@@ -223,6 +226,7 @@ function renderLayerPanel() {
     };
     if (state.on.has(id)) { el.classList.add("expanded"); loadLegend(def, el); }
   });
+  Live.bindWindowControl();
   updateZoomNotes();
 }
 
@@ -232,7 +236,7 @@ function renderCatalog() {
     <div class="cat-item"><b>${l[LANG].name}<span class="badge on">${t("on_map")}</span></b>
       <p>${l[LANG].desc}</p><a href="${l.link}" target="_blank" rel="noopener">${l.source} ↗</a></div>`).join("");
   const extra = CATALOG_EXTRA.map((d) => `
-    <div class="cat-item"><b>${d[LANG]}<span class="badge coming">${t("coming")}</span></b>
+    <div class="cat-item"><b>${d[LANG]}<span class="badge ${d.status === "on" ? "on" : "coming"}">${t(d.status === "on" ? "on_map" : "coming")}</span></b>
       <p>${LANG === "it" ? d.dit : d.den}</p><a href="${d.link}" target="_blank" rel="noopener">${d.link.replace(/^https?:\/\//, "").split("/")[0]} ↗</a></div>`).join("");
   document.getElementById("catalog").innerHTML = onMap + extra;
   document.getElementById("about").innerHTML = t("about_html");
@@ -240,7 +244,7 @@ function renderCatalog() {
 
 // ------------------------------------------------------------------ clic sulla mappa / point query
 let clickMarker = null;
-map.on("click", (e) => queryPoint(e.latlng));
+map.on("click", (e) => { queryPoint(e.latlng); Live.onMapClick(e.latlng); });
 
 const ratCache = {};
 async function getRAT(def) {
@@ -296,10 +300,10 @@ async function queryPoint(ll) {
   if (clickMarker) map.removeLayer(clickMarker);
   clickMarker = L.marker(ll, { icon: L.divIcon({ className: "", html: '<div class="click-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map);
   showTab("info");
-  document.getElementById("sidebar").classList.add("open");
+  if (window.innerWidth > 760) document.getElementById("sidebar").classList.add("open");
 
   const lat = ll.lat.toFixed(6), lng = ll.lng.toFixed(6);
-  const active = LAYERS.filter((l) => state.on.has(l.id) && l.type !== "catasto");
+  const active = LAYERS.filter((l) => state.on.has(l.id) && l.type.startsWith("arcgis"));
   const panel = document.getElementById("infoPanel");
   panel.innerHTML = `
     <div class="info-block"><h4>${t("info_coords")}</h4>
@@ -374,6 +378,7 @@ function applyLang() {
   document.querySelectorAll(".lang button").forEach((b) => b.classList.toggle("active", b.dataset.lang === LANG));
   renderLayerPanel();
   renderCatalog();
+  Live.refreshLang();
   const info = document.getElementById("infoPanel");
   if (!clickMarker) info.innerHTML = `<p class="hint">${t("info_hint")}</p>`;
   else queryPoint(clickMarker.getLatLng());
