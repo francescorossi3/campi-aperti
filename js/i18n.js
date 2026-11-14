@@ -109,7 +109,7 @@ const CATALOG_EXTRA = [
     link: "https://esploradati.istat.it/databrowser/#/it/dw/categories/IT1,Z1000AGR,1.0/AGR_CRP", status: "coming" },
   { it: "Meteo: pioggia e temperatura (Meteo Accuracy)", en: "Weather: rainfall and temperature (Meteo Accuracy)",
     dit: "Confronto tra provider meteo e modello GPR, dal repository Meteo Accuracy.", den: "Comparison of weather providers and GPR model, from the Meteo Accuracy repository.",
-    link: "https://github.com/francescorossi3", status: "coming" },
+    link: "https://github.com/francescorossi3/meteo-accuracy", status: "coming" },
   { it: "Sentinel-2 L2A (indici di vegetazione)", en: "Sentinel-2 L2A (vegetation indices)",
     dit: "Immagini a 10 m ogni 5 giorni: NDVI e altri indici per ogni campo.", den: "10 m imagery every 5 days: NDVI and other indices for every field.",
     link: "https://dataspace.copernicus.eu/", status: "coming" },
