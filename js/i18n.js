@@ -1,7 +1,7 @@
 // Testi dell'interfaccia / Interface strings
 const I18N = {
   it: {
-    title: "AgroAtlante Italia",
+    title: "Campi Aperti",
     tagline: "Dati aperti per l'agricoltura italiana, gratis per agricoltori e ricercatori",
     tab_layers: "Layer",
     tab_info: "Punto",
@@ -37,7 +37,7 @@ const I18N = {
     on_map: "sulla mappa",
     coming: "in arrivo",
     about_html: `
-      <p><b>AgroAtlante Italia</b> raccoglie in un'unica mappa i dati aperti utili a chi coltiva e a chi fa ricerca: catasto, prodotti del <i>Copernicus Land Monitoring Service</i>, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.</p>
+      <p><b>Campi Aperti</b> raccoglie in un'unica mappa i dati aperti utili a chi coltiva e a chi fa ricerca: catasto, prodotti del <i>Copernicus Land Monitoring Service</i>, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.</p>
       <p>Il sito è gratuito, senza registrazione e open source. Tutti i dati vengono letti direttamente dai servizi ufficiali che li pubblicano: nulla passa da server privati.</p>
       <h4>Prossime versioni</h4>
       <ul>
@@ -51,7 +51,7 @@ const I18N = {
     credits: "Dati: Agenzia delle Entrate (CC BY 4.0), Copernicus Land Monitoring Service / EEA, OpenStreetMap, EOX, Esri.",
   },
   en: {
-    title: "AgroAtlas Italy",
+    title: "Open Fields Italy",
     tagline: "Open data for Italian agriculture, free for farmers and researchers",
     tab_layers: "Layers",
     tab_info: "Point",
@@ -87,7 +87,7 @@ const I18N = {
     on_map: "on the map",
     coming: "coming",
     about_html: `
-      <p><b>AgroAtlas Italy</b> brings together on one map the open data useful to farmers and researchers: cadastre, <i>Copernicus Land Monitoring Service</i> products, weather and, in coming versions, crop yields and services for farmers.</p>
+      <p><b>Open Fields Italy</b> brings together on one map the open data useful to farmers and researchers: cadastre, <i>Copernicus Land Monitoring Service</i> products, weather and, in coming versions, crop yields and services for farmers.</p>
       <p>The site is free, needs no sign-up and is open source. All data are read directly from the official services that publish them: nothing goes through private servers.</p>
       <h4>Coming next</h4>
       <ul>

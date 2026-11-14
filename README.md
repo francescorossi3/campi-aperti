@@ -1,4 +1,4 @@
-# AgroAtlante Italia / AgroAtlas Italy
+# Campi Aperti / Open Fields Italy
 
 🇮🇹 Mappa gratuita e open source che raccoglie i **dati aperti per l'agricoltura italiana**: catasto, prodotti del Copernicus Land Monitoring Service, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.
 
@@ -45,10 +45,10 @@ In `js/layers.js` aggiungi un oggetto con `id`, `group`, `type` (`arcgis-map`, `
 
 ## Pubblicare su GitHub Pages
 
-1. Crea un repository vuoto, es. `github.com/francescorossi3/agroatlante`.
+1. Crea un repository vuoto, es. `github.com/francescorossi3/campi-aperti`.
 2. Carica il contenuto di questa cartella (oppure `git init && git add . && git commit -m "v1" && git push`).
 3. *Settings → Pages → Build and deployment → Deploy from a branch → `main` / `(root)`*.
-4. Dopo un minuto il sito è su `https://francescorossi3.github.io/agroatlante/`.
+4. Dopo un minuto il sito è su `https://francescorossi3.github.io/campi-aperti/`.
 
 Per provarlo in locale: `python -m http.server` nella cartella, poi apri `http://localhost:8000`.
 

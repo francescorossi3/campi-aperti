@@ -1,11 +1,11 @@
-// AgroAtlante Italia — logica della mappa / map logic
+// Campi Aperti — logica della mappa / map logic
 // Sito statico: tutti i dati arrivano direttamente dai servizi pubblici (EEA, Agenzia delle Entrate, OSM).
 
 // ------------------------------------------------------------------ lingua / language
 let LANG = (() => {
   const q = new URLSearchParams(location.search).get("lang");
   if (q === "it" || q === "en") return q;
-  try { const s = localStorage.getItem("agro_lang"); if (s) return s; } catch (e) {}
+  try { const s = localStorage.getItem("campi_lang"); if (s) return s; } catch (e) {}
   return (navigator.language || "it").startsWith("it") ? "it" : "en";
 })();
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.it[k] || k;
@@ -380,7 +380,7 @@ function applyLang() {
 }
 document.querySelectorAll(".lang button").forEach((b) => b.onclick = () => {
   LANG = b.dataset.lang;
-  try { localStorage.setItem("agro_lang", LANG); } catch (e) {}
+  try { localStorage.setItem("campi_lang", LANG); } catch (e) {}
   applyLang();
 });
 
