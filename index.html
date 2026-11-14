@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgroAtlante Italia — dati aperti per l'agricoltura</title>
+  <meta name="description" content="Mappa gratuita di dati aperti per l'agricoltura italiana: catasto, Copernicus Land Monitoring Service, meteo. Free open-data map for Italian agriculture.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <button id="toggleSidebar" class="icon-btn" aria-label="Menu">☰</button>
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="26" height="26"><rect x="2" y="2" width="28" height="28" rx="6" fill="#2f5d3a"/><path d="M7 22h18M7 17h18M7 12h18" stroke="#e8d9a8" stroke-width="2"/><circle cx="22" cy="9" r="3" fill="#e8b84a"/></svg>
+      </span>
+      <div>
+        <h1 data-i18n="title">AgroAtlante Italia</h1>
+        <p class="tagline" data-i18n="tagline"></p>
+      </div>
+    </div>
+    <form id="searchForm" class="search" autocomplete="off">
+      <input id="searchInput" type="search" data-i18n-ph="search_ph">
+      <ul id="searchResults" class="search-results" hidden></ul>
+    </form>
+    <div class="lang" role="group" aria-label="Lingua / Language">
+      <button data-lang="it">IT</button><button data-lang="en">EN</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside id="sidebar" class="sidebar">
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="layers" class="active" data-i18n="tab_layers"></button>
+        <button role="tab" data-tab="info" data-i18n="tab_info"></button>
+        <button role="tab" data-tab="data" data-i18n="tab_data"></button>
+        <button role="tab" data-tab="about" data-i18n="tab_about"></button>
+      </nav>
+
+      <section id="tab-layers" class="tab-panel active">
+        <h3 data-i18n="basemap"></h3>
+        <div id="basemaps" class="basemaps"></div>
+        <div id="layerList"></div>
+      </section>
+
+      <section id="tab-info" class="tab-panel">
+        <div id="infoPanel"><p class="hint" data-i18n="info_hint"></p></div>
+      </section>
+
+      <section id="tab-data" class="tab-panel">
+        <p class="hint" data-i18n="data_intro"></p>
+        <div id="catalog"></div>
+      </section>
+
+      <section id="tab-about" class="tab-panel">
+        <div id="about"></div>
+        <p class="credits" data-i18n="credits"></p>
+      </section>
+    </aside>
+
+    <div id="map" class="map"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/layers.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+# AgroAtlante Italia / AgroAtlas Italy
+
+🇮🇹 Mappa gratuita e open source che raccoglie i **dati aperti per l'agricoltura italiana**: catasto, prodotti del Copernicus Land Monitoring Service, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.
+
+🇬🇧 Free, open-source map gathering **open data for Italian agriculture**: cadastre, Copernicus Land Monitoring Service products, weather and, in coming versions, crop yields and farmer services.
+
+---
+
+## Cosa fa (v1)
+
+- **Catasto** dell'Agenzia delle Entrate (CC BY 4.0): fogli di mappa con numero (zoom ≥ 13), confini delle particelle e fabbricati (zoom ≥ 16). Clic su un punto → link alla scheda della particella (comune, foglio, numero).
+- **23 layer Copernicus** letti in diretta dai server EEA, in 7 gruppi: copertura del suolo (CORINE 2018, CLC+ 2018/2021 a 10 m), alberi e foreste (densità chiome, latifoglie/conifere, tipo di foresta, siepi e filari, vegetazione legnosa), agricoltura e prati, fenologia e produttività, acqua e suolo impermeabile, Natura 2000, zone ripariali, punti LUCAS.
+- **Clic sul punto**: coordinate, classe CORINE (in italiano), valore di ogni layer acceso tradotto nel nome della classe, link a Copernicus Browser / Google Maps / OSM.
+- **Ricerca indirizzi** (OpenStreetMap Nominatim, solo Italia).
+- **Italiano / English**, scelta ricordata nel browser (anche `?lang=en`).
+- **Link condivisibili**: l'URL contiene vista, mappa di base e layer accesi, es. `#16/41.87/12.22/sat/cat_particelle,tcd2018`.
+- Catalogo dei dataset (anche quelli in arrivo) e pagina di progetto.
+- Funziona su telefono.
+
+## Architettura
+
+Sito **statico** (HTML + JS + Leaflet): nessun server, nessun costo, nessuna registrazione. Ogni dato è richiesto direttamente dal browser dell'utente ai servizi ufficiali:
+
+| Fonte | Servizio | Note |
+|---|---|---|
+| Agenzia delle Entrate | WMS INSPIRE `ows01.php` | Solo EPSG:4258/6706/UTM: i tasselli si chiedono in EPSG:4258. Le particelle si disegnano solo sopra ~1:5.000; il riempimento giallo viene tolto con un filtro CSS + `mix-blend-mode: multiply`. Niente CORS e `X-Frame-Options: DENY`, per cui la scheda particella si apre in una nuova finestra. |
+| EEA / Copernicus | ArcGIS REST `image.discomap.eea.europa.eu` | `export` / `exportImage` in EPSG:3857, tasselli 512 px; `identify`, `legend`, `rasterAttributeTable` (CORS aperto). |
+| OpenStreetMap | tile + Nominatim | |
+| EOX | Sentinel-2 cloudless 2023 | CC BY-NC-SA 4.0 |
+| Esri | World Imagery | |
+
+### Struttura
+
+```
+index.html        pagina
+css/style.css     stile
+js/i18n.js        testi IT/EN, classi CORINE, dataset del catalogo "in arrivo"
+js/layers.js      catalogo dei layer: per aggiungerne uno basta un oggetto in più
+js/app.js         mappa, tasselli, clic, ricerca, lingua
+```
+
+### Aggiungere un layer
+
+In `js/layers.js` aggiungi un oggetto con `id`, `group`, `type` (`arcgis-map`, `arcgis-image` o `catasto`), `url`, i testi `it`/`en`, `source` e `link`. Compare da solo nel pannello, nel catalogo e nel clic sul punto.
+
+## Pubblicare su GitHub Pages
+
+1. Crea un repository vuoto, es. `github.com/francescorossi3/agroatlante`.
+2. Carica il contenuto di questa cartella (oppure `git init && git add . && git commit -m "v1" && git push`).
+3. *Settings → Pages → Build and deployment → Deploy from a branch → `main` / `(root)`*.
+4. Dopo un minuto il sito è su `https://francescorossi3.github.io/agroatlante/`.
+
+Per provarlo in locale: `python -m http.server` nella cartella, poi apri `http://localhost:8000`.
+
+## Roadmap
+
+- **v2: scheda campo.** Serie temporali di NDVI e altri indici Sentinel-2 calcolati nel browser da COG pubblici (STAC Earth Search), con pioggia e temperatura dal repository *Meteo Accuracy*; partenza da **San Martino (11 novembre)** o dal **1° gennaio**.
+- **v3: rese.** Rese ISTAT per provincia e coltura; HRL Croplands (tipi di coltura) e HR-VPP a 10 m.
+- **v4: servizi per agricoltori.** Stima della resa dell'olivo, frantoio più vicino, potenziale di crediti di carbonio (suolo + siepi e filari), colture adatte al campo.
+- Piccolo proxy gratuito (es. Cloudflare Worker) per leggere la particella dentro la pagina ed evidenziarne il contorno.
+- Articoli di divulgazione su ogni dataset.
+
+## Licenze
+
+Codice: MIT. Dati: secondo le licenze delle rispettive fonti (Agenzia delle Entrate CC BY 4.0; Copernicus: accesso pieno, aperto e gratuito, Reg. UE 1159/2013; OpenStreetMap ODbL; EOX CC BY-NC-SA 4.0).
+
+La mappa catastale ha valore indicativo e non sostituisce le visure ufficiali.
