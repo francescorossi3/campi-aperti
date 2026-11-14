@@ -189,7 +189,7 @@ function renderLayerPanel() {
   list.innerHTML = LAYER_GROUPS.map((g, gi) => {
     const items = LAYERS.filter((l) => l.group === g.id);
     return `<details class="group" data-group="${g.id}" ${gi < 3 || items.some((l) => state.on.has(l.id)) ? "open" : ""}>
-      <summary>${g[LANG]}</summary>${g.id === "live" ? Live.windowControl() : ""}
+      <summary>${g[LANG]}</summary>${g.id === "live" ? Live.windowControl() : ""}${g.id === "fields" ? Live.segControl() : ""}
       ${items.map((l) => `
         <div class="layer ${state.on.has(l.id) ? "on" : ""}" data-id="${l.id}">
           <div class="layer-head">
@@ -233,7 +233,7 @@ function renderLayerPanel() {
 // ------------------------------------------------------------------ catalogo / about
 function renderCatalog() {
   const onMap = LAYERS.map((l) => `
-    <div class="cat-item"><b>${l[LANG].name}<span class="badge on">${t("on_map")}</span></b>
+    <div class="cat-item"><b>${l[LANG].name}<span class="badge ${ARCHIVE_GROUPS.includes(l.group) ? "coming" : "on"}">${ARCHIVE_GROUPS.includes(l.group) ? t("archive") : t("on_map")}</span></b>
       <p>${l[LANG].desc}</p><a href="${l.link}" target="_blank" rel="noopener">${l.source} ↗</a></div>`).join("");
   const extra = CATALOG_EXTRA.map((d) => `
     <div class="cat-item"><b>${d[LANG]}<span class="badge ${d.status === "on" ? "on" : "coming"}">${t(d.status === "on" ? "on_map" : "coming")}</span></b>
@@ -317,22 +317,11 @@ async function queryPoint(ll) {
       <p class="hint" style="margin:0 0 6px">${t("info_parcel_how")}</p>
       <a class="small-btn" style="display:inline-block;text-decoration:none;color:inherit" href="${parcelUrl(ll)}" target="_blank" rel="noopener">${t("info_parcel_open")} ↗</a>
     </div>
-    <div class="info-block"><h4>${t("info_clc")}</h4><div class="kv"><span>CLC</span><span id="clcVal">${t("info_loading")}</span></div></div>
-    <div class="info-block"><h4>${t("info_layers")}</h4>
-      ${active.length ? active.map((l) => `<div class="kv"><span>${l[LANG].name}</span><span id="val_${l.id}">${t("info_loading")}</span></div>`).join("")
-        : `<p class="hint">${t("info_nolayers")}</p>`}
-    </div>`;
+    <p class="hint">${t("info_field")}</p>`;
   document.getElementById("copyBtn").onclick = async (ev) => {
     try { await navigator.clipboard.writeText(`${lat}, ${lng}`); ev.target.textContent = t("copied"); } catch (e) {}
   };
 
-  const clcDef = LAYERS.find((l) => l.id === "clc2018");
-  identify({ ...clcDef, identifyLayers: "0" }, ll, true)
-    .then((v) => { const el = document.getElementById("clcVal"); if (el) el.textContent = v; })
-    .catch(() => { const el = document.getElementById("clcVal"); if (el) el.textContent = t("info_error"); });
-  active.forEach((l) => identify(l, ll)
-    .then((v) => { const el = document.getElementById("val_" + l.id); if (el) el.textContent = v; })
-    .catch(() => { const el = document.getElementById("val_" + l.id); if (el) el.textContent = t("info_error"); }));
 }
 
 // ------------------------------------------------------------------ ricerca indirizzi (Nominatim)
@@ -397,7 +386,7 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&a
   if (h) {
     map.setView([h.lat, h.lng], h.z);
     if (h.base) currentBase = h.base;
-    h.layers.forEach((id) => LAYERS.some((l) => l.id === id) && state.on.add(id));
+    h.layers.forEach((id) => LAYERS.some((l) => l.id === id && !ARCHIVE_GROUPS.includes(l.group)) && state.on.add(id));
   } else {
     LAYERS.filter((l) => l.on).forEach((l) => state.on.add(l.id));
   }

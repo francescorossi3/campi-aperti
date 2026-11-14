@@ -107,6 +107,21 @@ h1, h3, h4 { font-family: Fraunces, Georgia, serif; font-weight: 600; }
 .grad { height: 10px; border-radius: 3px; margin-top: 4px; }
 .grad-l { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink); }
 
+.period { margin: 6px 0 4px; }
+.period-types { display: flex; flex-wrap: wrap; gap: 4px; }
+.period-nav { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12.5px; flex-wrap: wrap; }
+.period-nav #periodLabel { font-weight: 600; color: var(--green); min-width: 150px; text-align: center; }
+.period-nav input { font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; }
+.primary-btn { background: var(--green); color: #fff; border: 0; border-radius: 8px; padding: 7px 12px; cursor: pointer; font: inherit; font-weight: 600; margin-top: 6px; }
+.primary-btn:disabled { opacity: .5; cursor: wait; }
+.seg-overlay { image-rendering: pixelated; }
+.fp-crop { background: #eef5e9; border: 1px solid #cfe2c5; border-radius: 8px; padding: 6px 10px; margin: 4px 0 6px; font-size: 13px; }
+.fp-crop small { color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 2px 8px; cursor: pointer; }
+.chip i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.chip input { margin: 0; accent-color: var(--green); }
+
 /* ---------- pannello campo ---------- */
 .field-panel { height: 42%; min-height: 280px; background: var(--paper); border-top: 2px solid var(--green); overflow-y: auto; padding: 8px 14px 10px; }
 .fp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }

@@ -36,6 +36,8 @@ const I18N = {
     data_intro: "Tutti i dataset aperti raccolti nel progetto. Quelli marcati “sulla mappa” si accendono dal pannello Layer; gli altri sono in arrivo.",
     on_map: "sulla mappa",
     coming: "in arrivo",
+    archive: "archivio, non sulla mappa",
+    info_field: "Le misure del campo (medie su tutto il campo, non sul singolo punto) sono nel pannello sotto la mappa.",
     about_html: `
       <p><b>Campi Aperti</b> raccoglie in un'unica mappa i dati aperti utili a chi coltiva e a chi fa ricerca: catasto, prodotti del <i>Copernicus Land Monitoring Service</i>, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.</p>
       <p><b>Cosa puoi fare:</b> vedere le immagini Sentinel-2 più recenti (colori, NDVI, NDRE, NDMI), i confini reali dei campi e il catasto; cliccando un campo ottieni le serie temporali da San Martino, dal 1° gennaio o degli ultimi 12 mesi, con pioggia, temperatura, previsione a 7 giorni e radar Sentinel-1, e puoi scaricarle in CSV.</p>
@@ -87,6 +89,8 @@ const I18N = {
     data_intro: "All open datasets gathered by the project. Those marked “on the map” can be switched on from the Layers panel; the others are coming.",
     on_map: "on the map",
     coming: "coming",
+    archive: "archive, not on the map",
+    info_field: "Field measurements (averaged over the whole field, not a single point) are in the panel below the map.",
     about_html: `
       <p><b>Open Fields Italy</b> brings together on one map the open data useful to farmers and researchers: cadastre, <i>Copernicus Land Monitoring Service</i> products, weather and, in coming versions, crop yields and services for farmers.</p>
       <p><b>What you can do:</b> view the latest Sentinel-2 images (colour, NDVI, NDRE, NDMI), real field boundaries and the cadastre; clicking a field gives its time series since St Martin's Day, since 1 January or over the last 12 months, with rainfall, temperature, a 7-day forecast and Sentinel-1 radar, downloadable as CSV.</p>

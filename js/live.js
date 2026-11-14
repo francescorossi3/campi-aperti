@@ -16,17 +16,44 @@ const S2_INDEX = {
   ndvi: "(B08-B04)/(B08+B04-2000)",
   ndre: "(B8A-B05)/(B8A+B05-2000)",
   ndmi: "(B8A-B11)/(B8A+B11-2000)",
+  evi: "2.5*(B08-B04)/(B08+6*B04-7.5*B02+10500)",
+  savi: "1.5*(B08-B04)/(B08+B04+3000)",
+  cire: "(B07-1000)/(B05-1000)-1",
+  ndwi: "(B03-B08)/(B03+B08-2000)",
+  nbr: "(B08-B12)/(B08+B12-2000)",
   cloud: "((SCL==3)|(SCL==8)|(SCL==9)|(SCL==10)|(SCL==0)|(SCL==1))*1.0",
 };
 
+// indici mostrati nella scheda campo: chiave, colore, asse (y = 0..1, y4 = scala libera), acceso di default
+const INDEX_DEF = [
+  ["ndvi", "#2f8f3a", "y", true], ["ndre", "#a3812c", "y", true], ["ndmi", "#2b6cb0", "y", true],
+  ["evi", "#5aa02c", "y", false], ["savi", "#8bbf3f", "y", false], ["ndwi", "#1fa3c4", "y", false],
+  ["nbr", "#7a4b2a", "y", false], ["cire", "#c0392b", "y4", false], ["lai", "#145a32", "y4", false], ["kc", "#6c3483", "y", false],
+];
+
 const LT = {
   it: {
-    window: "Immagini degli ultimi",
-    days: "giorni",
-    live_note: "Mosaico delle immagini Sentinel-2 più recenti con meno del 20% di nuvole. Visibile da zoom 10.",
+    p_week: "Settimana", p_month: "Mese", p_3m: "3 mesi", p_6m: "6 mesi", p_year: "Anno",
+    live_note: "Settimana: immagine più recente. Periodi più lunghi: mediana di tutte le immagini con poche nuvole (toglie nuvole residue). Visibile da zoom 10.",
+    seg_btn: "Dividi in campi la zona visibile",
+    seg_hint: "Usa 8 immagini Sentinel-2 serene degli ultimi 12 mesi: pixel vicini con la stessa curva di crescita formano un campo. Ingrandisci almeno a zoom 14.",
+    seg_zoom: "Ingrandisci almeno a zoom 14 e riprova.",
+    seg_prog: "Scarico le immagini: {n}/{t}…",
+    seg_done: "{n} campi individuati da {d} date ({a} → {b}). Clicca su un campo.",
+    crop: "Coltura stimata",
+    crop_note: "Stima automatica dalla curva NDVI del campo (regole fenologiche), non verificata a terra.",
+    crop_short: "Serie troppo corta per stimare la coltura: scegli un'annata intera.",
+    et0: "ET0 di riferimento",
+    etc: "ET coltura stimata",
+    balance: "Pioggia − ET coltura",
+    ndvi_mean: "NDVI medio",
+    idx_ndvi: "NDVI", idx_ndre: "NDRE", idx_ndmi: "NDMI", idx_evi: "EVI", idx_savi: "SAVI", idx_ndwi: "NDWI (acqua)", idx_nbr: "NBR",
+    idx_cire: "CIre (clorofilla)", idx_lai: "LAI stimato", idx_kc: "Kc (coeff. colturale)",
+    et_note: "ET coltura = Kc × ET0 (FAO-56), con Kc ricavato dall'NDVI del campo (Kc = 1,457·NDVI − 0,173) e interpolato giorno per giorno. LAI stimato da EVI (LAI = 3,618·EVI − 0,118).",
     panel_title: "Campo",
-    no_field: "Nessun campo rilevato qui: uso un quadrato di 40 m attorno al punto.",
-    field_src: "Confine: Fields of The World 2025",
+    no_field: "Nessun campo rilevato qui: uso un quadrato di 40 m attorno al punto. Usa “Dividi in campi la zona visibile”.",
+    field_seg: "Confine: segmentazione Sentinel-2 di questa zona (valori = media su tutto il campo)",
+    field_src: "Confine: Fields of The World 2025 (valori = media su tutto il campo)",
     area: "Superficie",
     from_sm: "Da San Martino",
     from_jan: "Dal 1° gennaio",
@@ -60,12 +87,27 @@ const LT = {
     s2_src: "Satellite: Sentinel-2 L2A (Copernicus) via Microsoft Planetary Computer; nuvole e ombre escluse con la classificazione SCL.",
   },
   en: {
-    window: "Images from the last",
-    days: "days",
-    live_note: "Mosaic of the most recent Sentinel-2 images with less than 20% clouds. Visible from zoom 10.",
+    p_week: "Week", p_month: "Month", p_3m: "3 months", p_6m: "6 months", p_year: "Year",
+    live_note: "Week: most recent image. Longer periods: median of all low-cloud images (removes residual clouds). Visible from zoom 10.",
+    seg_btn: "Split the visible area into fields",
+    seg_hint: "Uses 8 clear Sentinel-2 images from the last 12 months: neighbouring pixels with the same growth curve form a field. Zoom in to at least 14.",
+    seg_zoom: "Zoom in to at least level 14 and try again.",
+    seg_prog: "Downloading images: {n}/{t}…",
+    seg_done: "{n} fields found from {d} dates ({a} → {b}). Click a field.",
+    crop: "Estimated crop",
+    crop_note: "Automatic estimate from the field's NDVI curve (phenological rules), not ground-verified.",
+    crop_short: "Series too short to estimate the crop: choose a full year.",
+    et0: "Reference ET0",
+    etc: "Estimated crop ET",
+    balance: "Rain − crop ET",
+    ndvi_mean: "Mean NDVI",
+    idx_ndvi: "NDVI", idx_ndre: "NDRE", idx_ndmi: "NDMI", idx_evi: "EVI", idx_savi: "SAVI", idx_ndwi: "NDWI (water)", idx_nbr: "NBR",
+    idx_cire: "CIre (chlorophyll)", idx_lai: "Estimated LAI", idx_kc: "Kc (crop coefficient)",
+    et_note: "Crop ET = Kc × ET0 (FAO-56), with Kc derived from the field NDVI (Kc = 1.457·NDVI − 0.173) and interpolated day by day. LAI estimated from EVI (LAI = 3.618·EVI − 0.118).",
     panel_title: "Field",
-    no_field: "No field detected here: using a 40 m square around the point.",
-    field_src: "Boundary: Fields of The World 2025",
+    no_field: "No field detected here: using a 40 m square around the point. Use “Split the visible area into fields”.",
+    field_seg: "Boundary: Sentinel-2 segmentation of this area (values = mean over the whole field)",
+    field_src: "Boundary: Fields of The World 2025 (values = mean over the whole field)",
     area: "Area",
     from_sm: "Since St Martin's Day",
     from_jan: "Since 1 January",
@@ -106,18 +148,50 @@ const lt = (k, vars) => {
 };
 
 const Live = (() => {
-  // ================================================================== mappe Sentinel-2 in tempo reale
-  let windowDays = 20;
+  // ================================================================== mappe Sentinel-2 per periodo
+  // periodo: settimana, mese, 3 mesi, 6 mesi, anno; la data "anchor" è la fine del periodo
+  let ptype = "month";
+  let anchor = new Date();
   let searchId = null, searchPromise = null;
   const liveLayers = new Set();
+  const PTYPES = ["week", "month", "3m", "6m", "year"];
+
+  function periodRange() {
+    const a = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate()));
+    let start, end;
+    if (ptype === "week") { end = new Date(a.getTime() + 86399999); start = new Date(a.getTime() - 6 * 86400000); }
+    else {
+      const months = { month: 1, "3m": 3, "6m": 6, year: 12 }[ptype];
+      end = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + 1, 0, 23, 59, 59));
+      start = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() - months + 1, 1));
+    }
+    const now = new Date();
+    if (end > now) end = now;
+    return { start, end, pixel: ptype === "week" ? "first" : "median", cloudMax: ptype === "week" ? 60 : 35 };
+  }
+  function shiftPeriod(dir) {
+    const a = anchor;
+    if (ptype === "week") anchor = new Date(a.getTime() + dir * 7 * 86400000);
+    else {
+      const m = { month: 1, "3m": 3, "6m": 6, year: 12 }[ptype];
+      anchor = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + dir * m + 1, 0));
+    }
+    if (anchor > new Date()) anchor = new Date();
+    applyPeriod();
+  }
+  function periodLabel() {
+    const { start, end } = periodRange();
+    const f = (d, y) => d.toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { day: "numeric", month: "short", ...(y ? { year: "numeric" } : {}) });
+    return `${f(start, start.getUTCFullYear() !== end.getUTCFullYear())} – ${f(end, true)}`;
+  }
 
   function registerMosaic() {
-    const end = new Date(), start = new Date(Date.now() - windowDays * 86400000);
+    const { start, end, cloudMax } = periodRange();
     const body = {
       collections: ["sentinel-2-l2a"],
       "filter-lang": "cql2-json",
       filter: { op: "and", args: [
-        { op: "<=", args: [{ property: "eo:cloud_cover" }, 20] },
+        { op: "<=", args: [{ property: "eo:cloud_cover" }, cloudMax] },
         { op: "anyinteracts", args: [{ property: "datetime" }, { interval: [start.toISOString(), end.toISOString()] }] },
       ] },
       sortby: [{ field: "datetime", direction: "desc" }],
@@ -128,7 +202,8 @@ const Live = (() => {
   }
 
   function s2Url(def) {
-    let q = `collection=sentinel-2-l2a&nodata=0`;
+    const { pixel } = periodRange();
+    let q = `collection=sentinel-2-l2a&nodata=0&pixel_selection=${pixel}`;
     if (def.expr) q += `&expression=${encodeURIComponent(def.expr)}&asset_as_band=true&rescale=${def.rescale}&colormap_name=${def.colormap}`;
     else q += def.render;
     return `${PC}/data/v1/mosaic/${searchId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?${q}`;
@@ -142,20 +217,55 @@ const Live = (() => {
     return layer;
   }
 
-  function setWindow(days) {
-    windowDays = days;
+  function applyPeriod() {
     searchId = null;
+    const lab = document.getElementById("periodLabel");
+    if (lab) lab.textContent = periodLabel();
+    const di = document.getElementById("periodDate");
+    if (di) di.value = anchor.toISOString().slice(0, 10);
     registerMosaic().then(() => liveLayers.forEach(({ def, layer }) => layer.setUrl(s2Url(def))));
   }
 
   function windowControl() {
-    return `<div class="live-window">${lt("window")}
-      <select id="liveWindow">${[10, 20, 45, 90].map((d) => `<option value="${d}" ${d === windowDays ? "selected" : ""}>${d}</option>`).join("")}</select>
-      ${lt("days")}</div><p class="hint small">${lt("live_note")}</p>`;
+    return `<div class="period">
+      <div class="period-types">${PTYPES.map((p) => `<button class="seg ${p === ptype ? "active" : ""}" data-p="${p}">${lt("p_" + p)}</button>`).join("")}</div>
+      <div class="period-nav"><button class="small-btn" id="periodPrev">◀</button>
+        <span id="periodLabel">${periodLabel()}</span>
+        <button class="small-btn" id="periodNext">▶</button>
+        <input type="date" id="periodDate" value="${anchor.toISOString().slice(0, 10)}" min="2017-04-01" max="${new Date().toISOString().slice(0, 10)}"></div>
+      <p class="hint small">${lt("live_note")}</p></div>`;
   }
   function bindWindowControl() {
-    const sel = document.getElementById("liveWindow");
-    if (sel) sel.onchange = () => setWindow(+sel.value);
+    document.querySelectorAll(".period-types .seg").forEach((b) => (b.onclick = () => {
+      ptype = b.dataset.p;
+      document.querySelectorAll(".period-types .seg").forEach((x) => x.classList.toggle("active", x === b));
+      applyPeriod();
+    }));
+    const pv = document.getElementById("periodPrev"), nx = document.getElementById("periodNext"), di = document.getElementById("periodDate");
+    if (pv) pv.onclick = () => shiftPeriod(-1);
+    if (nx) nx.onclick = () => shiftPeriod(1);
+    if (di) di.onchange = () => { if (di.value) { anchor = new Date(di.value + "T12:00:00Z"); applyPeriod(); } };
+    const sb = document.getElementById("segBtn");
+    if (sb) sb.onclick = runSegmentation;
+  }
+
+  // ================================================================== divisione in campi della zona visibile
+  function segControl() {
+    return `<div class="seg-box"><button id="segBtn" class="primary-btn">${lt("seg_btn")}</button>
+      <p class="hint small" id="segMsg">${lt("seg_hint")}</p></div>`;
+  }
+  async function runSegmentation() {
+    const msg = document.getElementById("segMsg");
+    if (map.getZoom() < 14) { if (msg) msg.textContent = lt("seg_zoom"); return; }
+    const b = map.getBounds();
+    const bounds = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+    const btn = document.getElementById("segBtn");
+    if (btn) btn.disabled = true;
+    try {
+      const r = await Segment.run(bounds, periodRange().end, (n, t) => msg && (msg.textContent = lt("seg_prog", { n, t })));
+      if (msg) msg.textContent = lt("seg_done", { n: r.nSeg, d: r.dates.length, a: r.dates[0], b: r.dates[r.dates.length - 1] });
+    } catch (e) { if (msg) msg.textContent = lt("err", { e: e.message }); }
+    if (btn) btn.disabled = false;
   }
 
   // ================================================================== confini dei campi (PMTiles)
@@ -439,7 +549,8 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const byDate = {};
     items.forEach((it) => { const d = it.properties.datetime.slice(0, 10); (byDate[d] = byDate[d] || []).push(it); });
     const dates = Object.keys(byDate).sort();
-    const exprs = [S2_INDEX.ndvi, S2_INDEX.ndre, S2_INDEX.ndmi, S2_INDEX.cloud];
+    const keys = ["ndvi", "ndre", "ndmi", "evi", "savi", "cire", "ndwi", "nbr", "cloud"];
+    const exprs = keys.map((k) => S2_INDEX[k]);
     const params = `expression=${encodeURIComponent(exprs.join(";"))}&asset_as_band=true`;
     let done = 0, cloudy = 0;
     current.s2 = [];
@@ -451,9 +562,13 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
         if (!st) continue;
         const v = exprs.map((e) => st[e]);
         if (!v[0] || !v[0].count) continue;
-        const cl = v[3].mean;
+        const cl = v[keys.length - 1].mean;
         if (cl > 0.05) { cloudy++; break; }
-        current.s2.push({ date: d, t: Date.parse(d), ndvi: v[0].mean, ndre: v[1].mean, ndmi: v[2].mean, ndvi_sd: v[0].std, cloud: cl, item: it.id });
+        const row = { date: d, t: Date.parse(d), ndvi_sd: v[0].std, cloud: cl, item: it.id, npx: v[0].count };
+        keys.slice(0, -1).forEach((k, i) => (row[k] = v[i].mean));
+        row.lai = Math.max(0, 3.618 * row.evi - 0.118);
+        row.kc = Math.min(1.25, Math.max(0.15, 1.457 * row.ndvi - 0.1725));
+        current.s2.push(row);
         break;
       }
       done++;
@@ -526,7 +641,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     panel().innerHTML = `
       <div class="fp-head">
         <div class="fp-title"><b>${lt("panel_title")}</b> · ${lt("area")} ${ha < 1 ? (ha * 10000).toFixed(0) + " m²" : ha.toFixed(2) + " ha"}
-          <span class="fp-src">${f.properties._square ? lt("no_field") : lt("field_src")}</span></div>
+          <span class="fp-src">${f.properties._square ? lt("no_field") : f.properties._seg ? lt("field_seg") : lt("field_src")}</span></div>
         <div class="fp-ctrl">
           ${["sm", "jan", "12m"].map((r) => `<button class="seg ${r === range ? "active" : ""}" data-r="${r}">${lt(r === "sm" ? "from_sm" : r === "jan" ? "from_jan" : "last12")}</button>`).join("")}
           ${range !== "12m" ? `<select id="fpYear" class="seg">${yearOptions()}</select>` : ""}
@@ -536,14 +651,16 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
         </div>
       </div>
       <div id="fpStatus" class="fp-status"></div>
+      <div id="fpCrop" class="fp-crop"></div>
       <div id="fpSummary" class="fp-summary"></div>
+      <div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
       <div class="fp-charts">
         <figure><figcaption>${lt("ch_index")}</figcaption><div class="cbox"><canvas id="chIndex"></canvas></div></figure>
         <figure><figcaption>${lt("ch_meteo")}</figcaption><div class="cbox"><canvas id="chMeteo"></canvas></div></figure>
         <figure id="radarFig" hidden><figcaption>${lt("ch_radar")}</figcaption><div class="cbox"><canvas id="chRadar"></canvas></div>
           <p class="hint small">${lt("radar_hint")}</p></figure>
       </div>
-      <p class="hint small fp-foot">${lt("s2_src")} ${lt("meteo_src")}</p>`;
+      <p class="hint small fp-foot">${lt("s2_src")} ${lt("meteo_src")} ${lt("et_note")}</p>`;
     panel().hidden = false;
     document.body.classList.add("fp-open");
     setTimeout(() => map.invalidateSize(), 50);
@@ -551,6 +668,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const ys = document.getElementById("fpYear");
     if (ys) ys.onchange = () => { year = +ys.value; run(); };
     document.getElementById("fpClose").onclick = close;
+    panel().querySelectorAll(".chip input").forEach((c) => (c.onchange = () => { c.checked ? shown.add(c.dataset.k) : shown.delete(c.dataset.k); drawIndex(); }));
     document.getElementById("fpCsv").onclick = exportCsv;
     document.getElementById("fpRadar").onclick = () => { document.getElementById("radarFig").hidden = false; loadS1(); };
     Object.values(charts).forEach((c) => c.destroy());
@@ -583,12 +701,15 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     if (el) charts[id] = new Chart(el, cfg);
   }
 
+  const shown = new Set(INDEX_DEF.filter((x) => x[3]).map((x) => x[0]));
   function drawIndex() {
     const d = (current.s2 || []).slice().sort((a, b) => a.t - b.t);
-    const ds = (k, label, color) => ({ type: "line", label, data: d.map((r) => ({ x: r.t, y: r[k] })), borderColor: color, backgroundColor: color,
-      pointRadius: 2.5, borderWidth: 1.6, tension: 0.25 });
-    upsert("chIndex", { data: { datasets: [ds("ndvi", lt("ndvi_d"), "#2f8f3a"), ds("ndre", lt("ndre_d"), "#a3812c"), ds("ndmi", lt("ndmi_d"), "#2b6cb0")] },
-      options: baseOpts({ y: { min: -0.2, max: 1, ticks: { font: { size: 10 } } } }) });
+    const sets = INDEX_DEF.filter(([k]) => shown.has(k)).map(([k, color, axis]) => ({ type: "line", label: lt("idx_" + k), yAxisID: axis,
+      data: d.map((r) => ({ x: r.t, y: r[k] })), borderColor: color, backgroundColor: color, pointRadius: 2.2, borderWidth: 1.6, tension: 0.25 }));
+    const free = INDEX_DEF.some(([k, , ax]) => ax === "y4" && shown.has(k));
+    upsert("chIndex", { data: { datasets: sets },
+      options: baseOpts({ y: { min: -0.4, max: 1, ticks: { font: { size: 10 } } },
+        y4: { display: free, position: "right", grid: { display: false }, ticks: { font: { size: 10 } } } }) });
   }
 
   function drawMeteo() {
@@ -621,29 +742,101 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       options: baseOpts({ y: { ticks: { font: { size: 10 } }, title: { display: true, text: "dB", font: { size: 10 } } } }) });
   }
 
+  // ET coltura: Kc giornaliero interpolato dalle date Sentinel-2 serene
+  function waterBalance() {
+    const m = (current.meteo || []).filter((r) => !r.fc), s2 = (current.s2 || []).slice().sort((a, b) => a.t - b.t);
+    if (!m.length) return null;
+    const kcAt = (t) => {
+      if (!s2.length) return null;
+      if (t <= s2[0].t) return s2[0].kc;
+      if (t >= s2[s2.length - 1].t) return s2[s2.length - 1].kc;
+      let i = 0; while (s2[i + 1].t < t) i++;
+      const a = s2[i], b = s2[i + 1], w = (t - a.t) / (b.t - a.t);
+      return a.kc + w * (b.kc - a.kc);
+    };
+    let rain = 0, et0 = 0, etc = 0, gdd = 0;
+    m.forEach((r) => {
+      rain += r.rain || 0; et0 += r.et0 || 0;
+      const kc = kcAt(r.t); if (kc != null) etc += kc * (r.et0 || 0);
+      gdd += Math.max(0, (r.tmax + r.tmin) / 2 - 10);
+    });
+    return { rain, et0, etc: s2.length ? etc : null, gdd };
+  }
+
+  // ---- stima della coltura dalla curva NDVI (regole fenologiche per l'Italia) ----
+  function classifyCrop(s2) {
+    const d = (s2 || []).filter((r) => isFinite(r.ndvi)).sort((a, b) => a.t - b.t);
+    if (d.length < 8 || d[d.length - 1].t - d[0].t < 240 * 86400000) return null;
+    const v = d.map((r) => r.ndvi).sort((a, b) => a - b);
+    const q = (p) => v[Math.min(v.length - 1, Math.floor(p * v.length))];
+    const p10 = q(0.1), p90 = q(0.9), med = q(0.5), amp = p90 - p10;
+    const byM = Array.from({ length: 12 }, () => []);
+    d.forEach((r) => byM[new Date(r.t).getUTCMonth()].push(r.ndvi));
+    const mm = (ms) => { const a = ms.flatMap((m) => byM[m]); return a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN; };
+    const peak = d.reduce((a, r) => (r.ndvi > a.ndvi ? r : a));
+    const pm = new Date(peak.t).getUTCMonth();
+    const winter = mm([11, 0, 1]), spring = mm([2, 3, 4]), summer = mm([5, 6, 7]), jul_aug = mm([6, 7]), feb_apr = mm([1, 2, 3]), lateSum = mm([6, 7, 8]);
+    const flooded = d.some((r) => { const mo = new Date(r.t).getUTCMonth(); return mo >= 3 && mo <= 5 && r.ndwi > 0.05 && r.ndvi < 0.25; });
+    let drops = 0;
+    for (let i = 1; i < d.length; i++) { const mo = new Date(d[i].t).getUTCMonth(); if (mo >= 3 && mo <= 9 && d[i - 1].ndvi - d[i].ndvi > 0.18 && d[i - 1].ndvi > 0.5) drops++; }
+    const it = LANG === "it";
+    const R = (l_it, l_en, why_it, why_en, conf) => ({ label: it ? l_it : l_en, why: it ? why_it : why_en, conf });
+    const f2 = (x) => (isFinite(x) ? x.toFixed(2) : "–");
+    if (p90 < 0.3) return R("Suolo nudo, incolto o area non agricola", "Bare soil, fallow or non-agricultural", `NDVI sempre basso (90° percentile ${f2(p90)})`, `NDVI always low (90th percentile ${f2(p90)})`, "alta");
+    if (med > 0.7 && amp < 0.2) return R("Bosco o vegetazione naturale densa", "Forest or dense natural vegetation", `NDVI alto e stabile tutto l'anno (mediana ${f2(med)})`, `High, stable NDVI all year (median ${f2(med)})`, "media");
+    if (flooded && pm >= 6 && pm <= 8) return R("Riso (probabile)", "Rice (likely)", "campo allagato in primavera (NDWI > 0) e picco estivo", "field flooded in spring (NDWI > 0) and summer peak", "media");
+    if (spring > 0.55 && pm >= 1 && pm <= 4 && jul_aug < 0.4) {
+      if (lateSum > 0.55) return R("Doppia coltura: cereale vernino + secondo raccolto estivo", "Double crop: winter cereal + summer second crop", `picco a ${monthName(pm)}, nuova crescita in estate (${f2(lateSum)})`, `peak in ${monthName(pm)}, regrowth in summer (${f2(lateSum)})`, "media");
+      return R("Cereale autunno-vernino (frumento, orzo, avena) o colza", "Winter cereal (wheat, barley, oats) or rapeseed", `picco a ${monthName(pm)} (NDVI ${f2(peak.ndvi)}), raccolta prima di luglio (lug–ago ${f2(jul_aug)})`, `peak in ${monthName(pm)} (NDVI ${f2(peak.ndvi)}), harvested before July (Jul–Aug ${f2(jul_aug)})`, "alta");
+    }
+    if (feb_apr < 0.4 && pm >= 5 && pm <= 8 && peak.ndvi > 0.6) {
+      if (pm >= 6 && peak.ndvi > 0.78) return R("Coltura estiva: mais (probabile) o sorgo", "Summer crop: maize (likely) or sorghum", `semina primaverile, picco alto a ${monthName(pm)} (NDVI ${f2(peak.ndvi)})`, `spring sowing, high peak in ${monthName(pm)} (NDVI ${f2(peak.ndvi)})`, "media");
+      return R("Coltura estiva (girasole, soia, pomodoro, mais)", "Summer crop (sunflower, soybean, tomato, maize)", `suolo nudo fino ad aprile, picco a ${monthName(pm)}`, `bare until April, peak in ${monthName(pm)}`, "media");
+    }
+    if (med > 0.5 && drops >= 2) return R("Prato da sfalcio o erba medica", "Hay meadow or alfalfa", `verde quasi tutto l'anno con ${drops} tagli tra aprile e ottobre`, `green most of the year with ${drops} cuts between April and October`, "media");
+    if (winter < 0.38 && summer > 0.42 && summer < 0.7 && amp < 0.4 && pm >= 5 && pm <= 8) return R("Vigneto (probabile)", "Vineyard (likely)", `inverno spoglio (${f2(winter)}), chioma estiva moderata (${f2(summer)})`, `bare winter (${f2(winter)}), moderate summer canopy (${f2(summer)})`, "bassa");
+    if (amp < 0.22 && med >= 0.3 && med <= 0.7) return R("Coltura arborea permanente (oliveto, frutteto) o pascolo arborato", "Permanent tree crop (olive grove, orchard) or wooded pasture", `NDVI stabile tutto l'anno (mediana ${f2(med)}, escursione ${f2(amp)})`, `NDVI stable all year (median ${f2(med)}, range ${f2(amp)})`, "bassa");
+    return R("Coltura non classificata (andamento irregolare)", "Unclassified crop (irregular pattern)", `picco a ${monthName(pm)}, escursione ${f2(amp)}`, `peak in ${monthName(pm)}, range ${f2(amp)}`, "—");
+  }
+  const monthName = (m) => new Date(Date.UTC(2020, m, 15)).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { month: "long" });
+
   function drawSummary() {
     const el = document.getElementById("fpSummary");
     if (!el) return;
-    const m = (current.meteo || []).filter((r) => !r.fc), s2 = current.s2 || [];
-    const rain = m.reduce((a, r) => a + (r.rain || 0), 0);
-    const gdd = m.reduce((a, r) => a + Math.max(0, ((r.tmax + r.tmin) / 2) - 10), 0);
+    const s2 = current.s2 || [];
+    const wb = waterBalance();
     const last = s2[s2.length - 1], max = s2.reduce((a, r) => (!a || r.ndvi > a.ndvi ? r : a), null);
+    const mean = s2.length ? s2.reduce((a, r) => a + r.ndvi, 0) / s2.length : null;
     const d0 = startDate(range).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
     el.innerHTML = [
-      m.length ? `<span><em>${lt("sum_rain", { d: d0 })}</em><b>${rain.toFixed(0)} mm</b></span>` : "",
-      m.length ? `<span><em>${lt("sum_gdd")}</em><b>${gdd.toFixed(0)}</b></span>` : "",
+      wb ? `<span><em>${lt("sum_rain", { d: d0 })}</em><b>${wb.rain.toFixed(0)} mm</b></span>` : "",
+      wb ? `<span><em>${lt("et0")}</em><b>${wb.et0.toFixed(0)} mm</b></span>` : "",
+      wb && wb.etc != null ? `<span><em>${lt("etc")}</em><b>${wb.etc.toFixed(0)} mm</b></span>` : "",
+      wb && wb.etc != null ? `<span><em>${lt("balance")}</em><b>${(wb.rain - wb.etc).toFixed(0)} mm</b></span>` : "",
+      wb ? `<span><em>${lt("sum_gdd")}</em><b>${wb.gdd.toFixed(0)}</b></span>` : "",
+      mean != null ? `<span><em>${lt("ndvi_mean")}</em><b>${mean.toFixed(2)}</b></span>` : "",
       last ? `<span><em>${lt("sum_last")}</em><b>${last.ndvi.toFixed(2)}</b> <small>${fmtDate(last.t)}</small></span>` : "",
       max ? `<span><em>${lt("sum_max")}</em><b>${max.ndvi.toFixed(2)}</b> <small>${fmtDate(max.t)}</small></span>` : "",
     ].join("");
+    const cb = document.getElementById("fpCrop");
+    if (cb) {
+      const c = classifyCrop(s2);
+      current.crop = c;
+      cb.innerHTML = c ? `<b>${lt("crop")}:</b> ${c.label} <small>(${c.why}${c.conf && c.conf !== "—" ? `; ${LANG === "it" ? "affidabilità" : "confidence"} ${c.conf}` : ""})</small><div class="hint small">${lt("crop_note")}</div>`
+        : (s2.length ? `<span class="hint small">${lt("crop_short")}</span>` : "");
+    }
   }
 
   function exportCsv() {
     if (!current) return;
-    const rows = [["source", "date", "ndvi", "ndre", "ndmi", "vv_db", "vh_db", "orbit", "rain_mm", "tmean_c", "tmin_c", "tmax_c", "et0_mm", "forecast"]];
-    (current.s2 || []).forEach((r) => rows.push(["sentinel-2", r.date, r.ndvi.toFixed(4), r.ndre.toFixed(4), r.ndmi.toFixed(4), "", "", "", "", "", "", "", "", ""]));
-    (current.s1 || []).forEach((r) => rows.push(["sentinel-1", r.date, "", "", "", r.vv.toFixed(2), r.vh.toFixed(2), r.orbit, "", "", "", "", "", ""]));
-    (current.meteo || []).forEach((r) => rows.push(["open-meteo", r.date, "", "", "", "", "", "", r.rain, r.tmean, r.tmin, r.tmax, r.et0, r.fc ? 1 : 0]));
-    const head = `# Campi Aperti — lat ${current.ll.lat.toFixed(6)}, lon ${current.ll.lng.toFixed(6)}, ${areaHa(current.feature.geometry).toFixed(3)} ha\n`;
+    const IK = INDEX_DEF.map((x) => x[0]);
+    const E = (n) => Array(n).fill("");
+    const rows = [["source", "date", ...IK, "pixels", "vv_db", "vh_db", "orbit", "rain_mm", "tmean_c", "tmin_c", "tmax_c", "et0_mm", "forecast"]];
+    (current.s2 || []).forEach((r) => rows.push(["sentinel-2", r.date, ...IK.map((k) => (isFinite(r[k]) ? r[k].toFixed(4) : "")), r.npx, ...E(9)]));
+    (current.s1 || []).forEach((r) => rows.push(["sentinel-1", r.date, ...E(IK.length + 1), r.vv.toFixed(2), r.vh.toFixed(2), r.orbit, ...E(6)]));
+    (current.meteo || []).forEach((r) => rows.push(["open-meteo", r.date, ...E(IK.length + 4), r.rain, r.tmean, r.tmin, r.tmax, r.et0, r.fc ? 1 : 0]));
+    const head = `# Campi Aperti — lat ${current.ll.lat.toFixed(6)}, lon ${current.ll.lng.toFixed(6)}, ${areaHa(current.feature.geometry).toFixed(3)} ha` +
+      (current.crop ? `, coltura stimata: ${current.crop.label}` : "") + ` — valori Sentinel-2 = media sul campo\n`;
     const blob = new Blob([head + rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -671,8 +864,8 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   }
 
   async function onMapClick(ll) {
-    let feature = null;
-    try { feature = await findField(ll); } catch (e) { console.warn("field lookup", e); }
+    let feature = Segment.fieldAt(ll);
+    if (!feature) { try { feature = await findField(ll); } catch (e) { console.warn("field lookup", e); } }
     if (!feature) feature = squareAround(ll);
     if (highlight) map.removeLayer(highlight);
     highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fillColor: "#ffd84a", fillOpacity: 0.12 }, interactive: false }).addTo(map);
@@ -681,5 +874,5 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     return feature;
   }
 
-  return { makeS2Layer, makeFieldsLayer, windowControl, bindWindowControl, onMapClick, findField, refreshLang: () => current && run(), _debug: () => current };
+  return { makeS2Layer, makeFieldsLayer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, findField, refreshLang: () => current && run(), _debug: () => current };
 })();

@@ -11,13 +11,9 @@ const LAYER_GROUPS = [
   { id: "live", it: "Satellite in tempo reale (Sentinel-2)", en: "Real-time satellite (Sentinel-2)" },
   { id: "fields", it: "Campi agricoli", en: "Agricultural fields" },
   { id: "catasto", it: "Catasto (Agenzia delle Entrate)", en: "Cadastre (Italian Revenue Agency)" },
-  { id: "landcover", it: "Copertura del suolo", en: "Land cover" },
-  { id: "trees", it: "Alberi e foreste", en: "Trees and forests" },
-  { id: "agri", it: "Agricoltura e prati", en: "Agriculture and grassland" },
-  { id: "pheno", it: "Fenologia e produttività (2000–2019)", en: "Phenology and productivity (2000–2019)" },
-  { id: "water", it: "Acqua e suolo impermeabile", en: "Water and sealed soil" },
-  { id: "nature", it: "Aree protette e campionamenti", en: "Protected areas and surveys" },
 ];
+// I layer statici CLMS (2012–2021) restano solo nel catalogo "Dati" come archivio.
+const ARCHIVE_GROUPS = ["landcover", "trees", "agri", "pheno", "water", "nature"];
 
 const LAYERS = [
   // ---------------- TEMPO REALE / REAL TIME ----------------
@@ -53,6 +49,14 @@ const LAYERS = [
     source: "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer", link: "https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",
   },
   {
+    id: "s2_evi", group: "live", type: "s2live", minZoom: 10, opacity: 0.85,
+    expr: "2.5*(B08-B04)/(B08+6*B04-7.5*B02+10500)", rescale: "0,0.8", colormap: "rdylgn",
+    legendHtml: '<div class="grad" style="background:linear-gradient(90deg,#a50026,#f46d43,#fee08b,#d9ef8b,#66bd63,#006837)"></div><div class="grad-l"><span>0</span><span>0,4</span><span>0,8</span></div>',
+    it: { name: "EVI — vegetazione densa", desc: "Come l'NDVI ma non si satura sulle colture molto sviluppate e corregge l'effetto dell'atmosfera." },
+    en: { name: "EVI — dense vegetation", desc: "Like NDVI but does not saturate on well-developed crops and corrects for the atmosphere." },
+    source: "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer", link: "https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",
+  },
+  {
     id: "s2_false", group: "live", type: "s2live", minZoom: 10, opacity: 1,
     render: "&assets=B08&assets=B04&assets=B03&rescale=1000,5000",
     it: { name: "Falsi colori (infrarosso)", desc: "Vicino infrarosso in rosso: la vegetazione sana appare rosso acceso, il suolo nudo grigio-azzurro." },
@@ -63,7 +67,7 @@ const LAYERS = [
   // ---------------- CAMPI / FIELDS ----------------
   {
     id: "ftw2025", group: "fields", type: "fields", minZoom: 12, opacity: 1, on: true,
-    it: { name: "Confini dei campi 2025", desc: "Campi riconosciuti da immagini Sentinel-2 con intelligenza artificiale (Fields of The World), indipendenti dal catasto: un campo può coprire più particelle e viceversa. Clicca su un campo per le sue serie temporali. Visibile da zoom 12." },
+    it: { name: "Confini dei campi 2025 (Fields of The World)", desc: "Campi riconosciuti da immagini Sentinel-2 con intelligenza artificiale (Fields of The World), indipendenti dal catasto: un campo può coprire più particelle e viceversa. Clicca su un campo per le sue serie temporali. Visibile da zoom 12." },
     en: { name: "Field boundaries 2025", desc: "Fields detected from Sentinel-2 imagery with AI (Fields of The World), independent of the cadastre: a field can span several parcels and vice versa. Click a field for its time series. Visible from zoom 12." },
     source: "Fields of The World 2025 — CC BY 4.0", link: "https://source.coop/ftw/global-data",
   },
