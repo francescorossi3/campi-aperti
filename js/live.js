@@ -166,7 +166,7 @@ const Live = (() => {
   function makeFieldsLayer(def) {
     return protomapsL.leafletLayer({
       url: FTW_ITALY,
-      maxDataZoom: pmHeader ? pmHeader.maxZoom : 14,
+      maxDataZoom: 13, // zoom massimo dell'archivio PMTiles FTW Italia
       paintRules: [{ dataLayer: FTW_LAYER, symbolizer: new protomapsL.LineSymbolizer({ color: "#ffd84a", width: 1.3 }) }],
       labelRules: [],
       minZoom: def.minZoom || 12,
@@ -294,7 +294,8 @@ const Live = (() => {
     if (!tileCache[k]) tileCache[k] = pm.getZxy(z, x, y).then((r) => (r && r.data ? decodeTile(r.data)[FTW_LAYER] : null));
     return tileCache[k];
   }
-  const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["id"])) ?? ft.id;
+  // i tasselli FTW non hanno un id: uso la superficie totale del campo (metrics:area), identica in tutti i pezzi
+const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? ft.id;
 
   // trova il campo che contiene il punto; restituisce un GeoJSON MultiPolygon in lon/lat
   async function findField(ll) {
@@ -502,7 +503,7 @@ const Live = (() => {
 
   function renderPanel() {
     const f = current.feature;
-    const ha = areaHa(f.geometry);
+    const ha = f.properties["metrics:area"] ? f.properties["metrics:area"] / 10000 : areaHa(f.geometry);
     panel().innerHTML = `
       <div class="fp-head">
         <div class="fp-title"><b>${lt("panel_title")}</b> · ${lt("area")} ${ha < 1 ? (ha * 10000).toFixed(0) + " m²" : ha.toFixed(2) + " ha"}
