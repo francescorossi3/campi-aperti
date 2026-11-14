@@ -375,16 +375,34 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   // ================================================================== serie temporali
   let current = null; // { feature, ll, s2:[], s1:[], meteo:{}, range }
   let range = "sm";
+  let year = null; // annata scelta (null = automatica)
   let charts = {};
   let runId = 0;
 
-  function startDate(r) {
-    const now = new Date(), y = now.getFullYear();
-    if (r === "jan") return new Date(Date.UTC(y, 0, 1));
-    if (r === "12m") return new Date(Date.UTC(y - 1, now.getMonth(), now.getDate()));
+  // Annata agraria: da San Martino (11 novembre) al 10 novembre dell'anno dopo.
+  // Se l'annata in corso è iniziata da meno di 45 giorni, di default si mostra quella appena chiusa.
+  function defaultYear(r) {
+    const now = new Date(), y = now.getUTCFullYear();
+    if (r === "jan") return now < new Date(Date.UTC(y, 1, 15)) ? y - 1 : y;
     const sm = new Date(Date.UTC(y, 10, 11));
-    return now >= sm ? sm : new Date(Date.UTC(y - 1, 10, 11));
+    const cur = now >= sm ? y : y - 1;
+    return (now - new Date(Date.UTC(cur, 10, 11))) / 86400000 < 45 ? cur - 1 : cur;
   }
+  const selYear = () => year ?? defaultYear(range);
+  function startDate(r) {
+    const now = new Date();
+    if (r === "12m") return new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), now.getUTCDate()));
+    const Y = selYear();
+    return r === "jan" ? new Date(Date.UTC(Y, 0, 1)) : new Date(Date.UTC(Y, 10, 11));
+  }
+  function endDate(r) {
+    const now = new Date();
+    if (r === "12m") return now;
+    const Y = selYear();
+    const e = r === "jan" ? new Date(Date.UTC(Y, 11, 31)) : new Date(Date.UTC(Y + 1, 10, 10));
+    return e < now ? e : now;
+  }
+  const isCurrent = () => endDate(range) >= new Date(Date.now() - 86400000);
   const iso = (d) => d.toISOString().slice(0, 10);
 
   async function pool(items, n, fn) {
@@ -415,7 +433,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   }
 
   async function loadS2(my) {
-    const f = current.feature, start = iso(startDate(range)), end = iso(new Date());
+    const f = current.feature, start = iso(startDate(range)), end = iso(endDate(range));
     const items = await stacSearch("sentinel-2-l2a", f.geometry, start, end, { query: { "eo:cloud_cover": { lt: 85 } } });
     if (my !== runId) return;
     const byDate = {};
@@ -448,7 +466,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   }
 
   async function loadS1() {
-    const my = runId, f = current.feature, start = iso(startDate(range)), end = iso(new Date());
+    const my = runId, f = current.feature, start = iso(startDate(range)), end = iso(endDate(range));
     const items = await stacSearch("sentinel-1-rtc", f.geometry, start, end);
     if (my !== runId) return;
     let done = 0;
@@ -472,8 +490,9 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   }
 
   async function loadMeteo(my) {
-    const ll = current.ll, start = startDate(range);
-    const archEnd = new Date(Date.now() - 6 * 86400000);
+    const ll = current.ll, start = startDate(range), end = endDate(range);
+    const recent = new Date(Date.now() - 6 * 86400000);
+    const archEnd = end < recent ? end : recent;
     const vars = "precipitation_sum,temperature_2m_mean,temperature_2m_max,temperature_2m_min,et0_fao_evapotranspiration";
     const out = {};
     const add = (j, fc) => {
@@ -487,13 +506,13 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const lat = ll.lat.toFixed(4), lon = ll.lng.toFixed(4);
     const [a, b] = await Promise.all([
       archEnd > start ? fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${iso(start)}&end_date=${iso(archEnd)}&daily=${vars}&timezone=Europe%2FRome`).then((r) => r.json()).catch(() => null) : null,
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&past_days=10&forecast_days=7&daily=${vars}&timezone=Europe%2FRome`).then((r) => r.json()).catch(() => null),
+      isCurrent() ? fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&past_days=10&forecast_days=7&daily=${vars}&timezone=Europe%2FRome`).then((r) => r.json()).catch(() => null) : null,
     ]);
     if (my !== runId) return;
     add(a, false); add(b, true);
     const today = iso(new Date());
     Object.values(out).forEach((r) => (r.fc = r.date > today));
-    current.meteo = Object.values(out).filter((r) => r.date >= iso(start) && r.tmean != null).sort((x, y) => x.t - y.t);
+    current.meteo = Object.values(out).filter((r) => r.date >= iso(start) && (r.fc || r.date <= iso(end)) && r.tmean != null).sort((x, y) => x.t - y.t);
     drawMeteo(); drawSummary();
   }
 
@@ -510,6 +529,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
           <span class="fp-src">${f.properties._square ? lt("no_field") : lt("field_src")}</span></div>
         <div class="fp-ctrl">
           ${["sm", "jan", "12m"].map((r) => `<button class="seg ${r === range ? "active" : ""}" data-r="${r}">${lt(r === "sm" ? "from_sm" : r === "jan" ? "from_jan" : "last12")}</button>`).join("")}
+          ${range !== "12m" ? `<select id="fpYear" class="seg">${yearOptions()}</select>` : ""}
           <button id="fpRadar" class="small-btn">${lt("radar")}</button>
           <button id="fpCsv" class="small-btn">${lt("csv")}</button>
           <button id="fpClose" class="icon-x" title="${lt("close")}">×</button>
@@ -527,7 +547,9 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     panel().hidden = false;
     document.body.classList.add("fp-open");
     setTimeout(() => map.invalidateSize(), 50);
-    panel().querySelectorAll(".seg").forEach((b) => (b.onclick = () => { range = b.dataset.r; run(); }));
+    panel().querySelectorAll("button.seg").forEach((b) => (b.onclick = () => { range = b.dataset.r; year = null; run(); }));
+    const ys = document.getElementById("fpYear");
+    if (ys) ys.onchange = () => { year = +ys.value; run(); };
     document.getElementById("fpClose").onclick = close;
     document.getElementById("fpCsv").onclick = exportCsv;
     document.getElementById("fpRadar").onclick = () => { document.getElementById("radarFig").hidden = false; loadS1(); };
@@ -535,8 +557,17 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     charts = {};
   }
 
+  function yearOptions() {
+    const now = new Date(), y0 = now.getUTCFullYear(), sel = selYear(), opts = [];
+    for (let y = y0; y >= 2017; y--) {
+      if (range === "sm" && new Date(Date.UTC(y, 10, 11)) > now) continue;
+      const lab = range === "sm" ? `${y}/${String(y + 1).slice(2)}` : `${y}`;
+      opts.push(`<option value="${y}" ${y === sel ? "selected" : ""}>${lab}</option>`);
+    }
+    return opts.join("");
+  }
   const fmtDate = (t) => new Date(t).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { day: "2-digit", month: "short" });
-  const xScale = () => ({ type: "linear", min: startDate(range).getTime(), max: Date.now() + 8 * 86400000,
+  const xScale = () => ({ type: "linear", min: startDate(range).getTime(), max: endDate(range).getTime() + (isCurrent() ? 8 * 86400000 : 0),
     ticks: { callback: (v) => fmtDate(v), maxTicksLimit: 8, font: { size: 10 } }, grid: { color: "#0000000d" } });
   const baseOpts = (extra = {}) => ({
     responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
