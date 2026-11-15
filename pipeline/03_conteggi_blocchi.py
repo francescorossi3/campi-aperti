@@ -5,11 +5,8 @@
 # Uscita: data/blocchi/blocchi_<anno>.parquet  colonne: x, y, lon, lat, regione, cella, c1..c19 (ettari)
 
 import os
-import io
-import zipfile
 import numpy as np
 import pandas as pd
-import requests
 import rasterio
 from rasterio.windows import Window
 import geopandas as gpd
@@ -21,25 +18,10 @@ B = 100                      # pixel per lato del blocco (100 × 10 m = 1 km)
 FIN = 50 * B                 # finestra di lettura: 5 km × 5 km
 os.makedirs(os.path.join("data", "blocchi"), exist_ok=True)
 
-# ---- 1. confini regionali ISTAT (generalizzati); riusa il file se già presente
-REG = os.path.join("data", "istat", "regioni_3035.gpkg")
-regioni = gpd.read_file(REG) if os.path.exists(REG) else None
-for anno_ist in ((2025, 2024, 2023) if regioni is None else ()):
-    url = f"https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzata/{anno_ist}/Limiti0101{anno_ist}_g.zip"
-    try:
-        r = requests.get(url, timeout=300)
-        r.raise_for_status()
-        z = zipfile.ZipFile(io.BytesIO(r.content))
-        z.extractall(os.path.join("data", "istat"))
-        shp = [n for n in z.namelist() if n.lower().endswith(".shp") and "/reg" in n.lower()][0]
-        regioni = gpd.read_file(os.path.join("data", "istat", shp))
-        print("confini ISTAT", anno_ist, len(regioni), "regioni")
-        break
-    except Exception as e:
-        print("ISTAT", anno_ist, "non disponibile:", e)
+# ---- 1. confini regionali ISTAT (file nel repository: openpolis/geojson-italy, da ISTAT, CC BY 4.0)
+regioni = gpd.read_file("regioni_istat.geojson").rename(columns={"reg_istat_code_num": "COD_REG", "reg_name": "DEN_REG"})
 regioni = regioni.to_crs(3035)[["COD_REG", "DEN_REG", "geometry"]]
-os.makedirs(os.path.dirname(REG), exist_ok=True)
-regioni.to_file(REG)
+print(len(regioni), "regioni")
 
 # ---- 2. lettura a finestre e conteggio per blocco
 righe = []

@@ -31,9 +31,14 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin
           pip install -q -r pipeline/requirements.txt
+      - name: 00 COG già su Hugging Face?
+        id: hf
+        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python 00_cog_da_hf.py
       - name: 01 scarica tasselli Crop Types
-        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python 01_scarica_crop_types.py
+        if: steps.hf.outputs.presente != 'true'
+        run: cd pipeline && python 01_scarica_crop_types.py
       - name: 02 COG Italia e caricamento su Hugging Face
+        if: steps.hf.outputs.presente != 'true'
         run: cd pipeline && python 02_cog_italia.py
       - name: 03 superfici per blocco di 1 km
         run: cd pipeline && python 03_conteggi_blocchi.py
