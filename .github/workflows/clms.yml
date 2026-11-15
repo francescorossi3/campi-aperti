@@ -1,0 +1,42 @@
+name: Variabili biogeofisiche Copernicus (Italia)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 */3 * *"
+  push:
+    paths: ["pipeline/16_clms_italia.py"]
+permissions:
+  contents: write
+jobs:
+  prodotto:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        prodotto: [LAI, FAPAR, FCOVER, NDVI, GDMP, SWI, SSM]
+    env:
+      PRODOTTO: ${{ matrix.prodotto }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+      CDSE_USERNAME: ${{ secrets.CDSE_USERNAME }}
+      CDSE_PASSWORD: ${{ secrets.CDSE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests pandas numpy rasterio huggingface_hub
+      - run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python -u 16_clms_italia.py
+      - if: always()
+        run: cd pipeline && MODO=su CARTELLE=clms python hf_sync.py
+  indice:
+    needs: prodotto
+    if: always()
+    runs-on: ubuntu-24.04
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q huggingface_hub && mkdir -p data && python pipeline/17_indice_clms.py
+      - run: |
+          git config user.name "campi-aperti-bot"; git config user.email "actions@users.noreply.github.com"
+          git add -f data/clms_indice.json && git commit -m "Indice prodotti Copernicus" && git pull --rebase && git push || true

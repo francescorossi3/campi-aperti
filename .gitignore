@@ -6,5 +6,6 @@ data/*
 !data/monteith_province.json
 !data/contributi/
 !data/comuni.json
+!data/clms_indice.json
 pipeline/data
 __pycache__/

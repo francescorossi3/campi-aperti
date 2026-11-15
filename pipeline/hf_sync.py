@@ -2,6 +2,7 @@
 # MODO=giu  scarica  CARTELLE (es. "blocchi,meteo") dal dataset in data/
 # MODO=su   carica   CARTELLE da data/ al dataset
 import os
+import time
 from huggingface_hub import HfApi, snapshot_download
 
 MODO = os.environ.get("MODO", "giu")
@@ -16,6 +17,12 @@ if MODO == "giu":
 else:
     for c in CARTELLE:
         if os.path.isdir(os.path.join("data", c)):
-            api.upload_folder(folder_path=os.path.join("data", c), path_in_repo=c, repo_id=REPO, repo_type="dataset",
-                              commit_message=f"aggiorna {c}")
+            for tentativo in range(6):          # più job caricano insieme: in caso di conflitto si riprova
+                try:
+                    api.upload_folder(folder_path=os.path.join("data", c), path_in_repo=c, repo_id=REPO, repo_type="dataset",
+                                      commit_message=f"aggiorna {c}")
+                    break
+                except Exception as e:
+                    print("caricamento non riuscito, riprovo:", str(e)[:120])
+                    time.sleep(30 * (tentativo + 1))
 print(MODO, CARTELLE, "ok")
