@@ -1,0 +1,54 @@
+name: Rese per provincia (modello Monteith vs ISTAT)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 3 12 * *"
+  push:
+    paths: ["pipeline/avvia_monteith.txt"]
+
+permissions:
+  contents: write
+
+jobs:
+  ndvi:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        anno: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+    env:
+      ANNO: ${{ matrix.anno }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests pandas pyarrow numpy rasterio geopandas pyproj huggingface_hub
+      - name: 10 NDVI per provincia e coltura
+        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python 10_ndvi_province.py
+      - name: carica
+        run: cd pipeline && MODO=su CARTELLE=province_ndvi python hf_sync.py
+
+  confronto:
+    needs: ndvi
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests pandas pyarrow numpy geopandas huggingface_hub
+      - name: scarica NDVI
+        run: cd pipeline && ln -s ../data data 2>/dev/null; MODO=giu CARTELLE=province_ndvi python hf_sync.py
+      - name: 12 modello Monteith e confronto ISTAT
+        run: cd pipeline && python 12_monteith_province.py
+      - name: pubblica
+        run: |
+          git config user.name "campi-aperti-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f data/monteith_province.json
+          git diff --cached --quiet || (git commit -m "Aggiorna confronto rese Monteith / ISTAT" && git pull --rebase && git push)
