@@ -89,6 +89,8 @@ const LT = {
     panel_title: "Campo",
     no_field: "Nessun campo rilevato qui: uso un quadrato di 40 m attorno al punto. Usa “Dividi in campi la zona visibile”.",
     field_seg: "Confine: segmentazione Sentinel-2 di questa zona (valori = media su tutto il campo)",
+    field_ai: "Confine: modello Delineate Anything (YOLO) su Sentinel-2 (valori = media su tutto il campo)",
+    field_user: "Confine disegnato da te (valori = media su tutto il campo)",
     field_src: "Confine: Fields of The World 2025 (valori = media su tutto il campo)",
     area: "Superficie",
     from_sm: "Da San Martino",
@@ -179,6 +181,8 @@ const LT = {
     panel_title: "Field",
     no_field: "No field detected here: using a 40 m square around the point. Use “Split the visible area into fields”.",
     field_seg: "Boundary: Sentinel-2 segmentation of this area (values = mean over the whole field)",
+    field_ai: "Boundary: Delineate Anything model (YOLO) on Sentinel-2 (values = mean over the whole field)",
+    field_user: "Boundary drawn by you (values = mean over the whole field)",
     field_src: "Boundary: Fields of The World 2025 (values = mean over the whole field)",
     area: "Area",
     from_sm: "Since St Martin's Day",
@@ -335,7 +339,7 @@ const Live = (() => {
     const btn = document.getElementById("segBtn");
     if (btn) btn.disabled = true;
     try {
-      const r = await Segment.run(bounds, periodRange().end, (n, t) => msg && (msg.textContent = lt("seg_prog", { n, t })));
+      const r = await Segment.smart(bounds, periodRange().end, (n, t) => msg && (msg.textContent = lt("seg_prog", { n, t })));
       if (msg) msg.textContent = lt("seg_done", { n: r.nSeg, d: r.dates.length, a: r.dates[0], b: r.dates[r.dates.length - 1] });
     } catch (e) { if (msg) msg.textContent = lt("err", { e: e.message }); }
     if (btn) btn.disabled = false;
@@ -1027,7 +1031,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     panel().innerHTML = `
       <div class="fp-head">
         <div class="fp-title"><b>${lt("panel_title")}</b> · ${lt("area")} ${ha < 1 ? (ha * 10000).toFixed(0) + " m²" : ha.toFixed(2) + " ha"}
-          <span class="fp-src">${f.properties._square ? lt("no_field") : f.properties._seg ? lt("field_seg") : lt("field_src")}</span></div>
+          <span class="fp-src">${f.properties._square ? lt("no_field") : current.userField ? lt("field_user") : f.properties._seg ? lt(Segment.method() === "ai" ? "field_ai" : "field_seg") : lt("field_src")}</span></div>
         <div class="fp-ctrl">
           ${["sm", "jan", "12m"].map((r) => `<button class="seg ${r === range ? "active" : ""}" data-r="${r}">${lt(r === "sm" ? "from_sm" : r === "jan" ? "from_jan" : "last12")}</button>`).join("")}
           ${range === "sm" || range === "jan" ? `<select id="fpYear" class="seg">${yearOptions()}</select>` : ""}
@@ -1544,7 +1548,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       // nessuna divisione in campi qui: segmento automaticamente 2 km × 2 km attorno al punto
       const dLat = 1000 / 111320, dLon = 1000 / (111320 * Math.cos((ll.lat * Math.PI) / 180));
       showBusy(lt("seg_auto"));
-      try { await Segment.run([ll.lng - dLon, ll.lat - dLat, ll.lng + dLon, ll.lat + dLat], periodRange().end, (n, t) => showBusy(lt("seg_prog", { n, t }))); }
+      try { await Segment.smart([ll.lng - dLon, ll.lat - dLat, ll.lng + dLon, ll.lat + dLat], periodRange().end, (n, t) => showBusy(lt("seg_prog", { n, t }))); }
       catch (e) { console.warn("segmentazione", e); }
       feature = Segment.fieldAt(ll);
     }

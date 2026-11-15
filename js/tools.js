@@ -291,7 +291,7 @@ const Tools = (() => {
     const el = card("toolArea", tt("r_title"), `<p class="hint" id="raMsg"></p>`);
     const msg = (t) => (el.querySelector("#raMsg").textContent = t);
     if (wM > 6100 || hM > 6100) { msg(tt("r_big")); return; }
-    try { await Segment.run([w, s, e, n], Live.periodRange().end, (k, t) => msg(tt("r_seg", { n: k, t }))); }
+    try { await Segment.smart([w, s, e, n], Live.periodRange().end, (k, t) => msg(tt("r_seg", { n: k, t }))); }
     catch (err) { msg(tt("r_fail")); return; }
     const fc = Segment.allFields();
     if (!fc || !fc.features.length) { msg(tt("r_fail")); return; }

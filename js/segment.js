@@ -200,6 +200,7 @@ const Segment = (() => {
     const px = Math.min(W - 1, Math.floor(((ll.lng - w) / (e - w)) * W));
     const py = Math.min(H - 1, Math.floor(((n - ll.lat) / (n - s)) * H));
     const lab = labels[py * W + px];
+    if (result.bgZero && lab === 0 && !bb) return null;
     const inR = (x, y) => x >= 0 && y >= 0 && x < W && y < H && labels[y * W + x] === lab;
     // spigoli di contorno orientati (regione a sinistra), vertici agli angoli dei pixel
     const next = new Map(); let count = 0;
@@ -249,6 +250,7 @@ const Segment = (() => {
   function allFields(minPx = 20) {
     if (!result) return null;
     const { W, H, labels, feat, K, dates, nonAgri } = result;
+    const fs = result.method === "ai" ? 4 : 1;                 // pixel da 5 m: soglia di superficie equivalente
     const box = new Map();
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const l = labels[y * W + x];
@@ -261,10 +263,10 @@ const Segment = (() => {
     const [w, s, e, n] = result.bounds, feats = [];
     let id = 0;
     for (const [l, b] of box) {
-      if (b.n < minPx || nonAgri.has(l)) continue;
+      if (b.n < minPx * fs || nonAgri.has(l)) continue;
       const f = fieldAt({ lng: w + ((b.px[0] + 0.5) / W) * (e - w), lat: n - ((b.px[1] + 0.5) / H) * (n - s) }, b);
       if (!f) continue;
-      const props = { id: ++id, pixel_10m: b.n };
+      const props = { id: ++id, metodo: result.method === "ai" ? "Delineate Anything" : "Felzenszwalb NDVI" };
       dates.forEach((d, k) => (props["ndvi_" + d] = b.c[k] ? +(b.s[k] / b.c[k]).toFixed(3) : null));
       f.properties = props;
       feats.push(f);
@@ -272,8 +274,24 @@ const Segment = (() => {
     return { type: "FeatureCollection", features: feats, dates };
   }
 
+  // --- etichette prodotte da un altro metodo (Delineate Anything): 0 = non campo
+  function useLabels(bounds, W, H, labels, meta = {}) {
+    result = { bounds, W, H, labels, feat: null, K: 0, dates: meta.dates || [], nonAgri: new Set([0]), nSeg: meta.n || 0, bgZero: true, method: meta.method || "ai" };
+    drawOverlay();
+    return result;
+  }
+  // prima il modello Delineate Anything, se non va la segmentazione a grafo sulla serie NDVI
+  async function smart(bounds, endDate, onProgress) {
+    if (window.Delineate) {
+      try { return await Delineate.run(bounds, endDate, onProgress); }
+      catch (e) { console.warn("Delineate Anything non disponibile, uso Felzenszwalb:", e.message || e); }
+    }
+    return run(bounds, endDate, onProgress);
+  }
+  const method = () => result && (result.method || "graph");
+
   function clear() { if (overlay) map.removeLayer(overlay); overlay = null; result = null; }
   const has = () => !!result;
   const info = () => result && { dates: result.dates, nSeg: result.nSeg, bounds: result.bounds };
-  return { run, fieldAt, allFields, clear, has, info };
+  return { run, smart, useLabels, method, fieldAt, allFields, clear, has, info };
 })();
