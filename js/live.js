@@ -46,6 +46,10 @@ const LT = {
     cty_loading: "Leggo la coltura Copernicus 2017–2024…",
     cty_none: "Nessuna coltura Copernicus registrata qui (2017–2024).",
     cty_dubbio: "Probabile errore di classificazione",
+    y_title: "Resa media ISTAT in provincia di {p}:",
+    y_year: "Anno",
+    y_species: "Frutteti in provincia di {p} (quota di superficie, indica la specie più probabile):",
+    y_note: "Rese provinciali ISTAT (produzione raccolta / superficie in produzione); gli ultimi anni sono provvisori. Non è la resa di questo campo.",
     cty_perm_note: "Il campo è una coltura permanente ({c}) nella maggior parte degli anni: gli anni segnati sono probabili errori della mappa Copernicus (bordi, campi misti o pixel incerti).",
     cty_ann_note: "Gli anni segnati sono incoerenti con la rotazione (permanente isolato o meno del 50% dei pixel d'accordo): probabili errori.",
     seg_auto: "Divido in campi la zona attorno al punto (immagini Sentinel-2 degli ultimi 12 mesi)…",
@@ -115,6 +119,10 @@ const LT = {
     cty_loading: "Reading the Copernicus crop 2017–2024…",
     cty_none: "No Copernicus crop recorded here (2017–2024).",
     cty_dubbio: "Likely classification error",
+    y_title: "ISTAT average yield in the province of {p}:",
+    y_year: "Year",
+    y_species: "Orchards in the province of {p} (share of area, indicates the most likely species):",
+    y_note: "ISTAT provincial yields (harvested production / area in production); latest years are provisional. Not the yield of this field.",
     cty_perm_note: "The field is a permanent crop ({c}) in most years: flagged years are likely errors in the Copernicus map (edges, mixed fields or uncertain pixels).",
     cty_ann_note: "Flagged years are inconsistent with the rotation (isolated permanent crop or less than 50% of pixels agreeing): likely errors.",
     seg_auto: "Splitting the area around the point into fields (Sentinel-2 images of the last 12 months)…",
@@ -578,6 +586,58 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       : `<span class="hint small">${lt("cty_none")}</span>`;
   }
 
+  // ================================================================== rese ISTAT della provincia del campo
+  let RESE = null, PROV = null;
+  async function loadRese() {
+    if (!RESE) RESE = Promise.all([fetch("data/rese.json").then((r) => r.json()), fetch("data/province.json").then((r) => r.json())])
+      .then(([r, p]) => { PROV = p; return r; }).catch(() => null);
+    return RESE;
+  }
+  function provinceAt(ll) {
+    for (const f of PROV.features) {
+      const g = f.geometry, polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+      if (polys.some((poly) => inRing([ll.lng, ll.lat], poly[0]) && !poly.slice(1).some((h) => inRing([ll.lng, ll.lat], h)))) return f.properties;
+    }
+    return null;
+  }
+  // resa media (pesata sulla superficie) delle colture ISTAT che corrispondono a una classe Copernicus
+  function resaClasse(R, nuts, cls, anno) {
+    const codici = Object.entries(R.colture).filter(([, v]) => v.cty === cls).map(([k]) => k);
+    const rr = R.rows.filter((r) => r[0] === nuts && codici.includes(r[1]) && r[2] === anno);
+    const ha = rr.reduce((a, r) => a + r[3], 0), t = rr.reduce((a, r) => a + r[4], 0);
+    return ha ? { resa: t / ha, ha, dettaglio: rr.map((r) => ({ c: r[1], ha: r[3], resa: r[5] })).sort((a, b) => b.ha - a.ha) } : null;
+  }
+  async function showYields(my) {
+    const el = document.getElementById("fpYield");
+    if (!el) return;
+    const R = await loadRese();
+    if (!R || my !== runId) return;
+    if (!R.rows) R.rows = R.righe;
+    const pv = provinceAt(current.ll);
+    if (!pv || !pv.nuts) { el.innerHTML = ""; return; }
+    const cname = (c) => (R.colture[c] ? R.colture[c][LANG] : c);
+    // anni Copernicus + annata corrente stimata
+    const h = (current.cty || []).filter((r) => !r.dubbio && r.cls > 0);
+    const righe = h.map((r) => { const y = resaClasse(R, pv.nuts, r.cls, r.year); return y ? `<span class="cty-chip">${r.year} ${CTY_NOMI[r.cls][LANG === "it" ? 0 : 1]}: <b>${y.resa.toFixed(1)} t/ha</b></span>` : ""; }).join(" ");
+    // coltura di riferimento: permanente dominante o ultima annata Copernicus
+    const ref = current.ctyPerm || (h.length ? h[h.length - 1].cls : null);
+    let serie = "", specie = "";
+    if (ref) {
+      const anni = [...new Set(R.rows.map((r) => r[2]))].sort();
+      const vals = anni.map((a) => { const y = resaClasse(R, pv.nuts, ref, a); return y ? `<td>${y.resa.toFixed(1)}</td>` : "<td>—</td>"; });
+      serie = `<table class="mini"><tr><th>${lt("y_year")}</th>${anni.map((a) => `<th>${a}</th>`).join("")}</tr><tr><td>${CTY_NOMI[ref][LANG === "it" ? 0 : 1]} t/ha</td>${vals.join("")}</tr></table>`;
+      if ([14, 15, 16, 17].includes(ref)) {
+        const last = anni[anni.length - 1], y = resaClasse(R, pv.nuts, ref, last) || resaClasse(R, pv.nuts, ref, last - 1);
+        if (y && y.dettaglio.length > 1) {
+          const tot = y.dettaglio.reduce((a, d) => a + d.ha, 0);
+          specie = `<div class="hint small"><b>${lt("y_species").replace("{p}", pv.prov_name)}</b> ` +
+            y.dettaglio.slice(0, 6).map((d) => `${cname(d.c)} ${Math.round((100 * d.ha) / tot)}%`).join(" · ") + `</div>`;
+        }
+      }
+    }
+    el.innerHTML = `<b>${lt("y_title").replace("{p}", pv.prov_name)}</b> ${righe}${serie}${specie}<div class="hint small">${lt("y_note")}</div>`;
+  }
+
   // ================================================================== serie temporali
   let current = null; // { feature, ll, s2:[], s1:[], meteo:{}, range }
   let range = "sm";
@@ -782,6 +842,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       <div id="fpStatus" class="fp-status"></div>
       <div id="fpCty" class="fp-cty"></div>
       <div id="fpCrop" class="fp-crop"></div>
+      <div id="fpYield" class="fp-yield"></div>
       <div id="fpSummary" class="fp-summary"></div>
       <div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
       <div class="fp-charts">
@@ -1109,7 +1170,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     setStatus(lt("loading_meteo"));
     loadMeteo(my).catch((e) => setStatus(lt("err", { e: e.message })));
     loadS2(my).catch((e) => setStatus(lt("err", { e: e.message })));
-    showCropHistory(my).catch(() => {});
+    showCropHistory(my).then(() => showYields(my)).catch(() => {});
     loadEta(my);
   }
 
