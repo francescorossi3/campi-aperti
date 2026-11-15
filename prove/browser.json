@@ -1,7 +1,7 @@
 {
  "lodi": {
   "ok": true,
-  "s": 3.4307999999999885,
+  "s": 4.505400000000002,
   "campi": 178,
   "date": [
    "2026-09-27"
@@ -11,7 +11,7 @@
  },
  "maccarese": {
   "ok": true,
-  "s": 4.793400000000009,
+  "s": 5.469699999999997,
   "campi": 73,
   "date": [
    "2026-07-05"
@@ -21,8 +21,8 @@
  },
  "muccese": {
   "ok": true,
-  "s": 3.9687000000000117,
-  "campi": 192,
+  "s": 4.643800000000003,
+  "campi": 149,
   "date": [
    "2026-08-27"
   ],
@@ -71,9 +71,8 @@
  "errori": [
   "Campi divisi per colture diverse: 40",
   "Campi divisi per colture diverse: 20",
-  "Campi divisi per colture diverse: 90",
+  "Campi divisi per colture diverse: 50",
   "Campi divisi per colture diverse: 40",
-  "Failed to load resource: the server responded with a status of 404 (File not found)",
-  "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  "Failed to load resource: the server responded with a status of 404 (File not found)"
  ]
 }
