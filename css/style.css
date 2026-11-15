@@ -119,6 +119,13 @@ h1, h3, h4 { font-family: Fraunces, Georgia, serif; font-weight: 600; }
 .cty-chip { background: #fff6dd; border: 1px solid #ecd9a3; border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
 .cty-chip small { color: var(--muted); }
 .cty1, .cty2, .cty5 { background: #fbecc0; } .cty3 { background: #fde3a7; } .cty14 { background: #ecd6f0; } .cty15 { background: #dde9c9; } .cty0 { background: #eee; }
+.cty-chip.dubbio { opacity: .55; text-decoration: line-through; text-decoration-color: #c0392b; }
+.cty-year { margin: 8px 0 2px; font-size: 12.5px; }
+.cty-year select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; }
+.crop-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 11.5px; margin-top: 4px; color: var(--ink); }
+.crop-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.cmp-fig figcaption { display: flex; justify-content: space-between; align-items: center; }
+.cmp-fig .norm { font-weight: 400; color: var(--muted); font-size: 11.5px; }
 .fp-crop { background: #eef5e9; border: 1px solid #cfe2c5; border-radius: 8px; padding: 6px 10px; margin: 4px 0 6px; font-size: 13px; }
 .fp-crop small { color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }

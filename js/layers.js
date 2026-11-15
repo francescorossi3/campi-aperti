@@ -9,7 +9,7 @@ const CATASTO_WMS = "https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/o
 
 const LAYER_GROUPS = [
   { id: "live", it: "Satellite in tempo reale (Sentinel-2)", en: "Real-time satellite (Sentinel-2)" },
-  { id: "fields", it: "Campi agricoli", en: "Agricultural fields" },
+  { id: "fields", it: "Campi e colture", en: "Fields and crops" },
   { id: "catasto", it: "Catasto (Agenzia delle Entrate)", en: "Cadastre (Italian Revenue Agency)" },
 ];
 // I layer statici CLMS (2012–2021) restano solo nel catalogo "Dati" come archivio.
@@ -64,12 +64,12 @@ const LAYERS = [
     source: "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer", link: "https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",
   },
 
-  // ---------------- CAMPI / FIELDS ----------------
+  // ---------------- COLTURE / CROPS ----------------
   {
-    id: "ftw2025", group: "fields", type: "fields", minZoom: 12, opacity: 1, on: true,
-    it: { name: "Confini dei campi 2025 (Fields of The World)", desc: "Campi riconosciuti da immagini Sentinel-2 con intelligenza artificiale (Fields of The World), indipendenti dal catasto: un campo può coprire più particelle e viceversa. Clicca su un campo per le sue serie temporali. Visibile da zoom 12." },
-    en: { name: "Field boundaries 2025", desc: "Fields detected from Sentinel-2 imagery with AI (Fields of The World), independent of the cadastre: a field can span several parcels and vice versa. Click a field for its time series. Visible from zoom 12." },
-    source: "Fields of The World 2025 — CC BY 4.0", link: "https://source.coop/ftw/global-data",
+    id: "cty", group: "fields", type: "cty", minZoom: 8, opacity: 0.85, on: true,
+    it: { name: "Colture Copernicus (HRL Crop Types)", desc: "Coltura principale di ogni pixel di 10 m secondo Copernicus, anno per anno dal 2017 al 2024. Scegli l'anno qui sopra. Visibile da zoom 8." },
+    en: { name: "Copernicus crops (HRL Crop Types)", desc: "Main crop of every 10 m pixel according to Copernicus, year by year from 2017 to 2024. Choose the year above. Visible from zoom 8." },
+    source: "Copernicus Land Monitoring Service — HRL Croplands", link: "https://land.copernicus.eu/en/products/high-resolution-layer-croplands",
   },
   // ---------------- CATASTO ----------------
   {

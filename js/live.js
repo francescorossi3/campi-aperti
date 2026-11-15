@@ -21,7 +21,8 @@ const S2_INDEX = {
   cire: "(B07-1000)/(B05-1000)-1",
   ndwi: "(B03-B08)/(B03+B08-2000)",
   nbr: "(B08-B12)/(B08+B12-2000)",
-  cloud: "((SCL==3)|(SCL==8)|(SCL==9)|(SCL==10)|(SCL==0)|(SCL==1))*1.0",
+  cloud: "((SCL==0)|(SCL==1)|(SCL==3)|(SCL==7)|(SCL==8)|(SCL==9)|(SCL==10)|(SCL==11))*1.0",
+  aot: "AOT/1000",
 };
 
 // indici mostrati nella scheda campo: chiave, colore, asse (y = 0..1, y4 = scala libera), acceso di default
@@ -44,6 +45,18 @@ const LT = {
     cty_title: "Coltura ufficiale Copernicus (HRL Crop Types)",
     cty_loading: "Leggo la coltura Copernicus 2017–2024…",
     cty_none: "Nessuna coltura Copernicus registrata qui (2017–2024).",
+    cty_dubbio: "Probabile errore di classificazione",
+    cty_perm_note: "Il campo è una coltura permanente ({c}) nella maggior parte degli anni: gli anni segnati sono probabili errori della mappa Copernicus (bordi, campi misti o pixel incerti).",
+    cty_ann_note: "Gli anni segnati sono incoerenti con la rotazione (permanente isolato o meno del 50% dei pixel d'accordo): probabili errori.",
+    seg_auto: "Divido in campi la zona attorno al punto (immagini Sentinel-2 degli ultimi 12 mesi)…",
+    outliers: "date scartate (rumore)",
+    ch_et: "Evapotraspirazione nel tempo",
+    et0d: "ET0 riferimento (mm/g)", etcd: "ET coltura FAO-56 con Kc da NDVI (mm/g)", etad: "ET reale Copernicus 300 m (mm/g)",
+    etc_cum: "ET coltura cumulata", eta_cum: "ET reale cumulata",
+    ch_cmp: "Confronta le forme delle curve (max 4)",
+    cmp_norm: "normalizza 0–1",
+    c_rain7: "Pioggia 7 giorni", c_tmean: "T media", c_et0: "ET0", c_etc: "ET coltura", c_eta: "ET reale Copernicus", c_ndvi: "NDVI",
+    c_lai: "LAI", c_evi: "EVI", c_ndmi: "NDMI", c_ndre: "NDRE", c_kc: "Kc", c_vh: "Radar VH",
     crop_note: "Stima automatica dalla curva NDVI del campo (regole fenologiche), non verificata a terra.",
     crop_short: "Serie troppo corta per stimare la coltura: scegli un'annata intera.",
     et0: "ET0 di riferimento",
@@ -87,7 +100,7 @@ const LT = {
     ndmi_d: "NDMI: acqua nelle foglie",
     radar_hint: "Il radar vede anche con le nuvole: VH sale con la biomassa, VV risponde a umidità e rugosità del suolo.",
     meteo_src: "Meteo: ERA5/ERA5-Land (Copernicus C3S) e previsioni a 7 giorni, via Open-Meteo.",
-    s2_src: "Satellite: Sentinel-2 L2A (Copernicus) via Microsoft Planetary Computer; nuvole e ombre escluse con la classificazione SCL.",
+    s2_src: "Satellite: Sentinel-2 L2A (Copernicus) via Microsoft Planetary Computer. Scartate le date con più del 2% del campo coperto da nuvole, ombre, cirri, neve o pixel non classificati (SCL), quelle con foschia (AOT > 0,3) e i valori anomali isolati (filtro di Hampel); le curve sono smussate (media pesata ±20 giorni), i punti sono le singole date.",
   },
   en: {
     p_week: "Week", p_month: "Month", p_3m: "3 months", p_6m: "6 months", p_year: "Year",
@@ -101,6 +114,18 @@ const LT = {
     cty_title: "Official Copernicus crop (HRL Crop Types)",
     cty_loading: "Reading the Copernicus crop 2017–2024…",
     cty_none: "No Copernicus crop recorded here (2017–2024).",
+    cty_dubbio: "Likely classification error",
+    cty_perm_note: "The field is a permanent crop ({c}) in most years: flagged years are likely errors in the Copernicus map (edges, mixed fields or uncertain pixels).",
+    cty_ann_note: "Flagged years are inconsistent with the rotation (isolated permanent crop or less than 50% of pixels agreeing): likely errors.",
+    seg_auto: "Splitting the area around the point into fields (Sentinel-2 images of the last 12 months)…",
+    outliers: "discarded dates (noise)",
+    ch_et: "Evapotranspiration over time",
+    et0d: "Reference ET0 (mm/d)", etcd: "FAO-56 crop ET with NDVI Kc (mm/d)", etad: "Copernicus actual ET 300 m (mm/d)",
+    etc_cum: "Cumulative crop ET", eta_cum: "Cumulative actual ET",
+    ch_cmp: "Compare curve shapes (max 4)",
+    cmp_norm: "normalise 0–1",
+    c_rain7: "7-day rain", c_tmean: "Mean T", c_et0: "ET0", c_etc: "Crop ET", c_eta: "Copernicus actual ET", c_ndvi: "NDVI",
+    c_lai: "LAI", c_evi: "EVI", c_ndmi: "NDMI", c_ndre: "NDRE", c_kc: "Kc", c_vh: "Radar VH",
     crop_note: "Automatic estimate from the field's NDVI curve (phenological rules), not ground-verified.",
     crop_short: "Series too short to estimate the crop: choose a full year.",
     et0: "Reference ET0",
@@ -144,7 +169,7 @@ const LT = {
     ndmi_d: "NDMI: leaf water",
     radar_hint: "Radar sees through clouds: VH rises with biomass, VV responds to soil moisture and roughness.",
     meteo_src: "Weather: ERA5/ERA5-Land (Copernicus C3S) and 7-day forecast, via Open-Meteo.",
-    s2_src: "Satellite: Sentinel-2 L2A (Copernicus) via Microsoft Planetary Computer; clouds and shadows removed with the SCL classification.",
+    s2_src: "Satellite: Sentinel-2 L2A (Copernicus) via Microsoft Planetary Computer. Dates with more than 2% of the field covered by clouds, shadows, cirrus, snow or unclassified pixels (SCL), haze (AOT > 0.3) and isolated outliers (Hampel filter) are discarded; curves are smoothed (±20-day weighted mean), dots are single dates.",
   },
 };
 const lt = (k, vars) => {
@@ -533,9 +558,23 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     el.innerHTML = `<span class="hint small">${lt("cty_loading")}</span>`;
     const h = await cropHistory(current.feature);
     if (my !== runId) return;
+    // coerenza: le colture permanenti (vite, olivo, frutta, frutta a guscio) non cambiano da un anno all'altro.
+    // Se la maggioranza degli anni dice "permanente X", gli anni con una coltura annuale sono probabili errori,
+    // e viceversa un permanente isolato in mezzo ad anni di seminativi è un errore.
+    const PERM = new Set([14, 15, 16, 17, 19]);
+    const permYears = h.filter((r) => PERM.has(r.cls));
+    const votes = {}; permYears.forEach((r) => (votes[r.cls] = (votes[r.cls] || 0) + 1));
+    const top = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
+    const isPerm = top && +top[1] >= Math.ceil(h.length / 2);
+    h.forEach((r) => {
+      r.dubbio = isPerm ? r.cls !== +top[0] : PERM.has(r.cls);
+      if (r.share < 0.5) r.dubbio = true;
+    });
     current.cty = h;
+    current.ctyPerm = isPerm ? +top[0] : null;
     el.innerHTML = h.length ? `<b>${lt("cty_title")}:</b> ` + h.slice().reverse().map((r) =>
-      `<span class="cty-chip cty${r.cls}">${r.year} ${CTY_NOMI[r.cls] ? CTY_NOMI[r.cls][LANG === "it" ? 0 : 1] : r.cls} <small>${Math.round(r.share * 100)}%</small></span>`).join(" ")
+      `<span class="cty-chip cty${r.cls} ${r.dubbio ? "dubbio" : ""}" title="${r.dubbio ? lt("cty_dubbio") : ""}">${r.year} ${CTY_NOMI[r.cls] ? CTY_NOMI[r.cls][LANG === "it" ? 0 : 1] : r.cls} <small>${Math.round(r.share * 100)}%</small>${r.dubbio ? " ⚠" : ""}</span>`).join(" ") +
+      (h.some((r) => r.dubbio) ? `<div class="hint small">⚠ ${isPerm ? lt("cty_perm_note").replace("{c}", CTY_NOMI[top[0]][LANG === "it" ? 0 : 1]) : lt("cty_ann_note")}</div>` : "")
       : `<span class="hint small">${lt("cty_none")}</span>`;
   }
 
@@ -606,7 +645,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const byDate = {};
     items.forEach((it) => { const d = it.properties.datetime.slice(0, 10); (byDate[d] = byDate[d] || []).push(it); });
     const dates = Object.keys(byDate).sort();
-    const keys = ["ndvi", "ndre", "ndmi", "evi", "savi", "cire", "ndwi", "nbr", "cloud"];
+    const keys = ["ndvi", "ndre", "ndmi", "evi", "savi", "cire", "ndwi", "nbr", "aot", "cloud"];
     const exprs = keys.map((k) => S2_INDEX[k]);
     const params = `expression=${encodeURIComponent(exprs.join(";"))}&asset_as_band=true`;
     let done = 0, cloudy = 0;
@@ -620,7 +659,8 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
         const v = exprs.map((e) => st[e]);
         if (!v[0] || !v[0].count) continue;
         const cl = v[keys.length - 1].mean;
-        if (cl > 0.05) { cloudy++; break; }
+        // scarto: più del 2% del campo con nuvole/ombre/neve/pixel dubbi (SCL), oppure aerosol alto (AOT > 0,3: foschia)
+        if (cl > 0.02 || v[keys.length - 2].mean > 0.3) { cloudy++; break; }
         const row = { date: d, t: Date.parse(d), ndvi_sd: v[0].std, cloud: cl, item: it.id, npx: v[0].count };
         keys.slice(0, -1).forEach((k, i) => (row[k] = v[i].mean));
         row.lai = Math.max(0, 3.618 * row.evi - 0.118);
@@ -633,8 +673,40 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     });
     if (my !== runId) return;
     current.s2.sort((a, b) => a.t - b.t);
-    setStatus(lt("done", { ok: current.s2.length, t: dates.length, c: cloudy }));
-    drawIndex(); drawSummary();
+    const nOut = despike(current.s2);
+    setStatus(lt("done", { ok: current.s2.length - nOut, t: dates.length, c: cloudy + nOut }));
+    drawIndex(); drawSummary(); drawEt(); drawCompare();
+  }
+
+  // ---- rumore residuo: nuvole sottili e foschia abbassano l'NDVI per una sola data.
+  // Filtro di Hampel (finestra ±25 giorni, 3 MAD) + caduta isolata rispetto a entrambe le date vicine.
+  function despike(arr) {
+    let n = 0;
+    arr.forEach((r, i) => {
+      const win = arr.filter((q, j) => j !== i && Math.abs(q.t - r.t) <= 25 * 86400000 && !q.outlier).map((q) => q.ndvi).sort((a, b) => a - b);
+      let out = false;
+      if (win.length >= 3) {
+        const med = win[win.length >> 1];
+        const mad = win.map((x) => Math.abs(x - med)).sort((a, b) => a - b)[win.length >> 1] * 1.4826;
+        if (Math.abs(r.ndvi - med) > Math.max(0.08, 3 * mad)) out = true;
+      }
+      const a = arr[i - 1], b = arr[i + 1];
+      if (a && b && b.t - a.t < 30 * 86400000 && r.ndvi < Math.min(a.ndvi, b.ndvi) - 0.1 && Math.abs(a.ndvi - b.ndvi) < 0.12) out = true;
+      r.outlier = out; if (out) n++;
+    });
+    return n;
+  }
+  const clean = () => (current.s2 || []).filter((r) => !r.outlier);
+  // curva smussata: media pesata (tricubica) delle date valide entro ±20 giorni, ogni 3 giorni
+  function smooth(key, data = clean()) {
+    if (data.length < 3) return [];
+    const out = [], H = 20 * 86400000, t0 = data[0].t, t1 = data[data.length - 1].t;
+    for (let t = t0; t <= t1; t += 3 * 86400000) {
+      let sw = 0, sv = 0;
+      data.forEach((r) => { const d = Math.abs(r.t - t) / H; if (d < 1 && isFinite(r[key])) { const w = Math.pow(1 - d * d * d, 3); sw += w; sv += w * r[key]; } });
+      if (sw > 0.2) out.push({ x: t, y: sv / sw });
+    }
+    return out;
   }
 
   async function loadS1() {
@@ -658,7 +730,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     if (my !== runId) return;
     current.s1.sort((a, b) => a.t - b.t);
     setStatus("");
-    drawRadar();
+    drawRadar(); if (!cmpSel.has("vh")) cmpSel.add("vh"); drawCompare();
   }
 
   async function loadMeteo(my) {
@@ -685,7 +757,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const today = iso(new Date());
     Object.values(out).forEach((r) => (r.fc = r.date > today));
     current.meteo = Object.values(out).filter((r) => r.date >= iso(start) && (r.fc || r.date <= iso(end)) && r.tmean != null).sort((x, y) => x.t - y.t);
-    drawMeteo(); drawSummary();
+    drawMeteo(); drawSummary(); drawEt(); drawCompare();
   }
 
   // ================================================================== pannello e grafici
@@ -715,6 +787,11 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       <div class="fp-charts">
         <figure><figcaption>${lt("ch_index")}</figcaption><div class="cbox"><canvas id="chIndex"></canvas></div></figure>
         <figure><figcaption>${lt("ch_meteo")}</figcaption><div class="cbox"><canvas id="chMeteo"></canvas></div></figure>
+        <figure><figcaption>${lt("ch_et")}</figcaption><div class="cbox"><canvas id="chEt"></canvas></div></figure>
+        <figure class="cmp-fig"><figcaption>${lt("ch_cmp")}
+          <label class="norm"><input type="checkbox" id="cmpNorm" ${cmpNorm ? "checked" : ""}> ${lt("cmp_norm")}</label></figcaption>
+          <div class="chips cmp-chips">${CMP.map(([k, c]) => `<label class="chip"><input type="checkbox" data-c="${k}" ${cmpSel.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("c_" + k)}</label>`).join("")}</div>
+          <div class="cbox"><canvas id="chCmp"></canvas></div></figure>
         <figure id="radarFig" hidden><figcaption>${lt("ch_radar")}</figcaption><div class="cbox"><canvas id="chRadar"></canvas></div>
           <p class="hint small">${lt("radar_hint")}</p></figure>
       </div>
@@ -726,7 +803,11 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const ys = document.getElementById("fpYear");
     if (ys) ys.onchange = () => { year = +ys.value; run(); };
     document.getElementById("fpClose").onclick = close;
-    panel().querySelectorAll(".chip input").forEach((c) => (c.onchange = () => { c.checked ? shown.add(c.dataset.k) : shown.delete(c.dataset.k); drawIndex(); }));
+    panel().querySelectorAll(".chips:not(.cmp-chips) .chip input").forEach((c) => (c.onchange = () => { c.checked ? shown.add(c.dataset.k) : shown.delete(c.dataset.k); drawIndex(); }));
+    panel().querySelectorAll(".cmp-chips .chip input").forEach((c) => (c.onchange = () => {
+      if (c.checked) { if (cmpSel.size >= 4) { c.checked = false; return; } cmpSel.add(c.dataset.c); } else cmpSel.delete(c.dataset.c);
+      drawCompare(); }));
+    document.getElementById("cmpNorm").onchange = (e) => { cmpNorm = e.target.checked; drawCompare(); };
     document.getElementById("fpCsv").onclick = exportCsv;
     document.getElementById("fpRadar").onclick = () => { document.getElementById("radarFig").hidden = false; loadS1(); };
     Object.values(charts).forEach((c) => c.destroy());
@@ -748,7 +829,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   const baseOpts = (extra = {}) => ({
     responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
     interaction: { mode: "nearest", intersect: false },
-    plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } },
+    plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 }, filter: (it) => !!it.text } },
       tooltip: { callbacks: { title: (it) => new Date(it[0].parsed.x).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB") } } },
     scales: { x: xScale(), ...extra },
   });
@@ -761,9 +842,14 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
 
   const shown = new Set(INDEX_DEF.filter((x) => x[3]).map((x) => x[0]));
   function drawIndex() {
-    const d = (current.s2 || []).slice().sort((a, b) => a.t - b.t);
-    const sets = INDEX_DEF.filter(([k]) => shown.has(k)).map(([k, color, axis]) => ({ type: "line", label: lt("idx_" + k), yAxisID: axis,
-      data: d.map((r) => ({ x: r.t, y: r[k] })), borderColor: color, backgroundColor: color, pointRadius: 2.2, borderWidth: 1.6, tension: 0.25 }));
+    const d = clean();
+    const sets = [];
+    INDEX_DEF.filter(([k]) => shown.has(k)).forEach(([k, color, axis]) => {
+      sets.push({ type: "line", label: lt("idx_" + k), yAxisID: axis, data: smooth(k), borderColor: color, backgroundColor: color, pointRadius: 0, borderWidth: 2, tension: 0.3 });
+      sets.push({ type: "scatter", label: "", yAxisID: axis, data: d.map((r) => ({ x: r.t, y: r[k] })), backgroundColor: color + "88", pointRadius: 2, showLine: false });
+    });
+    const outl = (current.s2 || []).filter((r) => r.outlier);
+    if (outl.length && shown.has("ndvi")) sets.push({ type: "scatter", label: lt("outliers"), data: outl.map((r) => ({ x: r.t, y: r.ndvi })), backgroundColor: "#99999988", pointStyle: "crossRot", pointRadius: 4, borderColor: "#888" });
     const free = INDEX_DEF.some(([k, , ax]) => ax === "y4" && shown.has(k));
     upsert("chIndex", { data: { datasets: sets },
       options: baseOpts({ y: { min: -0.4, max: 1, ticks: { font: { size: 10 } } },
@@ -790,6 +876,103 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     });
   }
 
+  // ---- evapotraspirazione nel tempo: ET0, ET coltura (Kc da NDVI), ET reale Copernicus, cumulate
+  function kcSeries() {
+    const s2 = clean();
+    return (t) => {
+      if (!s2.length) return null;
+      if (t <= s2[0].t) return s2[0].kc;
+      if (t >= s2[s2.length - 1].t) return s2[s2.length - 1].kc;
+      let i = 0; while (s2[i + 1].t < t) i++;
+      const a = s2[i], b = s2[i + 1], w = (t - a.t) / (b.t - a.t);
+      return a.kc + w * (b.kc - a.kc);
+    };
+  }
+  function etDaily() {
+    const kc = kcSeries();
+    return (current.meteo || []).map((r) => ({ t: r.t, fc: r.fc, et0: r.et0, etc: kc(r.t) != null ? kc(r.t) * r.et0 : null, rain: r.rain }));
+  }
+  function drawEt() {
+    const d = etDaily();
+    let ce = 0, cr = 0, ca = 0;
+    const cumE = d.filter((r) => !r.fc && r.etc != null).map((r) => ({ x: r.t, y: (ce += r.etc) }));
+    const cumR = d.filter((r) => !r.fc).map((r) => ({ x: r.t, y: (cr += r.rain || 0) }));
+    const eta = current.eta || [];
+    const cumA = eta.map((r) => ({ x: r.t + r.days * 43200000, y: (ca += r.et * r.days) }));
+    const sets = [
+      { type: "line", label: lt("et0d"), data: d.map((r) => ({ x: r.t, y: r.et0 })), borderColor: "#c9a66b", pointRadius: 0, borderWidth: 1, yAxisID: "y" },
+      { type: "line", label: lt("etcd"), data: d.filter((r) => r.etc != null).map((r) => ({ x: r.t, y: r.etc })), borderColor: "#d0572b", pointRadius: 0, borderWidth: 1.6, yAxisID: "y" },
+      { type: "line", label: lt("etc_cum"), data: cumE, borderColor: "#d0572b", borderDash: [5, 3], pointRadius: 0, borderWidth: 1.4, yAxisID: "y2" },
+      { type: "line", label: lt("rain_cum"), data: cumR, borderColor: "#2b6cb0", borderDash: [5, 3], pointRadius: 0, borderWidth: 1.4, yAxisID: "y2" },
+    ];
+    if (eta.length) {
+      sets.push({ type: "line", label: lt("etad"), data: eta.map((r) => ({ x: r.t + r.days * 43200000, y: r.et })), borderColor: "#2f8f3a", backgroundColor: "#2f8f3a",
+        stepped: "middle", pointRadius: 2, borderWidth: 1.8, yAxisID: "y" });
+      sets.push({ type: "line", label: lt("eta_cum"), data: cumA, borderColor: "#2f8f3a", borderDash: [5, 3], pointRadius: 0, borderWidth: 1.4, yAxisID: "y2" });
+    }
+    upsert("chEt", { data: { datasets: sets }, options: baseOpts({
+      y: { title: { display: true, text: "mm/" + (LANG === "it" ? "giorno" : "day"), font: { size: 10 } }, ticks: { font: { size: 10 } }, min: 0 },
+      y2: { position: "right", grid: { display: false }, title: { display: true, text: "Σ mm", font: { size: 10 } }, ticks: { font: { size: 10 } }, min: 0 } }) });
+  }
+
+  // ---- confronto delle forme: fino a 4 serie sullo stesso asse dei tempi, eventualmente normalizzate 0–1
+  const CMP = [["rain7", "#2b6cb0"], ["tmean", "#d0572b"], ["et0", "#c9a66b"], ["etc", "#e67e22"], ["eta", "#2f8f3a"], ["ndvi", "#1e8449"],
+    ["lai", "#145a32"], ["evi", "#5aa02c"], ["ndmi", "#1f77b4"], ["ndre", "#a3812c"], ["kc", "#6c3483"], ["vh", "#7a3fb0"]];
+  const cmpSel = new Set(["rain7", "ndvi", "lai"]);
+  let cmpNorm = true;
+  function cmpSeries(k) {
+    const m = (current.meteo || []).filter((r) => !r.fc);
+    if (k === "rain7") return m.map((r, i) => ({ x: r.t, y: m.slice(Math.max(0, i - 6), i + 1).reduce((a, q) => a + (q.rain || 0), 0) }));
+    if (k === "tmean") return m.map((r) => ({ x: r.t, y: r.tmean }));
+    if (k === "et0") return m.map((r) => ({ x: r.t, y: r.et0 }));
+    if (k === "etc") return etDaily().filter((r) => !r.fc && r.etc != null).map((r) => ({ x: r.t, y: r.etc }));
+    if (k === "eta") return (current.eta || []).map((r) => ({ x: r.t + r.days * 43200000, y: r.et }));
+    if (k === "vh") return (current.s1 || []).filter((r) => r.orbit === "descending").map((r) => ({ x: r.t, y: r.vh }));
+    return smooth(k);
+  }
+  function drawCompare() {
+    const sets = CMP.filter(([k]) => cmpSel.has(k)).map(([k, c]) => {
+      let d = cmpSeries(k);
+      if (cmpNorm && d.length) {
+        const ys = d.map((p) => p.y).filter(isFinite), lo = Math.min(...ys), hi = Math.max(...ys);
+        d = d.map((p) => ({ x: p.x, y: hi > lo ? (p.y - lo) / (hi - lo) : 0.5 }));
+      }
+      return { type: "line", label: lt("c_" + k), data: d, borderColor: c, backgroundColor: c, pointRadius: k === "eta" ? 2 : 0, borderWidth: 1.8, tension: 0.25,
+        yAxisID: cmpNorm ? "y" : (["rain7", "et0", "etc", "eta"].includes(k) ? "y" : ["tmean", "vh"].includes(k) ? "y3" : "y2") };
+    });
+    upsert("chCmp", { data: { datasets: sets }, options: baseOpts(cmpNorm
+      ? { y: { min: 0, max: 1, title: { display: true, text: lt("cmp_norm"), font: { size: 10 } }, ticks: { font: { size: 10 } } } }
+      : { y: { title: { display: true, text: "mm", font: { size: 10 } }, ticks: { font: { size: 10 } } },
+          y2: { position: "right", grid: { display: false }, ticks: { font: { size: 10 } } },
+          y3: { position: "right", grid: { display: false }, ticks: { font: { size: 10 } } } }) });
+  }
+
+  // ---- ET reale Copernicus (CLMS ETA 300 m) per il campo, dai ritagli Italia su Hugging Face
+  const HF_DATA = "https://huggingface.co/datasets/Bradipo92/campi-aperti-data";
+  let etaFiles = null;
+  async function loadEta(my) {
+    try {
+      if (!etaFiles) etaFiles = fetch(`https://huggingface.co/api/datasets/Bradipo92/campi-aperti-data/tree/main/eta/italia`).then((r) => (r.ok ? r.json() : []));
+      const files = (await etaFiles).map((f) => f.path).filter((p) => /ET-ENSEMBLE\.tif$/.test(p));
+      const start = iso(startDate(range)), end = iso(endDate(range));
+      const pick = files.map((p) => ({ p, d: p.match(/ETA300_(\d{4}-\d{2}-\d{2})_/)[1] })).filter((f) => f.d >= start && f.d <= end);
+      if (!pick.length) return;
+      const ll = current.ll, out = [];
+      await pool(pick, 6, async (f) => {
+        const t = await GeoTIFF.fromUrl(`${HF_DATA}/resolve/main/${f.p}`);
+        const im = await t.getImage(), [ox, oy] = im.getOrigin(), [rx, ry] = im.getResolution();
+        const c = Math.floor((ll.lng - ox) / rx), r = Math.floor((ll.lat - oy) / ry);
+        const [b] = await im.readRasters({ window: [c, r, c + 1, r + 1], samples: [0] });
+        const v = b[0], d0 = new Date(f.d + "T00:00:00Z");
+        const days = d0.getUTCDate() < 21 ? 10 : new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 0)).getUTCDate() - 20;
+        if (isFinite(v) && v > -1) out.push({ t: d0.getTime(), et: v, days });
+      });
+      if (my !== runId) return;
+      current.eta = out.sort((a, b) => a.t - b.t);
+      drawEt(); drawCompare();
+    } catch (e) { console.warn("ETa", e); }
+  }
+
   function drawRadar() {
     const d = current.s1 || [];
     const ds = (k, label, color, orbit) => ({ type: "line", label: `${label} (${orbit === "ascending" ? "asc" : "desc"})`,
@@ -802,7 +985,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
 
   // ET coltura: Kc giornaliero interpolato dalle date Sentinel-2 serene
   function waterBalance() {
-    const m = (current.meteo || []).filter((r) => !r.fc), s2 = (current.s2 || []).slice().sort((a, b) => a.t - b.t);
+    const m = (current.meteo || []).filter((r) => !r.fc), s2 = clean();
     if (!m.length) return null;
     const kcAt = (t) => {
       if (!s2.length) return null;
@@ -861,7 +1044,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   function drawSummary() {
     const el = document.getElementById("fpSummary");
     if (!el) return;
-    const s2 = current.s2 || [];
+    const s2 = clean();
     const wb = waterBalance();
     const last = s2[s2.length - 1], max = s2.reduce((a, r) => (!a || r.ndvi > a.ndvi ? r : a), null);
     const mean = s2.length ? s2.reduce((a, r) => a + r.ndvi, 0) / s2.length : null;
@@ -905,6 +1088,11 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   }
 
   let highlight = null;
+  function showBusy(msg) {
+    const p = panel();
+    p.hidden = false; document.body.classList.add("fp-open");
+    p.innerHTML = `<div class="fp-status">${msg}</div>`;
+  }
   function close() {
     runId++;
     panel().hidden = true;
@@ -916,17 +1104,25 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
 
   function run() {
     const my = ++runId;
-    current.s2 = []; current.s1 = []; current.meteo = [];
+    current.s2 = []; current.s1 = []; current.meteo = []; current.eta = [];
     renderPanel();
     setStatus(lt("loading_meteo"));
     loadMeteo(my).catch((e) => setStatus(lt("err", { e: e.message })));
     loadS2(my).catch((e) => setStatus(lt("err", { e: e.message })));
     showCropHistory(my).catch(() => {});
+    loadEta(my);
   }
 
   async function onMapClick(ll) {
     let feature = Segment.fieldAt(ll);
-    if (!feature) { try { feature = await findField(ll); } catch (e) { console.warn("field lookup", e); } }
+    if (!feature) {
+      // nessuna divisione in campi qui: segmento automaticamente 2 km × 2 km attorno al punto
+      const dLat = 1000 / 111320, dLon = 1000 / (111320 * Math.cos((ll.lat * Math.PI) / 180));
+      showBusy(lt("seg_auto"));
+      try { await Segment.run([ll.lng - dLon, ll.lat - dLat, ll.lng + dLon, ll.lat + dLat], periodRange().end, (n, t) => showBusy(lt("seg_prog", { n, t }))); }
+      catch (e) { console.warn("segmentazione", e); }
+      feature = Segment.fieldAt(ll);
+    }
     if (!feature) feature = squareAround(ll);
     if (highlight) map.removeLayer(highlight);
     highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fillColor: "#ffd84a", fillOpacity: 0.12 }, interactive: false }).addTo(map);
