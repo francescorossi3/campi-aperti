@@ -418,10 +418,28 @@ function searchComuni(q) {
   return sc.sort((a, b) => b[0] - a[0]).slice(0, 6).map(([s, c]) => ({ nome: c[0], dove: `${c[1]} · ${c[2]}`, tipo: "comune", lat: c[3], lon: c[4], ext: [c[6], c[5], c[8], c[7]], score: s }));
 }
 
+// parole che non aiutano il geocoder ("località Strada" -> "Strada", cercata come località)
+const FILLER = /^(localit[aà]|loc\.?|frazione|fraz\.?|contrada|c\.da|borgo|podere)\s+/i;
+const PLACE_T = { city: 30, town: 28, village: 26, hamlet: 24, locality: 22, isolated_dwelling: 18, farm: 18, suburb: 16, district: 12, county: 10, state: 8 };
+function rank(items, q) {
+  const c = map.getCenter(), z = map.getZoom(), nq = norm(q.replace(FILLER, ""));
+  const placeWanted = FILLER.test(q) || !/\d/.test(q);
+  return items.map((r) => {
+    let s = PLACE_T[r.tipo] || (r.tipo === "house" ? 6 : r.tipo === "street" ? 4 : 2);
+    if (!placeWanted) s = r.tipo === "house" || r.tipo === "street" ? 30 : s;
+    const nn = norm(r.nome);
+    if (nn === nq) s += 40; else if (nn.startsWith(nq)) s += 20; else if (nn.includes(nq)) s += 5;
+    const km = Math.hypot((r.lat - c.lat) * 111, (r.lon - c.lng) * 111 * Math.cos(c.lat * Math.PI / 180));
+    if (z >= 8) s += Math.max(0, 25 - km / (z >= 11 ? 2 : 8));
+    return { ...r, rk: s };
+  }).sort((a, b) => b.rk - a.rk);
+}
+
 async function photon(q) {
   const c = map.getCenter();
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=${LANG === "it" ? "default" : "en"}` +
-    `&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}&bbox=6.0,35.3,19.0,47.2`;
+  const qs = q.replace(FILLER, "");
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(qs)}&limit=12&lang=${LANG === "it" ? "default" : "en"}` +
+    `&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}&zoom=${Math.round(map.getZoom())}&location_bias_scale=0.3&bbox=6.0,35.3,19.0,47.2`;
   const j = await fetch(url, { signal: sAbort.signal }).then((r) => r.json());
   return (j.features || []).filter((f) => !f.properties.countrycode || f.properties.countrycode === "IT").map((f) => {
     const p = f.properties, [lon, lat] = f.geometry.coordinates;
@@ -455,7 +473,8 @@ async function doSearch(q) {
   let web = [];
   try {
     web = sCache[q] || (sCache[q] = await photon(q).catch(() => []));
-    if (!web.length && !loc.length) web = sCache[q] = await nominatim(q);
+    if (!web.length && !loc.length) web = sCache[q] = await nominatim(q.replace(FILLER, ""));
+    web = rank(web, q);
   } catch (e) { if (e.name === "AbortError") return; }
   const seen = new Set(loc.map((r) => norm(r.nome)));
   const extra = web.filter((r) => !(["city", "town", "village", "comune"].includes(r.tipo) && seen.has(norm(r.nome))));
