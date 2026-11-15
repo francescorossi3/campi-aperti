@@ -21,6 +21,15 @@ const Regions = (() => {
       rain: "Pioggia (mm)", etc: "ET coltura FAO-56 (mm)", et0: "ET0 (mm)", eta: "ET reale Copernicus (mm)",
       note: "Superfici: Copernicus HRL Croplands – Crop Types (10 m). Pioggia ed ET0: ERA5 (Copernicus C3S) via Open-Meteo, media pesata sulle superfici della coltura. ET coltura FAO-56 = Kc mensile × ET0 (stima da tabelle). ET reale Copernicus: CLMS Evapotranspiration 300 m da Sentinel-3 (modello ensemble TSEB-PT + ETLook), misura da satellite, dal novembre 2025. Le due fonti sono indipendenti: il confronto mostra quanto la coltura consuma davvero rispetto al fabbisogno teorico.",
       upd: "Aggiornato",
+      v_acqua: "Acqua per regione", v_rese: "Rese per provincia: ISTAT e modello",
+      prov: "Provincia", all_prov: "Tutte le province",
+      th_r: ["Annata", "ISTAT (t/ha)", "Modello (t/ha)", "Modello tarato (t/ha)", "Scarto", "Superficie ISTAT (ha)", "Pixel 200 m usati"],
+      ch_r: "Resa per annata: ISTAT e modello di Monteith (tarato)",
+      sc_r: "Tutte le province, annata {y}: ISTAT (verticale) e modello tarato (orizzontale)",
+      istat: "ISTAT", mod: "Modello tarato", modraw: "Modello non tarato",
+      tar: "Taratura su ISTAT per {c}: fattore {f} su {n} coppie provincia×annata; R² {r2}; errore tipico dopo la taratura {e}%.",
+      r_missing: "Il confronto per provincia è in preparazione (l'elaborazione delle immagini Sentinel-2 di tutta Italia richiede alcune ore). Torna più tardi.",
+      r_note: "Modello di Monteith: radiazione solare ERA5 × frazione assorbita dalla coltura (dall'NDVI Sentinel-2 medio dei pixel da 200 m occupati per almeno l'80% dalla coltura secondo Copernicus) × efficienza d'uso della radiazione × indice di raccolto. Il fattore di taratura è la mediana del rapporto ISTAT / modello: lo stesso fattore viene applicato alla resa stimata del singolo campo. Le rese ISTAT degli ultimi anni sono provvisorie.",
     },
     en: {
       region: "Region", crop: "Crop", year: "Year", period: "Period", all: "All crops",
@@ -39,11 +48,107 @@ const Regions = (() => {
       rain: "Rain (mm)", etc: "Crop ET FAO-56 (mm)", et0: "ET0 (mm)", eta: "Actual ET Copernicus (mm)",
       note: "Areas: Copernicus HRL Croplands – Crop Types (10 m). Rain and ET0: ERA5 (Copernicus C3S) via Open-Meteo, weighted by crop area. FAO-56 crop ET = monthly Kc × ET0 (table-based estimate). Copernicus actual ET: CLMS Evapotranspiration 300 m from Sentinel-3 (TSEB-PT + ETLook ensemble), satellite-based, from November 2025. The two sources are independent: comparing them shows actual crop water use versus theoretical demand.",
       upd: "Updated",
+      v_acqua: "Water by region", v_rese: "Yields by province: ISTAT and model",
+      prov: "Province", all_prov: "All provinces",
+      th_r: ["Season", "ISTAT (t/ha)", "Model (t/ha)", "Calibrated model (t/ha)", "Difference", "ISTAT area (ha)", "200 m pixels used"],
+      ch_r: "Yield by season: ISTAT and Monteith model (calibrated)",
+      sc_r: "All provinces, season {y}: ISTAT (vertical) vs calibrated model (horizontal)",
+      istat: "ISTAT", mod: "Calibrated model", modraw: "Uncalibrated model",
+      tar: "Calibration on ISTAT for {c}: factor {f} over {n} province×season pairs; R² {r2}; typical error after calibration {e}%.",
+      r_missing: "The province comparison is being prepared (processing Sentinel-2 imagery for all of Italy takes a few hours). Please come back later.",
+      r_note: "Monteith model: ERA5 solar radiation × fraction absorbed by the crop (from the mean Sentinel-2 NDVI of 200 m pixels at least 80% covered by the crop according to Copernicus) × radiation use efficiency × harvest index. The calibration factor is the median ISTAT / model ratio; the same factor is applied to the estimated yield of a single field. Recent ISTAT yields are provisional.",
     },
   };
   const rt = (k) => (RT[LANG] || RT.it)[k];
   let D = null, rows = null, loaded = false, chart = null;
-  const sel = { regione: "Italia", classe: "all", anno: null, periodo: "q1" };
+  const sel = { regione: "Italia", classe: "all", anno: null, periodo: "q1", vista: "acqua", prov: null, rcl: 1, ranno: null };
+  let M = null, mLoaded = false, chart2 = null;
+  async function loadM() {
+    if (mLoaded) return M;
+    mLoaded = true;
+    try {
+      const r = await fetch("data/monteith_province.json?ts=" + Date.now());
+      if (!r.ok) throw new Error(r.status);
+      M = await r.json();
+      const ix = Object.fromEntries(M.colonne.map((c, i) => [c, i]));
+      M.rows = M.righe.map((r) => ({ prov: r[ix.provincia], cl: r[ix.classe], y: r[ix.anno], mod: r[ix.modello], ist: r[ix.istat], ha: r[ix.ha_istat], px: r[ix.pixel] }));
+      sel.ranno = Math.max(...M.rows.filter((r) => r.ist != null).map((r) => r.y));
+    } catch (e) { M = null; }
+    return M;
+  }
+  const CL_NAMES = { 1: ["Frumento", "Wheat"], 2: ["Orzo", "Barley"], 3: ["Mais", "Maize"], 4: ["Riso", "Rice"], 5: ["Altri cereali", "Other cereals"],
+    7: ["Legumi", "Pulses"], 8: ["Patate", "Potatoes"], 9: ["Barbabietola", "Sugar beet"], 10: ["Girasole", "Sunflower"], 11: ["Soia", "Soybean"], 12: ["Colza", "Rapeseed"] };
+  const clName = (c) => (CL_NAMES[c] || [c, c])[LANG === "it" ? 0 : 1];
+  function viewTabs() {
+    return `<div class="seg-group reg-views"><button class="seg ${sel.vista === "acqua" ? "active" : ""}" data-v="acqua">${rt("v_acqua")}</button>` +
+      `<button class="seg ${sel.vista === "rese" ? "active" : ""}" data-v="rese">${rt("v_rese")}</button></div>`;
+  }
+  function bindViews() {
+    document.querySelectorAll(".reg-views .seg").forEach((b) => (b.onclick = async () => { sel.vista = b.dataset.v; await show(); }));
+  }
+  function renderRese() {
+    const box = document.getElementById("regionsPanel");
+    if (!M) { box.innerHTML = viewTabs() + `<p class="hint">${rt("r_missing")}</p>`; bindViews(); return; }
+    const fat = (c) => (M.taratura[c] ? M.taratura[c].fattore : 1);
+    const provs = [...new Set(M.rows.map((r) => r.prov))].sort();
+    const cls = [...new Set(M.rows.map((r) => r.cl))].sort((a, b) => a - b);
+    if (!cls.includes(sel.rcl)) sel.rcl = cls[0];
+    if (!sel.prov || !provs.includes(sel.prov)) {
+      const cnt = {}; M.rows.forEach((r) => { if (r.cl === sel.rcl && r.ist != null) cnt[r.prov] = (cnt[r.prov] || 0) + (r.ha || 0); });
+      sel.prov = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || provs[0];
+    }
+    const anni = [...new Set(M.rows.map((r) => r.y))].sort((a, b) => b - a);
+    const opt = (v, l, s) => `<option value="${v}" ${v == s ? "selected" : ""}>${l}</option>`;
+    const mine = M.rows.filter((r) => r.prov === sel.prov && r.cl === sel.rcl).sort((a, b) => a.y - b.y);
+    const f = fat(sel.rcl), T = M.taratura[sel.rcl];
+    const f2 = (x) => (x == null ? "—" : x.toLocaleString(LANG === "it" ? "it-IT" : "en-GB", { maximumFractionDigits: 1, minimumFractionDigits: 1 }));
+    const righe = mine.map((r) => {
+      const t = r.mod * f, sc = r.ist ? Math.round((t / r.ist - 1) * 100) : null;
+      return `<tr><td>${r.y - 1}/${String(r.y).slice(2)}</td><td>${f2(r.ist)}</td><td>${f2(r.mod)}</td><td><b>${f2(t)}</b></td>` +
+        `<td class="${sc == null ? "" : Math.abs(sc) > 25 ? "bad" : "good"}">${sc == null ? "—" : (sc > 0 ? "+" : "") + sc + "%"}</td><td>${r.ha ? Math.round(r.ha).toLocaleString() : "—"}</td><td>${r.px}</td></tr>`;
+    }).join("");
+    box.innerHTML = viewTabs() + `
+      <div class="reg-form">
+        <label>${rt("prov")}<select id="rpP">${provs.map((p) => opt(p, p, sel.prov)).join("")}</select></label>
+        <label>${rt("crop")}<select id="rpC">${cls.map((c) => opt(c, clName(c), sel.rcl)).join("")}</select></label>
+        <label>${rt("year")} (${LANG === "it" ? "grafico province" : "province chart"})<select id="rpY">${anni.map((y) => opt(y, y, sel.ranno)).join("")}</select></label>
+      </div>
+      ${T ? `<p class="reg-sentence">${rt("tar").replace("{c}", clName(sel.rcl).toLowerCase()).replace("{f}", T.fattore.toFixed(2)).replace("{n}", T.n).replace("{r2}", T.r2.toFixed(2)).replace("{e}", Math.round(T.errore_rel_tarato * 100))}</p>` : ""}
+      <div class="reg-table-wrap"><table class="reg-table"><thead><tr>${rt("th_r").map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${righe}</tbody></table></div>
+      <figure class="reg-fig"><figcaption>${rt("ch_r")}</figcaption><div class="cbox"><canvas id="rpChart"></canvas></div></figure>
+      <figure class="reg-fig"><figcaption>${rt("sc_r").replace("{y}", `${sel.ranno - 1}/${String(sel.ranno).slice(2)}`)}</figcaption><div class="cbox"><canvas id="rpScatter"></canvas></div></figure>
+      <p class="hint small">${rt("r_note")} ${rt("upd")}: ${new Date(M.generato).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB")}.</p>`;
+    bindViews();
+    document.getElementById("rpP").onchange = (e) => { sel.prov = e.target.value; renderRese(); };
+    document.getElementById("rpC").onchange = (e) => { sel.rcl = +e.target.value; sel.prov = null; renderRese(); };
+    document.getElementById("rpY").onchange = (e) => { sel.ranno = +e.target.value; renderRese(); };
+    if (chart) { chart.destroy(); chart = null; }
+    if (chart2) { chart2.destroy(); chart2 = null; }
+    chart = new Chart(document.getElementById("rpChart"), {
+      type: "line",
+      data: { labels: mine.map((r) => `${r.y - 1}/${String(r.y).slice(2)}`), datasets: [
+        { label: rt("istat"), data: mine.map((r) => r.ist), borderColor: "#2b6cb0", backgroundColor: "#2b6cb0", tension: 0.2 },
+        { label: rt("mod"), data: mine.map((r) => r.mod * f), borderColor: "#2f8f3a", backgroundColor: "#2f8f3a", tension: 0.2 },
+        { label: rt("modraw"), data: mine.map((r) => r.mod), borderColor: "#2f8f3a77", borderDash: [4, 3], pointRadius: 0, tension: 0.2 },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+        scales: { y: { title: { display: true, text: "t/ha" }, beginAtZero: true } } },
+    });
+    const pts = M.rows.filter((r) => r.cl === sel.rcl && r.y === sel.ranno && r.ist != null);
+    const mx = Math.max(1, ...pts.map((r) => Math.max(r.ist, r.mod * f))) * 1.1;
+    chart2 = new Chart(document.getElementById("rpScatter"), {
+      type: "scatter",
+      data: { datasets: [
+        { label: rt("prov"), data: pts.map((r) => ({ x: r.mod * f, y: r.ist, p: r.prov })), backgroundColor: pts.map((r) => (r.prov === sel.prov ? "#d0572b" : "#2f8f3a99")),
+          pointRadius: pts.map((r) => (r.prov === sel.prov ? 6 : 3.5)) },
+        { type: "line", label: "1:1", data: [{ x: 0, y: 0 }, { x: mx, y: mx }], borderColor: "#999", borderDash: [4, 3], pointRadius: 0 },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.raw.p ? `${c.raw.p}: ISTAT ${c.raw.y.toFixed(1)} · mod. ${c.raw.x.toFixed(1)} t/ha` : "" } } },
+        onClick: (e, els) => { const el = els.find((x) => x.datasetIndex === 0); if (el) { sel.prov = pts[el.index].prov; renderRese(); } },
+        scales: { x: { min: 0, max: mx, title: { display: true, text: rt("mod") + " (t/ha)" } }, y: { min: 0, max: mx, title: { display: true, text: "ISTAT (t/ha)" } } } },
+    });
+  }
 
   async function load() {
     if (loaded) return D;
@@ -91,7 +196,7 @@ const Regions = (() => {
   function render() {
     const box = document.getElementById("regionsPanel");
     if (!box) return;
-    if (!D) { box.innerHTML = `<p class="hint">${rt("missing")}</p>`; return; }
+    if (!D) { box.innerHTML = viewTabs() + `<p class="hint">${rt("missing")}</p>`; bindViews(); return; }
     const regs = ["Italia", ...[...new Set(rows.map((r) => r.reg))].filter((r) => r !== "Italia").sort()];
     const periods = ["q1", "q2", "q3", "q4", "annata", "solare", ...Array.from({ length: 12 }, (_, i) => "m" + (i + 1))];
     const opt = (v, l, s) => `<option value="${v}" ${v == s ? "selected" : ""}>${l}</option>`;
@@ -112,7 +217,7 @@ const Regions = (() => {
       .replace("{etc}", f0(lead.etc)).replace("{ve}", f1(vol(lead.etc, lead.ha))).replace("{bal}", (lead.p - lead.etc >= 0 ? "+" : "") + f0(lead.p - lead.etc))
       + (lead.eta != null ? rt("eta_s").replace("{eta}", f0(lead.eta)).replace("{tra}", f0(lead.tra)) : "") : "";
     const carta = D.carte && D.carte[sel.anno] && +D.carte[sel.anno] !== +sel.anno ? rt("carta").replace("{c}", D.carte[sel.anno]).replace("{y}", sel.anno) : "";
-    box.innerHTML = `
+    box.innerHTML = viewTabs() + `
       <div class="reg-form">
         <label>${rt("region")}<select id="rgReg">${regs.map((r) => opt(r, r, sel.regione)).join("")}</select></label>
         <label>${rt("crop")}<select id="rgCl">${opt("all", rt("all"), sel.classe)}${Object.keys(D.classi).map((k) => opt(k, cname(k), sel.classe)).join("")}</select></label>
@@ -125,6 +230,7 @@ const Regions = (() => {
         <tbody>${shown.map((o) => row(cname(o.cl), o)).join("")}${T && shown.length > 1 ? row(rt("total"), T, "tot") : ""}</tbody></table></div>
       <figure class="reg-fig"><figcaption>${rt("chart")}</figcaption><div class="cbox"><canvas id="rgChart"></canvas></div></figure>
       <p class="hint small">${rt("note")} ${rt("upd")}: ${new Date(D.generato).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB")}.</p>`;
+    bindViews();
     document.getElementById("rgReg").onchange = (e) => { sel.regione = e.target.value; render(); };
     document.getElementById("rgCl").onchange = (e) => { sel.classe = e.target.value; render(); };
     document.getElementById("rgY").onchange = (e) => { sel.anno = +e.target.value; render(); };
@@ -162,8 +268,9 @@ const Regions = (() => {
   async function show() {
     const box = document.getElementById("regionsPanel");
     if (box && !D) box.innerHTML = `<p class="hint">${rt("loading")}</p>`;
+    if (sel.vista === "rese") { await loadM(); renderRese(); return; }
     await load();
     render();
   }
-  return { show, render };
+  return { show, render: () => (sel.vista === "rese" ? renderRese() : render()), taratura: async () => ((await loadM()) || {}).taratura || null };
 })();

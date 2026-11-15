@@ -195,3 +195,16 @@ body.wide-sidebar .sidebar { width: min(640px, 55vw); }
   .reg-form { grid-template-columns: 1fr; }
   .cbox { height: 170px; }
 }
+
+.reg-views { margin-bottom: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+.reg-table td.good { color: #2f8f3a; } .reg-table td.bad { color: #c0392b; }
+
+.fp-map { margin: 6px 0 8px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; background: var(--card); }
+.fp-map summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.fm-ctrl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.fm-wrap { position: relative; display: inline-block; max-width: 100%; }
+#fmCanvas { max-width: 100%; image-rendering: pixelated; border-radius: 6px; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/12px 12px; }
+.fm-tip { position: absolute; background: #222d; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+.fm-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; flex-wrap: wrap; margin: 2px 0; }
+.fm-legend .fm-bar { display: inline-block; width: 160px; height: 10px; border-radius: 3px; }
+.fm-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 3px; vertical-align: -2px; }

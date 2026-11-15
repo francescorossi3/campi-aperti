@@ -49,6 +49,12 @@ const LT = {
     y_title: "Resa media ISTAT in provincia di {p}:",
     fy_title: "Resa stimata di questo campo ({c}, {y})",
     fy_range: "intervallo plausibile",
+    fm_title: "Mappa del campo a 10 m", fm_ndvi: "NDVI (vigore)", fm_ndre: "NDRE (clorofilla)", fm_ndmi: "NDMI (acqua nelle foglie)", fm_evi: "EVI",
+    fm_savi: "SAVI", fm_rgb: "Colori reali", fm_zone: "Zone di vigore (bassa / media / alta)", fm_auto: "scala adattata al campo",
+    fm_onmap: "Mostra / togli sulla mappa", fm_nodate: "nessuna data serena", fm_loading: "Carico la mappa…", fm_err: "Mappa non disponibile per questa data.",
+    fm_stats: "{n} pixel da 10 m · media {m} · deviazione standard {sd} · variabilità {cv}%",
+    fm_z1: "vigore basso", fm_z2: "medio", fm_z3: "alto",
+    fy_cal: "tarata sulle rese ISTAT, fattore {f}",
     fy_vs: "media provinciale ISTAT {r} t/ha: questo campo {x}%",
     fy_none: "Resa del campo non stimabile per questa coltura o annata (serve un seminativo con stagione intera nell'intervallo scelto).",
     fy_note: "Modello a efficienza d'uso della radiazione (Monteith): radiazione solare ERA5 × frazione assorbita dalla coltura (dall'NDVI del campo) × efficienza e indice di raccolto tipici della coltura, su {d} giorni di stagione ({a} → {b}); coltura da {f}. Non è una misura: l'errore tipico è del 20–30%.",
@@ -128,6 +134,12 @@ const LT = {
     y_title: "ISTAT average yield in the province of {p}:",
     fy_title: "Estimated yield of this field ({c}, {y})",
     fy_range: "plausible range",
+    fm_title: "Field map at 10 m", fm_ndvi: "NDVI (vigour)", fm_ndre: "NDRE (chlorophyll)", fm_ndmi: "NDMI (leaf water)", fm_evi: "EVI",
+    fm_savi: "SAVI", fm_rgb: "True colour", fm_zone: "Vigour zones (low / medium / high)", fm_auto: "scale fitted to the field",
+    fm_onmap: "Show / hide on the map", fm_nodate: "no clear date", fm_loading: "Loading the map…", fm_err: "Map not available for this date.",
+    fm_stats: "{n} pixels of 10 m · mean {m} · standard deviation {sd} · variability {cv}%",
+    fm_z1: "low vigour", fm_z2: "medium", fm_z3: "high",
+    fy_cal: "calibrated on ISTAT yields, factor {f}",
     fy_vs: "ISTAT provincial mean {r} t/ha: this field {x}%",
     fy_none: "Field yield cannot be estimated for this crop or season (needs an arable crop with a full season in the chosen interval).",
     fy_note: "Radiation-use-efficiency model (Monteith): ERA5 solar radiation × fraction absorbed by the crop (from the field NDVI) × typical crop efficiency and harvest index, over {d} season days ({a} → {b}); crop from {f}. Not a measurement: typical error 20–30%.",
@@ -665,6 +677,10 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   function drawFieldYield() {
     const el = document.getElementById("fpFieldYield");
     if (!el) return;
+    if (!taraturaChiesta && typeof Regions !== "undefined") {
+      taraturaChiesta = true;
+      Regions.taratura().then((t) => { if (t) { TARATURA = t; drawFieldYield(); } }).catch(() => {});
+    }
     const ca = classeAnnata();
     const y = ca && fieldYield(ca.cls);
     if (!y) { el.innerHTML = ca ? `<span class="hint small">${lt("fy_none")}</span>` : ""; return; }
@@ -673,12 +689,14 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       const pv = provinceAt(current.ll), ist = pv && pv.nuts && (resaClasse(RESE_DATA, pv.nuts, ca.cls, ca.anno) || resaClasse(RESE_DATA, pv.nuts, ca.cls, ca.anno - 1));
       if (ist) { const r = y.resa / ist.resa; conf = ` · ${lt("fy_vs").replace("{p}", pv.prov_name).replace("{r}", ist.resa.toFixed(1)).replace("{x}", (r >= 1 ? "+" : "") + Math.round((r - 1) * 100))}`; }
     }
+    const T = TARATURA && TARATURA[ca.cls];
+    if (T) { y.grezza = y.resa; y.resa *= T.fattore; }
     current.fieldYield = { ...y, classe: ca.cls };
     el.innerHTML = `<b>${lt("fy_title").replace("{c}", y.nome).replace("{y}", ca.anno)}:</b> <span class="big">${y.resa.toFixed(1)} t/ha</span>
-      <small>(${lt("fy_range")} ${(y.resa * 0.7).toFixed(1)}–${(y.resa * 1.3).toFixed(1)})</small>${conf}
+      <small>(${lt("fy_range")} ${(y.resa * 0.7).toFixed(1)}–${(y.resa * 1.3).toFixed(1)}${T ? "; " + lt("fy_cal").replace("{f}", T.fattore.toFixed(2)) : ""})</small>${conf}
       <div class="hint small">${lt("fy_note").replace("{d}", y.giorni).replace("{a}", fmtDate(y.t0)).replace("{b}", fmtDate(y.t1)).replace("{f}", ca.fonte)}</div>`;
   }
-  let RESE_DATA = null;
+  let RESE_DATA = null, TARATURA = null, taraturaChiesta = false;
 
   async function showYields(my) {
     const el = document.getElementById("fpYield");
@@ -926,6 +944,17 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       <div id="fpFieldYield" class="fp-fieldyield"></div>
       <div id="fpYield" class="fp-yield"></div>
       <div id="fpSummary" class="fp-summary"></div>
+      <details class="fp-map" id="fpMapBox" open><summary>${lt("fm_title")}</summary>
+        <div class="fm-ctrl">
+          <select id="fmIdx" class="seg">${["ndvi", "ndre", "ndmi", "evi", "savi", "rgb", "zone"].map((k) => `<option value="${k}">${lt("fm_" + k)}</option>`).join("")}</select>
+          <select id="fmDate" class="seg"><option>…</option></select>
+          <label class="small"><input type="checkbox" id="fmAuto" checked> ${lt("fm_auto")}</label>
+          <button class="small-btn" id="fmOnMap">${lt("fm_onmap")}</button>
+        </div>
+        <div class="fm-wrap"><canvas id="fmCanvas"></canvas><div class="fm-tip" id="fmTip" hidden></div></div>
+        <div class="fm-legend" id="fmLegend"></div>
+        <div class="hint small" id="fmStats"></div>
+      </details>
       <div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
       <div class="fp-charts">
         <figure><figcaption>${lt("ch_index")}</figcaption><div class="cbox"><canvas id="chIndex"></canvas></div></figure>
@@ -960,6 +989,131 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     document.getElementById("fpRadar").onclick = () => { document.getElementById("radarFig").hidden = false; loadS1(); };
     Object.values(charts).forEach((c) => c.destroy());
     charts = {};
+    ["fmIdx", "fmDate", "fmAuto"].forEach((id) => (document.getElementById(id).onchange = () => drawFieldMap()));
+    document.getElementById("fmOnMap").onclick = () => fieldMapOnMap();
+    fmDatesKey = "";
+  }
+
+  // ================================================================== mappa del campo a 10 m
+  // NDVI & co. pixel per pixel (10 m) dentro il confine del campo, per una data serena a scelta, con valori al passaggio del mouse
+  // e "zone di vigore" (terzili dell'NDVI) utili per concimazioni o irrigazioni a rateo variabile.
+  let fmDatesKey = "", fmLast = null, fmOverlay = null;
+  const RAMP = [[165, 0, 38], [215, 48, 39], [244, 109, 67], [253, 174, 97], [254, 224, 139], [217, 239, 139], [166, 217, 106], [102, 189, 99], [26, 152, 80], [0, 104, 55]];
+  const ramp = (u) => { u = Math.min(1, Math.max(0, u)) * (RAMP.length - 1); const i = Math.min(RAMP.length - 2, Math.floor(u)), f = u - i;
+    return RAMP[i].map((c, k) => Math.round(c + f * (RAMP[i + 1][k] - c))); };
+  const FIX = { ndvi: [0, 0.9], ndre: [0, 0.6], ndmi: [-0.3, 0.5], evi: [0, 0.8], savi: [0, 0.7] };
+  const ZONE_COL = [[214, 64, 50], [240, 200, 60], [40, 150, 70]];
+  const mercX = (lon) => (lon * 20037508.34) / 180;
+  const mercY = (lat) => Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) * 6378137;
+  const lonOf = (x) => (x / 20037508.34) * 180;
+  const latOf = (y) => (360 / Math.PI) * Math.atan(Math.exp(y / 6378137)) - 90;
+  function fillFieldDates() {
+    const sel = document.getElementById("fmDate");
+    if (!sel) return;
+    const rows = clean().filter((r) => r.item).sort((a, b) => b.t - a.t);
+    const key = rows.map((r) => r.date).join();
+    if (key === fmDatesKey) return;
+    const prev = sel.value;
+    fmDatesKey = key;
+    if (!rows.length) { sel.innerHTML = `<option value="">${lt("fm_nodate")}</option>`; return; }
+    sel.innerHTML = rows.map((r) => `<option value="${r.date}">${new Date(r.t).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB")} · NDVI ${r.ndvi.toFixed(2)}</option>`).join("");
+    if (rows.some((r) => r.date === prev)) sel.value = prev;
+    drawFieldMap();
+  }
+  function ringsOf(g) { return g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : []; }
+  async function drawFieldMap() {
+    const cv = document.getElementById("fmCanvas");
+    if (!cv || !current) return;
+    const idx = document.getElementById("fmIdx").value, date = document.getElementById("fmDate").value, auto = document.getElementById("fmAuto").checked;
+    const row = clean().find((r) => r.date === date);
+    if (!row) return;
+    const stats = document.getElementById("fmStats");
+    stats.textContent = lt("fm_loading");
+    const polys = ringsOf(current.feature.geometry);
+    let lo0 = 180, la0 = 90, lo1 = -180, la1 = -90;
+    polys.forEach((p) => p[0].forEach(([x, y]) => { lo0 = Math.min(lo0, x); lo1 = Math.max(lo1, x); la0 = Math.min(la0, y); la1 = Math.max(la1, y); }));
+    const pad = 0.00015; lo0 -= pad; lo1 += pad; la0 -= pad; la1 += pad;
+    const X0 = mercX(lo0), X1 = mercX(lo1), Y0 = mercY(la0), Y1 = mercY(la1);
+    const k = Math.cos(((la0 + la1) / 2) * Math.PI / 180);          // metri veri per metro Mercatore
+    let W = Math.max(4, Math.round(((X1 - X0) * k) / 10)), H = Math.max(4, Math.round(((Y1 - Y0) * k) / 10));
+    const sc = Math.min(1, 400 / Math.max(W, H)); W = Math.round(W * sc); H = Math.round(H * sc);
+    const exprs = idx === "rgb" ? ["B04", "B03", "B02"] : [S2_INDEX[idx === "zone" ? "ndvi" : idx]];
+    const url = `${PC}/data/v1/item/bbox/${X0},${Y0},${X1},${Y1}.npy?collection=sentinel-2-l2a&item=${row.item}` +
+      `&expression=${encodeURIComponent(exprs.join(";"))}&asset_as_band=true&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${W}&height=${H}&resampling=nearest`;
+    let arr;
+    try { arr = parseNpy(await fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })); }
+    catch (e) { stats.textContent = lt("fm_err"); return; }
+    if (document.getElementById("fmDate").value !== date || document.getElementById("fmIdx").value !== idx) return;
+    // maschera del poligono
+    const mk = document.createElement("canvas"); mk.width = W; mk.height = H;
+    const mc = mk.getContext("2d"); mc.fillStyle = "#000"; mc.beginPath();
+    polys.forEach((p) => p.forEach((ring) => ring.forEach(([x, y], i) => {
+      const px = ((mercX(x) - X0) / (X1 - X0)) * W, py = ((Y1 - mercY(y)) / (Y1 - Y0)) * H;
+      i ? mc.lineTo(px, py) : mc.moveTo(px, py);
+    })));
+    mc.fill("evenodd");
+    const inside = mc.getImageData(0, 0, W, H).data;
+    const n = W * H, band = (b) => arr.data.subarray(b * n, (b + 1) * n);
+    const vals = [];
+    for (let i = 0; i < n; i++) if (inside[i * 4 + 3] > 127 && isFinite(arr.data[i])) vals.push(arr.data[i]);
+    const q = (p) => { const v = vals.slice().sort((a, b) => a - b); return v[Math.min(v.length - 1, Math.floor(p * (v.length - 1)))]; };
+    let a, b;
+    if (idx === "rgb") { a = 300; b = 2600; }
+    else if (auto || idx === "zone") { a = q(0.02); b = q(0.98); if (b - a < 0.02) { a -= 0.01; b += 0.01; } }
+    else [a, b] = FIX[idx];
+    const t1 = q(1 / 3), t2 = q(2 / 3);
+    const img = new ImageData(W, H);
+    for (let i = 0; i < n; i++) {
+      if (inside[i * 4 + 3] <= 127) continue;
+      let c;
+      if (idx === "rgb") c = [0, 1, 2].map((bb) => Math.max(0, Math.min(255, ((band(bb)[i] - 1000 - a) / (b - a)) * 255)));
+      else { const v = arr.data[i]; if (!isFinite(v)) continue; c = idx === "zone" ? ZONE_COL[v < t1 ? 0 : v < t2 ? 1 : 2] : ramp((v - a) / (b - a)); }
+      img.data.set([c[0], c[1], c[2], 255], i * 4);
+    }
+    const zoom = Math.max(1, Math.floor(Math.min(520, cv.parentElement.clientWidth || 520) / W));
+    cv.width = W * zoom; cv.height = H * zoom;
+    const tmp = document.createElement("canvas"); tmp.width = W; tmp.height = H; tmp.getContext("2d").putImageData(img, 0, 0);
+    const ctx = cv.getContext("2d"); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
+    ctx.strokeStyle = "#222"; ctx.lineWidth = 1.5; ctx.beginPath();
+    polys.forEach((p) => p.forEach((ring) => ring.forEach(([x, y], i) => {
+      const px = ((mercX(x) - X0) / (X1 - X0)) * cv.width, py = ((Y1 - mercY(y)) / (Y1 - Y0)) * cv.height;
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    })));
+    ctx.stroke();
+    fmLast = { tmp, bounds: [[latOf(Y0), lonOf(X0)], [latOf(Y1), lonOf(X1)]], idx, date };
+    if (fmOverlay) fieldMapOnMap(true);
+    // legenda e statistiche
+    const leg = document.getElementById("fmLegend");
+    if (idx === "rgb") leg.innerHTML = "";
+    else if (idx === "zone") leg.innerHTML = ["fm_z1", "fm_z2", "fm_z3"].map((z, i) => `<span><i style="background:rgb(${ZONE_COL[i]})"></i>${lt(z)}</span>`).join("") +
+      ` <small>(NDVI &lt; ${t1.toFixed(2)} · ${t1.toFixed(2)}–${t2.toFixed(2)} · &gt; ${t2.toFixed(2)})</small>`;
+    else leg.innerHTML = `<span>${a.toFixed(2)}</span><b class="fm-bar" style="background:linear-gradient(90deg,${RAMP.map((c) => `rgb(${c})`).join(",")})"></b><span>${b.toFixed(2)}</span>`;
+    if (idx !== "rgb" && vals.length) {
+      const m = vals.reduce((x, y) => x + y, 0) / vals.length, sd = Math.sqrt(vals.reduce((x, y) => x + (y - m) ** 2, 0) / vals.length);
+      stats.textContent = lt("fm_stats", { n: vals.length, m: m.toFixed(3), sd: sd.toFixed(3), cv: Math.round((sd / Math.abs(m || 1)) * 100) });
+    } else stats.textContent = "";
+    cv.onmousemove = (e) => {
+      const r = cv.getBoundingClientRect(), x = Math.floor(((e.clientX - r.left) / r.width) * W), y = Math.floor(((e.clientY - r.top) / r.height) * H);
+      const i = y * W + x, tip = document.getElementById("fmTip");
+      if (idx === "rgb" || x < 0 || y < 0 || x >= W || y >= H || inside[i * 4 + 3] <= 127 || !isFinite(arr.data[i])) { tip.hidden = true; return; }
+      tip.hidden = false; tip.textContent = `${lt("fm_" + (idx === "zone" ? "ndvi" : idx))}: ${arr.data[i].toFixed(3)}`;
+      tip.style.left = e.clientX - r.left + 12 + "px"; tip.style.top = e.clientY - r.top + 8 + "px";
+    };
+    cv.onmouseleave = () => (document.getElementById("fmTip").hidden = true);
+  }
+  function fieldMapOnMap(refresh) {
+    if (fmOverlay && !refresh) { map.removeLayer(fmOverlay); fmOverlay = null; return; }
+    if (!fmLast) return;
+    if (fmOverlay) map.removeLayer(fmOverlay);
+    fmOverlay = L.imageOverlay(fmLast.tmp.toDataURL(), fmLast.bounds, { opacity: 0.9, className: "seg-overlay", interactive: false }).addTo(map);
+  }
+  function parseNpy(buf) {
+    const u8 = new Uint8Array(buf), hl = u8[8] | (u8[9] << 8);
+    const hdr = new TextDecoder().decode(u8.subarray(10, 10 + hl));
+    const off = 10 + hl, f8 = hdr.includes("<f8");
+    const data = f8 ? new Float64Array(buf.slice(off)) : new Float32Array(buf.slice(off));
+    return { data: Float32Array.from(data), hdr };
   }
 
   function yearOptions() {
@@ -1208,6 +1362,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       max ? `<span><em>${lt("sum_max")}</em><b>${max.ndvi.toFixed(2)}</b> <small>${fmtDate(max.t)}</small></span>` : "",
     ].join("");
     drawFieldYield();
+    fillFieldDates();
     const cb = document.getElementById("fpCrop");
     if (cb) {
       const c = classifyCrop(s2);
@@ -1248,6 +1403,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     panel().hidden = true;
     document.body.classList.remove("fp-open");
     if (highlight) { map.removeLayer(highlight); highlight = null; }
+    if (fmOverlay) { map.removeLayer(fmOverlay); fmOverlay = null; }
     current = null;
     setTimeout(() => map.invalidateSize(), 50);
   }
