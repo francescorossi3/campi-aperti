@@ -15,7 +15,7 @@ async def main():
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.on("console", lambda m: (m.type in ("error", "warning") or "divisi" in m.text) and errs.append(m.text[:300]))
-        for nome, lat, lon in [("lodi", 45.25, 9.55), ("maccarese", 41.86, 12.23), ("muccese", 43.1385, 13.0245)]:
+        for nome, lat, lon in [("lodi", 45.25, 9.55), ("maccarese", 41.86, 12.23), ("muccese", 43.1167, 13.0524)]:
             await pg.goto(f"http://127.0.0.1:8770/index.html?lang=it&r={nome}#15/{lat}/{lon}/sat")
             await pg.wait_for_timeout(3000)
             t = await pg.evaluate(f"""async () => {{
