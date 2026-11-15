@@ -1,4 +1,6 @@
 data/*
 !data/riepiloghi.json
+!data/rese.json
+!data/province.json
 pipeline/data
 __pycache__/

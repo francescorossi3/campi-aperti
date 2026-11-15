@@ -1,0 +1,27 @@
+name: Rese ISTAT per provincia
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 5 3 * *"      # ogni mese
+  push:
+    paths: ["pipeline/avvia_rese.txt"]
+
+permissions:
+  contents: write
+
+jobs:
+  rese:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests pandas geopandas
+      - name: 07 rese ISTAT
+        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python 07_rese_istat.py
+      - name: pubblica sul sito
+        run: |
+          git config user.name "campi-aperti-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f data/rese.json data/province.json
+          git diff --cached --quiet || (git commit -m "Aggiorna rese ISTAT" && git pull --rebase && git push)
