@@ -44,11 +44,19 @@ nomi = dict(re.findall(r'<structure:Code id="([^"]+)">[\s\S]*?<common:Name xml:l
 print(len(nomi), "codici territoriali")
 
 # ---- 2. dati (superficie in produzione e produzione raccolta)
-chiave = f"A..PA_EXT+HP_Q_EXT.{'+'.join(COLTURE)}."
-r = requests.get(f"{BASE}/data/{FLOW}/{chiave}?startPeriod={INIZIO}", timeout=900,
-                 headers={"Accept": "application/vnd.sdmx.data+csv;version=1.0.0"})
-r.raise_for_status()
-d = pd.read_csv(io.StringIO(r.text), dtype={"REF_AREA": str})
+parti = []
+for codice in COLTURE:                       # una richiesta per coltura (la chiave unica è troppo lunga per il server)
+    try:
+        r = requests.get(f"{BASE}/data/{FLOW}/A..PA_EXT+HP_Q_EXT.{codice}.?startPeriod={INIZIO}", timeout=600,
+                         headers={"Accept": "application/vnd.sdmx.data+csv;version=1.0.0"})
+        if r.status_code != 200 or r.text.startswith("NoRecords"):
+            print("  ", codice, "nessun dato", r.status_code)
+            continue
+        parti.append(pd.read_csv(io.StringIO(r.text), dtype={"REF_AREA": str}))
+        print("  ", codice, len(parti[-1]))
+    except requests.RequestException as e:
+        print("  ", codice, "errore", e)
+d = pd.concat(parti, ignore_index=True)
 if "DESTINATION_WINEGRAPES" in d:
     d = d[d.DESTINATION_WINEGRAPES.astype(str).eq("ALL")]
 d = d[["REF_AREA", "DATA_TYPE", "TYPE_OF_CROP", "TIME_PERIOD", "OBS_VALUE"]]

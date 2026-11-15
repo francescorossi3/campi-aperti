@@ -19,6 +19,9 @@ const map = L.map("map", {
 L.control.scale({ imperial: false }).addTo(map);
 // riquadro dedicato al catasto: il riempimento giallo delle particelle viene reso trasparente
 // con un filtro + fusione "multiply", così restano solo i contorni sopra la mappa
+map.createPane("labels");
+map.getPane("labels").style.zIndex = 640;
+map.getPane("labels").style.pointerEvents = "none";
 map.createPane("catasto");
 map.getPane("catasto").style.zIndex = 450;
 map.getPane("catasto").classList.add("catasto-pane");
@@ -31,10 +34,17 @@ const BASEMAPS = {
   s2: L.tileLayer("https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2023_3857/default/g/{z}/{y}/{x}.jpg", {
     maxZoom: 17, maxNativeZoom: 15,
     attribution: 'Sentinel-2 cloudless 2023 by <a href="https://s2maps.eu">EOX</a> (Copernicus Sentinel data 2023), CC BY-NC-SA 4.0' }),
+  hybrid: L.layerGroup([
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }),
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, pane: "labels", opacity: 0.8 }),
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19, pane: "labels", attribution: "Etichette © Esri" }),
+  ]),
   topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
     maxZoom: 17, attribution: "© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)" }),
 };
-let currentBase = "sat";
+let currentBase = "hybrid";
 
 // --- tile layer per ArcGIS (export / exportImage) in EPSG:3857
 const ArcGISTiles = L.TileLayer.extend({
@@ -109,7 +119,9 @@ function setLayer(id, on) {
 
 function setBase(key) {
   Object.values(BASEMAPS).forEach((l) => map.removeLayer(l));
-  BASEMAPS[key].addTo(map).bringToBack();
+  BASEMAPS[key].addTo(map);
+  if (BASEMAPS[key].bringToBack) BASEMAPS[key].bringToBack();
+  else BASEMAPS[key].eachLayer((l) => l.options.pane !== "labels" && l.bringToBack());
   currentBase = key;
   document.querySelectorAll("#basemaps button").forEach((b) => b.classList.toggle("active", b.dataset.key === key));
   saveHash();
