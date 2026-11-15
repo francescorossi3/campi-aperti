@@ -2,7 +2,7 @@
 #
 # Fonte: ISTAT, "Stima delle superfici e produzioni delle coltivazioni agrarie", API SDMX
 # dataflow 101_1015_DF_DCSP_COLTIVAZIONI_1. Dati: superficie in produzione (PA_EXT, ha) e produzione raccolta
-# (HP_Q_EXT, quintali). Resa = produzione / superficie (t/ha). Gli ultimi anni possono essere provvisori.
+# (HP_Q_EXT, quintali); per i seminativi la superficie è quella totale (ART). Resa = produzione / superficie (t/ha). Gli ultimi anni possono essere provvisori.
 # Uscite: data/rese.json (per il sito) e data/province.json (confini semplificati con codice NUTS ISTAT)
 
 import io
@@ -47,7 +47,7 @@ print(len(nomi), "codici territoriali")
 parti = []
 for codice in COLTURE:                       # una richiesta per coltura (la chiave unica è troppo lunga per il server)
     try:
-        r = requests.get(f"{BASE}/data/{FLOW}/A..PA_EXT+HP_Q_EXT.{codice}.?startPeriod={INIZIO}", timeout=600,
+        r = requests.get(f"{BASE}/data/{FLOW}/A..PA_EXT+HP_Q_EXT+ART.{codice}.?startPeriod={INIZIO}", timeout=600,
                          headers={"Accept": "application/vnd.sdmx.data+csv;version=1.0.0"})
         if r.status_code != 200 or r.text.startswith("NoRecords"):
             print("  ", codice, "nessun dato", r.status_code)
@@ -62,7 +62,9 @@ if "DESTINATION_WINEGRAPES" in d:
 d = d[["REF_AREA", "DATA_TYPE", "TYPE_OF_CROP", "TIME_PERIOD", "OBS_VALUE"]]
 print(len(d), "osservazioni")
 w = d.pivot_table(index=["REF_AREA", "TYPE_OF_CROP", "TIME_PERIOD"], columns="DATA_TYPE", values="OBS_VALUE", aggfunc="first").reset_index()
-w = w.rename(columns={"PA_EXT": "ha", "HP_Q_EXT": "q"})
+# superficie: "in produzione" per le legnose, "totale" (ART) per i seminativi che non hanno PA_EXT
+w["ha"] = w["PA_EXT"].fillna(w["ART"]) if "ART" in w else w["PA_EXT"]
+w = w.rename(columns={"HP_Q_EXT": "q"})
 w["resa"] = (w.q / 10) / w.ha                    # t/ha
 w = w[(w.ha > 0) & w.resa.notna()]
 
