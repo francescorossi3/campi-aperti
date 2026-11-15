@@ -31,9 +31,17 @@ async def main():
             await pg.wait_for_timeout(1500)
             await pg.screenshot(path=os.path.join(OUT, f"browser_{nome}.png"))
         # clic su un campo: pannello, suolo, mappa 10 m
-        await pg.goto("http://127.0.0.1:8770/index.html?lang=it#16/45.2505/9.5520/sat")
+        await pg.goto("http://127.0.0.1:8770/index.html?lang=it#15/45.25/9.55/sat")
         await pg.wait_for_timeout(3000)
-        await pg.mouse.click(880, 330)
+        pt = await pg.evaluate("""async () => {
+          await Delineate.run([9.538, 45.241, 9.562, 45.259], new Date(), () => {});
+          const fc = Segment.allFields(); let best = null, A = 0;
+          fc.features.forEach((f) => { const b = L.geoJSON(f).getBounds(); const a = (b.getEast()-b.getWest())*(b.getNorth()-b.getSouth()); if (a > A) { A = a; best = b.getCenter(); } });
+          map.setView(best, 16); await new Promise((r) => setTimeout(r, 1500));
+          const p = map.latLngToContainerPoint(best), r = map.getContainer().getBoundingClientRect();
+          return [p.x + r.left, p.y + r.top];
+        }""")
+        await pg.mouse.click(pt[0], pt[1])
         await pg.wait_for_timeout(60000)
         rep["pannello"] = await pg.evaluate("""() => ({ titolo: document.querySelector('.fp-title')?.innerText, suolo: document.querySelector('#fpSoil')?.innerText,
           resa: document.querySelector('#fpFieldYield')?.innerText, stato: document.querySelector('#fpStatus')?.innerText, mappa: document.querySelector('#fmStats')?.innerText })""")

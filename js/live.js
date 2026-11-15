@@ -710,8 +710,8 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       if (sw) v[L_.name] = sv / sw / (L_.unit_measure.d_factor || 1);
     });
     if (v.clay == null || v.sand == null) { el.innerHTML = `<span class="hint small">${lt("soil_na")}</span>`; return; }
-    // unità: clay/sand/silt g/kg -> %, soc g/kg, nitrogen g/kg, ph, cec cmol/kg, bdod kg/dm³
-    const S = v.sand / 10, C = v.clay / 10, Si = v.silt != null ? v.silt / 10 : 100 - S - C;
+    // unità dopo d_factor: clay/sand/silt %, soc g/kg, nitrogen g/kg, ph, cec cmol/kg, bdod kg/dm³
+    const S = v.sand, C = v.clay, Si = v.silt != null ? v.silt : 100 - S - C;   // già in % dopo il d_factor
     const OM = (v.soc / 10) * 1.724;                         // sostanza organica % (Van Bemmelen)
     const s_ = S / 100, c_ = C / 100;
     const t15t = -0.024 * s_ + 0.487 * c_ + 0.006 * OM + 0.005 * s_ * OM - 0.013 * c_ * OM + 0.068 * s_ * c_ + 0.031;
@@ -1554,6 +1554,12 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       try { await Segment.smart([ll.lng - dLon, ll.lat - dLat, ll.lng + dLon, ll.lat + dLat], periodRange().end, (n, t) => showBusy(lt("seg_prog", { n, t }))); }
       catch (e) { console.warn("segmentazione", e); }
       feature = Segment.fieldAt(ll);
+      if (!feature && Segment.method() === "ai") {
+        // il modello non vede un campo qui (bosco, frutteto fitto, area mista): provo la segmentazione sulla serie NDVI
+        try { await Segment.run([ll.lng - dLon, ll.lat - dLat, ll.lng + dLon, ll.lat + dLat], periodRange().end, (n, t) => showBusy(lt("seg_prog", { n, t }))); }
+        catch (e) { console.warn("segmentazione", e); }
+        feature = Segment.fieldAt(ll);
+      }
     }
     if (!feature) feature = squareAround(ll);
     if (highlight) map.removeLayer(highlight);
