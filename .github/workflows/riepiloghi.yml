@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   riepiloghi:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -20,24 +20,31 @@ jobs:
       CDSE_PASSWORD: ${{ secrets.CDSE_PASSWORD }}
       HF_DATA_REPO: Bradipo92/campi-aperti-data
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Python
         run: pip install -q requests pandas pyarrow numpy rasterio huggingface_hub
       - name: scarica blocchi e cache meteo
         run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && MODO=giu CARTELLE=blocchi,meteo,eta python hf_sync.py
       - name: 04 meteo per cella
+        continue-on-error: true
         run: cd pipeline && python 04_meteo_celle.py
       - name: salva la cache meteo
+        if: always()
         run: cd pipeline && MODO=su CARTELLE=meteo python hf_sync.py
       - name: 06 ET reale Copernicus (CLMS ETA 300 m)
+        if: always()
         continue-on-error: true
         run: cd pipeline && python 06_eta_copernicus.py
       - name: salva ETa
+        if: always()
         run: cd pipeline && MODO=su CARTELLE=eta python hf_sync.py
       - name: 05 bilancio per regione e coltura
-        run: cd pipeline && python 05_bilancio_regioni.py
+        if: always()
+        run: cd pipeline && test -f data/meteo/celle_mensili.parquet && python 05_bilancio_regioni.py || echo "meteo non ancora disponibile"
       - name: pubblica data/riepiloghi.json sul sito
+        if: always()
         run: |
+          test -f data/riepiloghi.json || exit 0
           git config user.name "campi-aperti-bot"
           git config user.email "actions@users.noreply.github.com"
           git add data/riepiloghi.json
