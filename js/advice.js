@@ -17,7 +17,7 @@ const Advice = (() => {
       crops: { vite: "Vite", olivo: "Olivo", cereali: "Frumento / orzo / cereali", mais: "Mais", pomodoro: "Pomodoro", patata: "Patata", frutteto: "Frutteto (pomacee, drupacee, actinidia, agrumi)", guscio: "Nocciolo / mandorlo / noce", altro: "Altra coltura" },
       pero: "Peronospora della vite (regola dei tre dieci)", pero_d: "Ultime 48 h: {r} mm di pioggia, temperatura media {t} °C. Previsti {f} mm nei prossimi 3 giorni.",
       oidio: "Oidio della vite (indice di Gubler-Thomas)", oidio_d: "Indice {i}/100: sopra 60 conviene accorciare gli intervalli tra i trattamenti.",
-      winkler: "Somma termica della vite (indice di Winkler, dal 1° aprile)", winkler_d: "{g} gradi giorno base 10 °C.",
+      winkler: "Somma termica della vite (indice di Winkler, 1° aprile – 31 ottobre)", winkler_d: "{g} gradi giorno base 10 °C (sotto 1390 zona fresca, oltre 2220 zona calda).",
       mosca: "Mosca dell'olivo", mosca_d: "{n} giorni (ultima settimana e prossima) con temperatura media tra 20 e 30 °C; {c} giorni oltre 33 °C (il caldo la frena). Controlla le trappole.",
       pavone: "Occhio di pavone dell'olivo", pavone_d: "{h} ore di foglie bagnate con temperatura 10–20 °C negli ultimi 10 giorni.",
       septoria: "Septoria del frumento", septoria_d: "{n} giorni piovosi (≥ 2 mm) con 10–25 °C negli ultimi 14 giorni.",
@@ -25,7 +25,7 @@ const Advice = (() => {
       smith: "Peronospora (periodi di Smith)", smith_d: "{n} periodi di Smith negli ultimi 7 giorni (2 giorni con minima ≥ 10 °C e almeno 11 ore di umidità ≥ 90%).",
       chill: "Ore di freddo dal 1° novembre (sotto 7,2 °C)", chill_d: "{h} ore: molte varietà di pesco e melo ne chiedono 400–1000 per fiorire bene.",
       gelo: "Gelo nei prossimi 7 giorni", gelo_d: "Minima prevista {t} °C il {d}.",
-      gdd: "Gradi giorno dal 1° aprile (base 10 °C)", gdd_d: "{g} °C·giorno: un mais classe 500–600 FAO ne chiede circa 1500–1700 dalla semina alla maturazione.",
+      gdd: "Gradi giorno della stagione (1° aprile – 31 ottobre, base 10 °C)", gdd_d: "{g} °C·giorno: un mais classe 500–600 FAO ne chiede circa 1500–1700 dalla semina alla maturazione.",
     },
     en: {
       title: "Crop alerts", crop: "Crop", loading: "Computing alerts from the weather…", err: "Weather not available.",
@@ -34,7 +34,7 @@ const Advice = (() => {
       crops: { vite: "Grapevine", olivo: "Olive", cereali: "Wheat / barley / cereals", mais: "Maize", pomodoro: "Tomato", patata: "Potato", frutteto: "Orchard (pome, stone fruit, kiwi, citrus)", guscio: "Hazelnut / almond / walnut", altro: "Other crop" },
       pero: "Grapevine downy mildew (three-tens rule)", pero_d: "Last 48 h: {r} mm of rain, mean temperature {t} °C. {f} mm forecast in the next 3 days.",
       oidio: "Grapevine powdery mildew (Gubler-Thomas index)", oidio_d: "Index {i}/100: above 60 shorten the spray intervals.",
-      winkler: "Grapevine heat sum (Winkler index, since 1 April)", winkler_d: "{g} degree days base 10 °C.",
+      winkler: "Grapevine heat sum (Winkler index, 1 April – 31 October)", winkler_d: "{g} degree days base 10 °C (below 1390 cool region, above 2220 hot region).",
       mosca: "Olive fruit fly", mosca_d: "{n} days (last week and next) with mean temperature 20–30 °C; {c} days above 33 °C (heat slows it). Check the traps.",
       pavone: "Olive leaf spot (peacock eye)", pavone_d: "{h} hours of wet leaves at 10–20 °C in the last 10 days.",
       septoria: "Wheat septoria", septoria_d: "{n} rainy days (≥ 2 mm) at 10–25 °C in the last 14 days.",
@@ -42,7 +42,7 @@ const Advice = (() => {
       smith: "Late blight (Smith periods)", smith_d: "{n} Smith periods in the last 7 days (2 days with minimum ≥ 10 °C and at least 11 hours at humidity ≥ 90%).",
       chill: "Chill hours since 1 November (below 7.2 °C)", chill_d: "{h} hours: many peach and apple varieties need 400–1000 to flower well.",
       gelo: "Frost in the next 7 days", gelo_d: "Forecast minimum {t} °C on {d}.",
-      gdd: "Degree days since 1 April (base 10 °C)", gdd_d: "{g} °C·days: a FAO 500–600 maize needs about 1500–1700 from sowing to maturity.",
+      gdd: "Season degree days (1 April – 31 October, base 10 °C)", gdd_d: "{g} °C·days: a FAO 500–600 maize needs about 1500–1700 from sowing to maturity.",
     },
   };
   const at = (k, v) => { let s = (AT[LANG] || AT.it)[k] ?? AT.it[k]; if (v && typeof s === "string") Object.entries(v).forEach(([a, b]) => (s = s.replace("{" + a + "}", b))); return s; };
@@ -66,7 +66,16 @@ const Advice = (() => {
     const k = lat.toFixed(2) + "," + lon.toFixed(2);
     if (!cache[k]) cache[k] = fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}` +
       `&hourly=temperature_2m,relative_humidity_2m,precipitation,leaf_wetness_probability&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,et0_fao_evapotranspiration` +
-      `&past_days=92&forecast_days=7&timezone=auto`).then((r) => r.json());
+      `&past_days=92&forecast_days=7&timezone=auto`).then((r) => r.json()).then(async (j) => {
+        // gradi giorno dal 1° aprile: la parte più vecchia di 92 giorni viene dall'archivio ERA5
+        const y = new Date().getFullYear(), end = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+        if (end > `${y}-04-01`) {
+          const a = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&start_date=${y}-04-01&end_date=${end}&daily=temperature_2m_mean&timezone=auto`)
+            .then((r) => r.json()).catch(() => null);
+          if (a && a.daily) j.gdd = Object.fromEntries(a.daily.time.map((t, i) => [t, a.daily.temperature_2m_mean[i]]));
+        }
+        return j;
+      });
     return cache[k];
   }
 
@@ -83,7 +92,12 @@ const Advice = (() => {
     const add = (name, lv, desc) => out.push({ name, lv, desc });
     const wet = (i) => (H.leaf_wetness_probability && H.leaf_wetness_probability[i] != null ? H.leaf_wetness_probability[i] > 50 : H.relative_humidity_2m[i] >= 90 || H.precipitation[i] > 0.1);
     // gradi giorno dal 1° aprile (solo se siamo in stagione)
-    const gddSince = () => { const y = now.getFullYear(), ix = dIdx.filter((i) => D.time[i] >= `${y}-04-01` && D.time[i] < today); return ix.length > 20 ? Math.round(ix.reduce((s, i) => s + Math.max(0, D.temperature_2m_mean[i] - 10), 0)) : null; };
+    const gddSince = () => {
+      const y = now.getFullYear(), T = { ...(j.gdd || {}) };
+      dIdx.forEach((i) => { if (D.time[i] >= `${y}-04-01` && D.time[i] < today) T[D.time[i]] = D.temperature_2m_mean[i]; });
+      const v = Object.entries(T).filter(([d, t]) => d >= `${y}-04-01` && d <= `${y}-10-31` && t != null);
+      return v.length > 20 ? Math.round(v.reduce((s, [, t]) => s + Math.max(0, t - 10), 0)) : null;
+    };
 
     if (key === "vite") {
       const p48 = past(2), r = sum(p48, D.precipitation_sum), t = mean(p48, D.temperature_2m_mean), f = sum(next(3), D.precipitation_sum);
