@@ -1,0 +1,57 @@
+name: Classificatore colture v2 (multiprodotto)
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ["pipeline/avvia_classificatore_v2.txt"]
+
+permissions:
+  contents: write
+
+jobs:
+  dataset:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        anno: [2019, 2020, 2021, 2022, 2023, 2024]
+    env:
+      ANNO: ${{ matrix.anno }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests pandas pyarrow numpy scipy rasterio pyproj huggingface_hub
+      - name: blocchi da 1 km
+        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && MODO=giu CARTELLE=blocchi python hf_sync.py
+      - name: 13 dataset v2
+        run: cd pipeline && python 13_dataset_v2.py
+      - name: carica
+        run: cd pipeline && MODO=su CARTELLE=dataset_v2 python hf_sync.py
+
+  addestra:
+    needs: dataset
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q pandas pyarrow numpy scikit-learn lightgbm joblib huggingface_hub
+      - run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && MODO=giu CARTELLE=dataset_v2 python hf_sync.py
+      - run: cd pipeline && python 14_addestra_v2.py
+      - name: modelli nel repository privato, metriche nel sito
+        run: |
+          cd pipeline && python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          api.create_repo("Bradipo92/campi-aperti-models", repo_type="model", private=True, exist_ok=True)
+          api.upload_folder(folder_path="data/modelli_v2", path_in_repo="colture_v2", repo_id="Bradipo92/campi-aperti-models", repo_type="model", commit_message="classificatore v2")
+          PY
+          cd .. && git config user.name "campi-aperti-bot" && git config user.email "actions@users.noreply.github.com"
+          git add -f data/report_classificatore_v2.json && git commit -m "Metriche classificatore v2" && git pull --rebase && git push || true
