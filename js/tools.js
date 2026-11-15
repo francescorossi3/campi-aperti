@@ -46,6 +46,11 @@ const Tools = (() => {
       l_heat: "Caldo: tieni l'erba più alta (7–8 cm) e irriga presto al mattino.", l_frost: "Gelate previste: non calpestare il prato gelato.",
       l_feed: "Concimazione consigliata in questo periodo: {f}", l_sat: "Vedi il prato dal satellite (NDVI 10 m, solo prati grandi)",
       feed: ["no (riposo invernale)", "no", "leggera, a fine mese", "sì: azoto a lenta cessione", "sì, leggera", "solo macroterme", "solo macroterme", "no (caldo)", "sì: concimazione autunnale", "sì: concime autunnale ricco di potassio", "leggera, prima del freddo", "no (riposo invernale)"],
+      w_title: "Benvenuto in Campi Aperti", w_go: "Inizia",
+      w_steps: ["🔎 <b>Cerca</b> il tuo comune, un indirizzo o incolla le coordinate.", "🖱️ <b>Clicca su un campo</b>: il sito ne trova i confini e mostra coltura, indici satellitari, meteo, acqua, suolo e resa stimata.",
+        "✏️ Se il confine non è giusto, <b>disegnalo</b> tu e aggiungi coltura, filari, piante, resa.", "📂 <b>Carica le tue mappe</b> (PRISMA, droni…) o <b>scarica i campi</b> di un'area come file vettoriale.",
+        "🏡 Per il giardino: <b>Il mio prato</b> ti dice quanta acqua dare e quando tagliare."],
+      w_note: "Tutto gratuito e basato su dati aperti (Copernicus, ERA5, ISTAT, Agenzia delle Entrate, SoilGrids).",
       l_src: "Meteo: ERA5 e previsioni Open-Meteo. Coefficiente colturale del tappeto erboso FAO-56: 0,85 microterme, 0,65 macroterme. Crescita: modello di potenziale di crescita (Gelernter & Stowell).",
     },
     en: {
@@ -86,6 +91,11 @@ const Tools = (() => {
       l_heat: "Hot weather: keep the grass taller (7–8 cm) and water early in the morning.", l_frost: "Frost forecast: do not walk on frozen grass.",
       l_feed: "Fertilising in this period: {f}", l_sat: "See the lawn from the satellite (NDVI 10 m, large lawns only)",
       feed: ["no (winter rest)", "no", "light, at month end", "yes: slow-release nitrogen", "yes, light", "warm-season only", "warm-season only", "no (heat)", "yes: autumn feed", "yes: potassium-rich autumn feed", "light, before the cold", "no (winter rest)"],
+      w_title: "Welcome to Open Fields Italy", w_go: "Start",
+      w_steps: ["🔎 <b>Search</b> your town, an address or paste coordinates.", "🖱️ <b>Click a field</b>: the site finds its boundary and shows crop, satellite indices, weather, water, soil and estimated yield.",
+        "✏️ If the boundary is wrong, <b>draw it</b> yourself and add crop, rows, plants, yield.", "📂 <b>Upload your own maps</b> (PRISMA, drones…) or <b>download the fields</b> of an area as a vector file.",
+        "🏡 For the garden: <b>My lawn</b> tells you how much to water and when to mow."],
+      w_note: "All free and based on open data (Copernicus, ERA5, ISTAT, Italian Revenue Agency, SoilGrids).",
       l_src: "Weather: ERA5 and Open-Meteo forecast. Turfgrass crop coefficient FAO-56: 0.85 cool-season, 0.65 warm-season. Growth: growth potential model (Gelernter & Stowell).",
     },
   };
@@ -651,6 +661,7 @@ const Tools = (() => {
     };
     ctl.addTo(map);
     map.on("mousemove", onHover);
+    welcome();
     refreshMine();
     // trascina un file sulla mappa
     const mc = map.getContainer();
@@ -658,8 +669,15 @@ const Tools = (() => {
     mc.addEventListener("dragleave", () => mc.classList.remove("drop"));
     mc.addEventListener("drop", (e) => { e.preventDefault(); mc.classList.remove("drop"); [...e.dataTransfer.files].forEach(loadFile); });
   }
+  function welcome(force) {
+    try { if (!force && localStorage.getItem("campiAperti.benvenuto")) return; } catch (e) { /* */ }
+    const el = card("toolWelcome", tt("w_title"), `<ol class="welcome">${tt("w_steps").map((x) => `<li>${x}</li>`).join("")}</ol>
+      <p class="hint small">${tt("w_note")}</p><div class="tc-actions"><button class="btn-primary" id="wGo">${tt("w_go")}</button></div>`, "tc-welcome");
+    const done = () => { try { localStorage.setItem("campiAperti.benvenuto", "1"); } catch (e) { /* */ } el.remove(); };
+    el.querySelector("#wGo").onclick = done; el.querySelector(".icon-x").onclick = done;
+  }
   function refreshLang() {
     document.querySelectorAll(".tool-bar a").forEach((a) => { a.title = tt(a.dataset.t); a.querySelector("em").textContent = tt(a.dataset.t); });
   }
-  return { init, busy, refreshLang, startDraw };
+  return { init, busy, refreshLang, startDraw, welcome };
 })();

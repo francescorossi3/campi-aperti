@@ -49,7 +49,7 @@ const LT = {
     y_title: "Resa media ISTAT in provincia di {p}:",
     fy_title: "Resa stimata di questo campo ({c}, {y})",
     fy_range: "intervallo plausibile",
-    soil_title: "Suolo (0–30 cm)", soil_loading: "Carico i dati del suolo…", soil_err: "Dati del suolo non raggiungibili ora (SoilGrids).", soil_na: "Nessun dato di suolo qui.",
+    soil_title: "Suolo (0–30 cm)", soil_loading: "Carico i dati del suolo…", soil_slow: "Il servizio SoilGrids è lento, riprovo…", soil_err: "Dati del suolo non raggiungibili ora (SoilGrids).", soil_na: "Nessun dato di suolo qui.",
     soil_sand: "Sabbia", soil_silt: "Limo", soil_clay: "Argilla", soil_soc: "Carbonio organico", soil_n: "Azoto totale", soil_paw: "Acqua disponibile",
     soil_note: "ISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
     fw_title: "Modello idrico FAO-33", fw_det: "(acqua disponibile nelle radici {taw} mm; consumo reale {r}% del potenziale; {s} giorni di stress; resa raggiungibile in provincia {ym} t/ha)",
@@ -141,7 +141,7 @@ const LT = {
     y_title: "ISTAT average yield in the province of {p}:",
     fy_title: "Estimated yield of this field ({c}, {y})",
     fy_range: "plausible range",
-    soil_title: "Soil (0–30 cm)", soil_loading: "Loading soil data…", soil_err: "Soil data not reachable right now (SoilGrids).", soil_na: "No soil data here.",
+    soil_title: "Soil (0–30 cm)", soil_loading: "Loading soil data…", soil_slow: "SoilGrids is slow, retrying…", soil_err: "Soil data not reachable right now (SoilGrids).", soil_na: "No soil data here.",
     soil_sand: "Sand", soil_silt: "Silt", soil_clay: "Clay", soil_soc: "Organic carbon", soil_n: "Total nitrogen", soil_paw: "Available water",
     soil_note: "ISRIC SoilGrids 2.0 (250 m, model-based estimate: indicative, not a substitute for a soil test). Plant-available water between field capacity and wilting point, from texture and organic matter (Saxton & Rawls 2006).",
     fw_title: "FAO-33 water model", fw_det: "(available water in the root zone {taw} mm; actual use {r}% of potential; {s} stress days; attainable yield in the province {ym} t/ha)",
@@ -697,8 +697,11 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const url = `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${ll.lng.toFixed(5)}&lat=${ll.lat.toFixed(5)}&` +
       props.map((p) => "property=" + p).join("&") + "&depth=0-5cm&depth=5-15cm&depth=15-30cm&value=mean";
     let j;
-    try { j = await fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
-    catch (e) { if (my === runId) el.innerHTML = `<span class="hint small">${lt("soil_err")}</span>`; return; }
+    for (let k = 0; k < 2 && !j; k++) {
+      try { j = await fetch(url, { signal: AbortSignal.timeout(45000) }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+      catch (e) { if (my !== runId) return; if (k === 0) { el.innerHTML = `<span class="hint small">${lt("soil_slow")}</span>`; await new Promise((ok) => setTimeout(ok, 4000)); } }
+    }
+    if (!j) { if (my === runId) el.innerHTML = `<span class="hint small">${lt("soil_err")}</span>`; return; }
     if (my !== runId) return;
     const W = { "0-5cm": 5, "5-15cm": 10, "15-30cm": 15 }, v = {};
     (j.properties.layers || []).forEach((L_) => {

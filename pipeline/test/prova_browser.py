@@ -11,6 +11,7 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
         pg = await b.new_page(viewport={"width": 1400, "height": 950})
+        await pg.add_init_script("try{localStorage.setItem('campiAperti.benvenuto','1')}catch(e){}")
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.on("console", lambda m: m.type in ("error", "warning") and errs.append(m.text[:300]))
@@ -30,8 +31,10 @@ async def main():
             await pg.wait_for_timeout(1500)
             await pg.screenshot(path=os.path.join(OUT, f"browser_{nome}.png"))
         # clic su un campo: pannello, suolo, mappa 10 m
-        await pg.mouse.click(860, 300)
-        await pg.wait_for_timeout(25000)
+        await pg.goto("http://127.0.0.1:8770/index.html?lang=it#16/45.2505/9.5520/sat")
+        await pg.wait_for_timeout(3000)
+        await pg.mouse.click(880, 330)
+        await pg.wait_for_timeout(60000)
         rep["pannello"] = await pg.evaluate("""() => ({ titolo: document.querySelector('.fp-title')?.innerText, suolo: document.querySelector('#fpSoil')?.innerText,
           resa: document.querySelector('#fpFieldYield')?.innerText, stato: document.querySelector('#fpStatus')?.innerText, mappa: document.querySelector('#fmStats')?.innerText })""")
         print(json.dumps(rep["pannello"], ensure_ascii=False, indent=1))

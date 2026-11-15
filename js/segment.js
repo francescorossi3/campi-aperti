@@ -282,7 +282,7 @@ const Segment = (() => {
   }
   // prima il modello Delineate Anything, se non va la segmentazione a grafo sulla serie NDVI
   async function smart(bounds, endDate, onProgress) {
-    if (window.Delineate) {
+    if (typeof Delineate !== "undefined") {
       try { return await Delineate.run(bounds, endDate, onProgress); }
       catch (e) { console.warn("Delineate Anything non disponibile, uso Felzenszwalb:", e.message || e); }
     }
