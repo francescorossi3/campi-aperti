@@ -1,0 +1,79 @@
+{
+ "lodi": {
+  "ok": true,
+  "s": 4.6275,
+  "campi": 178,
+  "date": [
+   "2026-09-27"
+  ],
+  "W": 512,
+  "H": 512
+ },
+ "maccarese": {
+  "ok": true,
+  "s": 5.207899999999994,
+  "campi": 73,
+  "date": [
+   "2026-07-05"
+  ],
+  "W": 512,
+  "H": 512
+ },
+ "muccese": {
+  "ok": true,
+  "s": 5.314600000000006,
+  "campi": 149,
+  "date": [
+   "2026-08-27"
+  ],
+  "W": 512,
+  "H": 512
+ },
+ "copernicus_campo": "35 date, media di circa 4 pixel Copernicus sul campo.",
+ "avvisi": "Avvisi per la coltura coltura del campo non determinata: disegna il campo (✏️) e indica la coltura per avere gli avvisi.",
+ "pannello": {
+  "titolo": "Campo · Superficie 28.49 ha Confine: modello Delineate Anything (YOLO) su Sentinel-2 (valori = media su tutto il campo)",
+  "suolo": "Suolo (0–30 cm) franco\nSabbia 39%\nLimo 39%\nArgilla 22%\nCarbonio organico 24.5 g/kg\nAzoto totale 2.33 g/kg\nC/N 10.5\npH 6.9\nCSC 19 cmol/kg\nAcqua disponibile 149 mm/m\nISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
+  "resa": "",
+  "stato": "30 immagini serene su 68 date (38 scartate per nuvole).",
+  "mappa": "2853 pixel da 10 m · media 0.830 · deviazione standard 0.086 · variabilità 10%"
+ },
+ "strada": [
+  [
+   "Strada",
+   "Cingoli",
+   [
+    13.2189083,
+    43.3972608
+   ]
+  ],
+  [
+   "Strada",
+   "Camerino",
+   [
+    13.052413,
+    43.1167492
+   ]
+  ],
+  [
+   "Strada",
+   "Rocca San Casciano",
+   [
+    11.8762806,
+    44.066479
+   ]
+  ]
+ ],
+ "ricerca maceratta": "Macerata provincia\nMarche\nMacerata località\nRiolo Terme, Ravenna, Emilia-Romagna\nMaceratoi località\nCampertogno, Vercelli, Piemonte\nMaceratola zona\nFoligno, Perugia, Umbria\nMacerata comune\nMC · Marche\nMacerata Campania comune\nCE · Campania\nMaratea comune\nPZ · Basilicata\nMaierato comune\nVV · Calabria",
+ "ricerca Località Strada": "Strada zona\nCamerino, Macerata, Marche\nStrada località\nRocca San Casciano, Forlì-Cesena, Emilia-Romagna\nStrada località\nSovicille, Siena, Toscana\nStrada località\nCastel d'Aiano, Bologna, Emilia-Romagna\nStrada località\nSan Casciano in Val di Pesa, Firenze, Toscana\nStrada zona\nCingoli, Macerata, March",
+ "ricerca Strada": "Strada zona\nCamerino, Macerata, Marche\nStrada località\nRocca San Casciano, Forlì-Cesena, Emilia-Romagna\nStrada località\nSovicille, Siena, Toscana\nStrada località\nCastel d'Aiano, Bologna, Emilia-Romagna\nAppiano sulla strada del vino/Eppan an der Weinstraße comune\nBZ · Trentino-Alto Adige/Südtirol\nCal",
+ "ricerca Muccia": "Muccia comune\nMC · Marche\nBalmuccia comune\nVC · Piemonte\nMuggia comune\nTS · Friuli-Venezia Giulia\nMuccia indirizzo\nCamerino, Macerata, Marche\nMuccia indirizzo\nMacerata, Marche\nMuccia indirizzo\nMacerata, Marche\nMucciana località\nSan Casciano in Val di Pesa, Firenze, Toscana\nMucciatella località\nQuatt",
+ "ricerca 41.86, 12.23": "41.86000, 12.23000 coordinate",
+ "ricerca Sant Angelo Lodigiano": "Sant'Angelo Lodigiano comune\nLO · Lombardia\nSant'Angelo Lodigiano indirizzo\nLodi, Lombardia\nSant’Angelo Lodigiano - Ospedale indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - viale Trieste indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - Via Don Carlo D",
+ "errori": [
+  "Campi divisi per colture diverse: 40",
+  "Campi divisi per colture diverse: 20",
+  "Campi divisi per colture diverse: 50",
+  "Campi divisi per colture diverse: 40"
+ ]
+}
