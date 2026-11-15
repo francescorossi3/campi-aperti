@@ -1,0 +1,8 @@
+requests
+pandas
+pyarrow
+numpy
+rasterio
+geopandas
+pyproj
+huggingface_hub

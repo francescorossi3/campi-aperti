@@ -1,0 +1,41 @@
+name: Crop Types Copernicus -> COG Italia
+
+on:
+  workflow_dispatch:
+    inputs:
+      anni:
+        description: "Anni da elaborare (JSON), es. [2024] oppure [2017,2018,2019,2020,2021,2022,2023,2024]"
+        default: "[2017,2018,2019,2020,2021,2022,2023,2024]"
+  push:
+    paths: ["pipeline/avvia_crop_types.txt"]
+
+jobs:
+  anno:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        anno: ${{ fromJSON(github.event.inputs.anni || '[2017,2018,2019,2020,2021,2022,2023,2024]') }}
+    env:
+      ANNO: ${{ matrix.anno }}
+      CDSE_USERNAME: ${{ secrets.CDSE_USERNAME }}
+      CDSE_PASSWORD: ${{ secrets.CDSE_PASSWORD }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+      HF_MODEL_REPO: Bradipo92/campi-aperti-models
+    steps:
+      - uses: actions/checkout@v4
+      - name: GDAL e Python
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin
+          pip install -q -r pipeline/requirements.txt
+      - name: 01 scarica tasselli Crop Types
+        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python 01_scarica_crop_types.py
+      - name: 02 COG Italia e caricamento su Hugging Face
+        run: cd pipeline && python 02_cog_italia.py
+      - name: 03 superfici per blocco di 1 km
+        run: cd pipeline && python 03_conteggi_blocchi.py
+      - name: carica i blocchi su Hugging Face
+        run: cd pipeline && MODO=su CARTELLE=blocchi python hf_sync.py

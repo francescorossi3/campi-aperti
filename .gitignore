@@ -1,0 +1,4 @@
+data/*
+!data/riepiloghi.json
+pipeline/data
+__pycache__/

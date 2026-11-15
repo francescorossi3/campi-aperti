@@ -355,6 +355,9 @@ document.addEventListener("click", (e) => { if (!e.target.closest(".search")) sL
 function showTab(name) {
   document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
+  document.body.classList.toggle("wide-sidebar", name === "regions");
+  if (name === "regions") Regions.show();
+  setTimeout(() => map.invalidateSize(), 220);
 }
 document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => showTab(b.dataset.tab));
 document.getElementById("toggleSidebar").onclick = () => document.getElementById("sidebar").classList.toggle("open");
@@ -368,6 +371,7 @@ function applyLang() {
   renderLayerPanel();
   renderCatalog();
   Live.refreshLang();
+  if (document.body.classList.contains("wide-sidebar")) Regions.render();
   const info = document.getElementById("infoPanel");
   if (!clickMarker) info.innerHTML = `<p class="hint">${t("info_hint")}</p>`;
   else queryPoint(clickMarker.getLatLng());
