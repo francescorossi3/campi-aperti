@@ -67,6 +67,11 @@ w["ha"] = w["PA_EXT"].fillna(w["ART"]) if "ART" in w else w["PA_EXT"]
 w = w.rename(columns={"HP_Q_EXT": "q"})
 w["resa"] = (w.q / 10) / w.ha                    # t/ha
 w = w[(w.ha > 0) & w.resa.notna()]
+# controllo di plausibilità: scarto le rese fuori scala rispetto alla mediana della stessa coltura nella stessa provincia
+med = w.groupby(["REF_AREA", "TYPE_OF_CROP"]).resa.transform("median")
+fuori = (w.resa < 0.35 * med) | (w.resa > 3 * med)
+print("rese scartate perché non plausibili:", int(fuori.sum()))
+w = w[~fuori]
 
 # ---- 3. province: confini semplificati e abbinamento al codice ISTAT per nome
 def norma(s):
