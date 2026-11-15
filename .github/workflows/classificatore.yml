@@ -1,0 +1,55 @@
+name: Classificatore colture (dataset + addestramento)
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ["pipeline/avvia_classificatore.txt"]
+
+jobs:
+  dataset:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        anno: [2019, 2020, 2021, 2022, 2023, 2024]
+    env:
+      ANNO: ${{ matrix.anno }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests pandas pyarrow numpy scipy rasterio pyproj huggingface_hub
+      - name: 08 dataset dell'annata
+        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python 08_dataset_colture.py
+      - name: carica il dataset
+        run: cd pipeline && MODO=su CARTELLE=dataset python hf_sync.py
+
+  addestra:
+    needs: dataset
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q pandas pyarrow numpy scikit-learn huggingface_hub
+      - name: scarica i dataset
+        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && MODO=giu CARTELLE=dataset python hf_sync.py
+      - name: 09 addestramento
+        run: cd pipeline && python 09_addestra_colture.py
+      - name: salva il modello nel repository privato dei modelli
+        run: |
+          cd pipeline && python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo = "Bradipo92/campi-aperti-models"
+          api.create_repo(repo, repo_type="model", private=True, exist_ok=True)
+          api.upload_folder(folder_path="data/modelli", path_in_repo="colture", repo_id=repo, repo_type="model",
+                            commit_message="classificatore colture")
+          print("ok")
+          PY
