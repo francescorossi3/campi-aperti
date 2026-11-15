@@ -435,11 +435,11 @@ function rank(items, q) {
   }).sort((a, b) => b.rk - a.rk);
 }
 
-async function photon(q) {
+async function photon(q, extra = "") {
   const c = map.getCenter();
   const qs = q.replace(FILLER, "");
   const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(qs)}&limit=12&lang=${LANG === "it" ? "default" : "en"}` +
-    `&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}&zoom=${Math.round(map.getZoom())}&location_bias_scale=0.3&bbox=6.0,35.3,19.0,47.2`;
+    `&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}&zoom=${Math.round(map.getZoom())}&location_bias_scale=0.3&bbox=6.0,35.3,19.0,47.2${extra}`;
   const j = await fetch(url, { signal: sAbort.signal }).then((r) => r.json());
   return (j.features || []).filter((f) => !f.properties.countrycode || f.properties.countrycode === "IT").map((f) => {
     const p = f.properties, [lon, lat] = f.geometry.coordinates;
@@ -472,7 +472,10 @@ async function doSearch(q) {
   sAbort = new AbortController();
   let web = [];
   try {
-    web = sCache[q] || (sCache[q] = await photon(q).catch(() => []));
+    // per "località X" o una sola parola si cercano anche solo i luoghi abitati (città, frazioni, località)
+    const solo = FILLER.test(q) || !/\s/.test(q.trim());
+    web = sCache[q] || (sCache[q] = (await Promise.all([photon(q).catch(() => []), solo ? photon(q, "&osm_tag=place").catch(() => []) : []])).flat()
+      .filter((r, i, a) => a.findIndex((x) => x.nome === r.nome && Math.abs(x.lat - r.lat) < 0.002 && Math.abs(x.lon - r.lon) < 0.002) === i));
     if (!web.length && !loc.length) web = sCache[q] = await nominatim(q.replace(FILLER, ""));
     web = rank(web, q);
   } catch (e) { if (e.name === "AbortError") return; }

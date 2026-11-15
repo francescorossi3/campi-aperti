@@ -48,8 +48,8 @@ async def main():
         print(json.dumps(rep["pannello"], ensure_ascii=False, indent=1))
         await pg.screenshot(path=os.path.join(OUT, "browser_pannello.png"), full_page=False)
         # ricerca luoghi (mappa centrata vicino a Macerata)
-        await pg.goto("http://127.0.0.1:8770/index.html?lang=it#13/43.07/13.11/sat"); await pg.wait_for_timeout(2500)
-        for q in ["maceratta", "Località Strada", "41.86, 12.23", "Sant Angelo Lodigiano"]:
+        await pg.evaluate("map.setView([43.07, 13.11], 13)"); await pg.wait_for_timeout(1500)
+        for q in ["maceratta", "Località Strada", "Strada", "Muccia", "41.86, 12.23", "Sant Angelo Lodigiano"]:
             await pg.fill("#searchInput", q); await pg.wait_for_timeout(2500)
             rep["ricerca " + q] = (await pg.locator("#searchResults").inner_text())[:300]
             print(q, "->", rep["ricerca " + q].replace("\n", " | "))
