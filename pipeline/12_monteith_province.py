@@ -80,6 +80,11 @@ if mancano:
 print(len(rad), "province con radiazione", flush=True)
 
 
+# calendario colturale (mese inizio, mese fine) entro cui cercare la stagione: evita di sommare la ricrescita
+# di infestanti e cover crop dopo la raccolta, che gonfiava la biomassa
+CAL = {1: (2, 6), 2: (2, 6), 5: (2, 6), 7: (2, 6), 12: (2, 6), 3: (4, 9), 4: (4, 9), 10: (4, 8), 11: (5, 9), 8: (3, 8), 9: (3, 9)}
+
+
 def resa(g, cls, rs):
     g = g.sort_values("t")
     t, v = g.t.values.astype("datetime64[D]").astype(float), g.ndvi.values.copy()
@@ -106,6 +111,12 @@ def resa(g, cls, rs):
     grid, sm = grid[good], sm[good]
     if len(sm) < 10 or sm.max() < 0.45:
         return None
+    mesi = pd.to_datetime(grid.astype("datetime64[D]")).month
+    m0, m1 = CAL[cls]
+    win = (mesi >= m0) & (mesi <= m1)
+    if win.sum() < 10:
+        return None
+    sm = np.where(win, sm, -1)
     ip = int(np.argmax(sm)); a = b = ip
     while a > 0 and sm[a - 1] > 0.3: a -= 1
     while b < len(sm) - 1 and sm[b + 1] > 0.3: b += 1
