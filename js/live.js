@@ -41,6 +41,9 @@ const LT = {
     seg_prog: "Scarico le immagini: {n}/{t}…",
     seg_done: "{n} campi individuati da {d} date ({a} → {b}). Clicca su un campo.",
     crop: "Coltura stimata",
+    cty_title: "Coltura ufficiale Copernicus (HRL Crop Types)",
+    cty_loading: "Leggo la coltura Copernicus 2017–2024…",
+    cty_none: "Nessuna coltura Copernicus registrata qui (2017–2024).",
     crop_note: "Stima automatica dalla curva NDVI del campo (regole fenologiche), non verificata a terra.",
     crop_short: "Serie troppo corta per stimare la coltura: scegli un'annata intera.",
     et0: "ET0 di riferimento",
@@ -95,6 +98,9 @@ const LT = {
     seg_prog: "Downloading images: {n}/{t}…",
     seg_done: "{n} fields found from {d} dates ({a} → {b}). Click a field.",
     crop: "Estimated crop",
+    cty_title: "Official Copernicus crop (HRL Crop Types)",
+    cty_loading: "Reading the Copernicus crop 2017–2024…",
+    cty_none: "No Copernicus crop recorded here (2017–2024).",
     crop_note: "Automatic estimate from the field's NDVI curve (phenological rules), not ground-verified.",
     crop_short: "Series too short to estimate the crop: choose a full year.",
     et0: "Reference ET0",
@@ -482,6 +488,57 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     return [w, s, e, n];
   }
 
+  // ================================================================== coltura ufficiale Copernicus (HRL Crop Types) per anno
+  const CTY_ANNI = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+  const CTY_URL = (y) => `https://huggingface.co/datasets/Bradipo92/campi-aperti-data/resolve/main/crop_types/cty_${y}_italia_3035.tif`;
+  const CTY_NOMI = { 1: ["Frumento", "Wheat"], 2: ["Orzo", "Barley"], 3: ["Mais", "Maize"], 4: ["Riso", "Rice"], 5: ["Altri cereali", "Other cereals"],
+    6: ["Ortaggi", "Vegetables"], 7: ["Legumi secchi", "Dry pulses"], 8: ["Patate", "Potatoes"], 9: ["Barbabietola", "Sugar beet"], 10: ["Girasole", "Sunflower"],
+    11: ["Soia", "Soybeans"], 12: ["Colza", "Rapeseed"], 13: ["Lino/cotone/canapa", "Flax/cotton/hemp"], 14: ["Vite", "Grapes"], 15: ["Olivo", "Olives"],
+    16: ["Frutta", "Fruits"], 17: ["Frutta a guscio", "Nuts"], 18: ["Seminativo n.c.", "Unclassified annual"], 19: ["Permanente n.c.", "Unclassified permanent"], 0: ["Non agricolo", "No cropland"] };
+  if (window.proj4) proj4.defs("EPSG:3035", "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +units=m +no_defs");
+  const tiffCache = {};
+  async function cropOfYear(y, rings3035, bb) {
+    if (!tiffCache[y]) tiffCache[y] = GeoTIFF.fromUrl(CTY_URL(y), { allowFullFile: false }).then((t) => t.getImage());
+    const img = await tiffCache[y];
+    const [ox, oy] = img.getOrigin(), [rx, ry] = img.getResolution();
+    const x0 = Math.floor((bb[0] - ox) / rx), x1 = Math.ceil((bb[2] - ox) / rx);
+    const y0 = Math.floor((bb[3] - oy) / ry), y1 = Math.ceil((bb[1] - oy) / ry);
+    if (x1 - x0 > 800 || y1 - y0 > 800 || x1 <= x0 || y1 <= y0) return null;
+    const [band] = await img.readRasters({ window: [x0, y0, x1, y1], samples: [0] });
+    const W = x1 - x0, cnt = {};
+    let n = 0;
+    for (let r = 0; r < y1 - y0; r++) for (let c = 0; c < W; c++) {
+      const px = ox + (x0 + c + 0.5) * rx, py = oy + (y0 + r + 0.5) * ry;
+      if (!rings3035.some((poly) => inPoly([px, py], poly))) continue;
+      const v = band[r * W + c];
+      if (v === 255) continue;
+      cnt[v] = (cnt[v] || 0) + 1; n++;
+    }
+    if (!n) return null;
+    const [cls, k] = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    return { year: y, cls: +cls, share: k / n };
+  }
+  async function cropHistory(feature) {
+    if (!window.GeoTIFF || !window.proj4) return [];
+    const polys = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+    const rings = polys.map((poly) => poly.map((ring) => ring.map(([lo, la]) => proj4("EPSG:4326", "EPSG:3035", [lo, la]))));
+    const all = rings.flat(2);
+    const bb = [Math.min(...all.map((p) => p[0])), Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[0])), Math.max(...all.map((p) => p[1]))];
+    const res = await Promise.all(CTY_ANNI.map((y) => cropOfYear(y, rings, bb).catch(() => null)));
+    return res.filter(Boolean);
+  }
+  async function showCropHistory(my) {
+    const el = document.getElementById("fpCty");
+    if (!el) return;
+    el.innerHTML = `<span class="hint small">${lt("cty_loading")}</span>`;
+    const h = await cropHistory(current.feature);
+    if (my !== runId) return;
+    current.cty = h;
+    el.innerHTML = h.length ? `<b>${lt("cty_title")}:</b> ` + h.slice().reverse().map((r) =>
+      `<span class="cty-chip cty${r.cls}">${r.year} ${CTY_NOMI[r.cls] ? CTY_NOMI[r.cls][LANG === "it" ? 0 : 1] : r.cls} <small>${Math.round(r.share * 100)}%</small></span>`).join(" ")
+      : `<span class="hint small">${lt("cty_none")}</span>`;
+  }
+
   // ================================================================== serie temporali
   let current = null; // { feature, ll, s2:[], s1:[], meteo:{}, range }
   let range = "sm";
@@ -651,6 +708,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
         </div>
       </div>
       <div id="fpStatus" class="fp-status"></div>
+      <div id="fpCty" class="fp-cty"></div>
       <div id="fpCrop" class="fp-crop"></div>
       <div id="fpSummary" class="fp-summary"></div>
       <div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
@@ -831,12 +889,14 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     if (!current) return;
     const IK = INDEX_DEF.map((x) => x[0]);
     const E = (n) => Array(n).fill("");
+    const ctyHead = (current.cty || []).map((r) => `${r.year}:${CTY_NOMI[r.cls] ? CTY_NOMI[r.cls][0] : r.cls}(${Math.round(r.share * 100)}%)`).join(" ");
     const rows = [["source", "date", ...IK, "pixels", "vv_db", "vh_db", "orbit", "rain_mm", "tmean_c", "tmin_c", "tmax_c", "et0_mm", "forecast"]];
     (current.s2 || []).forEach((r) => rows.push(["sentinel-2", r.date, ...IK.map((k) => (isFinite(r[k]) ? r[k].toFixed(4) : "")), r.npx, ...E(9)]));
     (current.s1 || []).forEach((r) => rows.push(["sentinel-1", r.date, ...E(IK.length + 1), r.vv.toFixed(2), r.vh.toFixed(2), r.orbit, ...E(6)]));
     (current.meteo || []).forEach((r) => rows.push(["open-meteo", r.date, ...E(IK.length + 4), r.rain, r.tmean, r.tmin, r.tmax, r.et0, r.fc ? 1 : 0]));
     const head = `# Campi Aperti — lat ${current.ll.lat.toFixed(6)}, lon ${current.ll.lng.toFixed(6)}, ${areaHa(current.feature.geometry).toFixed(3)} ha` +
-      (current.crop ? `, coltura stimata: ${current.crop.label}` : "") + ` — valori Sentinel-2 = media sul campo\n`;
+      (current.crop ? `, coltura stimata: ${current.crop.label}` : "") + ` — valori Sentinel-2 = media sul campo\n` +
+      (ctyHead ? `# Copernicus HRL Crop Types: ${ctyHead}\n` : "");
     const blob = new Blob([head + rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -861,6 +921,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     setStatus(lt("loading_meteo"));
     loadMeteo(my).catch((e) => setStatus(lt("err", { e: e.message })));
     loadS2(my).catch((e) => setStatus(lt("err", { e: e.message })));
+    showCropHistory(my).catch(() => {});
   }
 
   async function onMapClick(ll) {
@@ -874,5 +935,5 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     return feature;
   }
 
-  return { makeS2Layer, makeFieldsLayer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, findField, refreshLang: () => current && run(), _debug: () => current };
+  return { cropHistory, makeS2Layer, makeFieldsLayer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, findField, refreshLang: () => current && run(), _debug: () => current };
 })();

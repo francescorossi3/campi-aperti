@@ -115,6 +115,10 @@ h1, h3, h4 { font-family: Fraunces, Georgia, serif; font-weight: 600; }
 .primary-btn { background: var(--green); color: #fff; border: 0; border-radius: 8px; padding: 7px 12px; cursor: pointer; font: inherit; font-weight: 600; margin-top: 6px; }
 .primary-btn:disabled { opacity: .5; cursor: wait; }
 .seg-overlay { image-rendering: pixelated; }
+.fp-cty { font-size: 12.5px; margin: 4px 0 2px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.cty-chip { background: #fff6dd; border: 1px solid #ecd9a3; border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
+.cty-chip small { color: var(--muted); }
+.cty1, .cty2, .cty5 { background: #fbecc0; } .cty3 { background: #fde3a7; } .cty14 { background: #ecd6f0; } .cty15 { background: #dde9c9; } .cty0 { background: #eee; }
 .fp-crop { background: #eef5e9; border: 1px solid #cfe2c5; border-radius: 8px; padding: 6px 10px; margin: 4px 0 6px; font-size: 13px; }
 .fp-crop small { color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
