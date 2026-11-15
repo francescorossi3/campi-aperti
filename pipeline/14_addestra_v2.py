@@ -56,7 +56,7 @@ def prob(modelli, X, classi):
 def addestra(d, f, seed=0):
     X, y = d[f].values.astype("float32"), d.classe.values
     out = [("lgb", lgbm(X, y, seed))]
-    sub = d.groupby("classe", group_keys=False).apply(lambda g: g.sample(min(len(g), 6000), random_state=seed))
+    sub = d.sample(frac=1, random_state=seed).groupby("classe").head(6000)
     out.append(("mlp", mlp(sub[f].values.astype("float32"), sub.classe.values, seed)))
     return out
 

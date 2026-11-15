@@ -27,7 +27,7 @@ print(ds.classe.value_counts().sort_index().to_dict())
 
 def bilancia(d, seed):
     # al massimo PER_CLASSE esempi per classe e annata (le classi rare restano tutte)
-    return d.groupby(["classe", "anno"], group_keys=False).apply(lambda g: g.sample(min(len(g), PER_CLASSE), random_state=seed))
+    return d.sample(frac=1, random_state=seed).groupby(["classe", "anno"]).head(PER_CLASSE)
 
 def addestra(d, seed):
     X, y = d[feat].values.astype("float32"), d.classe.values

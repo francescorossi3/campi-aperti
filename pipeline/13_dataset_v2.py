@@ -48,7 +48,7 @@ for c, q in quota.items():
         continue
     d["peso"] = d[f"c{c}"] / d.tot
     d = d.sort_values("peso", ascending=False).groupby("regione").head(3)          # varietà geografica
-    d = d.sample(min(q, len(d)), weights=d.peso, random_state=int(rng.integers(1e6)))
+    d = d.assign(_r=rng.random(len(d)) ** (1 / d.peso.clip(lower=1e-3))).nlargest(min(q, len(d)), "_r")   # campione pesato senza ripetizioni
     for r in d.itertuples():
         if all(abs(r.x - x) > LATO or abs(r.y - y) > LATO for x, y, *_ in scelti):
             scelti.append((r.x, r.y, r.regione, c))
@@ -184,7 +184,7 @@ for zi, (cx, cy, regione, c_z) in enumerate(scelti):
     df["lat"] = to4326.transform(XX[m], YY[m])[1]
     df["classe"], df["zona"], df["regione"], df["anno"] = y_lab[m], f"z{zi:03d}", regione, ANNO
     if len(df) > 4000:
-        df = df.groupby("classe", group_keys=False).apply(lambda g: g.sample(min(len(g), 1500), random_state=0))
+        df = df.sample(frac=1, random_state=0).groupby("classe").head(1500)
     parti.append(df.astype({c: "float32" for c in cols}))
     print(f"[{zi + 1}/{len(scelti)}] {regione} ({c_z}): S2 {len(cubo)} date, S1 {len(c1)}, {len(df)} pixel, {time.time() - t0:.0f} s", flush=True)
 
