@@ -25,6 +25,8 @@ h1, h3, h4 { font-family: Fraunces, Georgia, serif; font-weight: 600; }
 .search-results { position: absolute; top: 40px; left: 0; right: 0; background: #fff; color: var(--ink); list-style: none; margin: 0; padding: 4px 0; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.2); max-height: 320px; overflow: auto; }
 .search-results li { padding: 8px 12px; cursor: pointer; font-size: 13px; }
 .search-results li:hover, .search-results li.sel { background: #f1efe6; }
+.search-results li small { color: var(--muted); }
+.search-results .s-tipo { font-size: 11px; color: #fff; background: var(--green-2); border-radius: 8px; padding: 0 6px; margin-left: 4px; }
 .lang { display: flex; border: 1px solid rgba(255,255,255,.4); border-radius: 8px; overflow: hidden; }
 .lang button { background: none; color: #fff; border: 0; padding: 6px 10px; cursor: pointer; font: inherit; font-weight: 600; }
 .lang button.active { background: var(--wheat); color: var(--green); }
@@ -126,6 +128,8 @@ h1, h3, h4 { font-family: Fraunces, Georgia, serif; font-weight: 600; }
 .crop-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
 .cmp-fig figcaption { display: flex; justify-content: space-between; align-items: center; }
 .cmp-fig .norm { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+.fp-fieldyield { font-size: 13px; margin: 4px 0; }
+.fp-fieldyield .big { font-size: 17px; font-weight: 700; color: var(--green); }
 .fp-yield { font-size: 12.5px; margin: 4px 0 6px; background: #f4f1e7; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
 table.mini { border-collapse: collapse; font-size: 11.5px; margin: 6px 0 2px; }
 table.mini th, table.mini td { padding: 2px 6px; border-bottom: 1px solid var(--line); text-align: right; }
@@ -146,6 +150,8 @@ table.mini td:first-child, table.mini th:first-child { text-align: left; }
 .fp-ctrl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .seg { border: 1px solid var(--line); background: var(--card); border-radius: 14px; padding: 3px 10px; cursor: pointer; font: inherit; font-size: 12px; }
 .seg.active { background: var(--green); color: #fff; border-color: var(--green); }
+.fp-dates { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.fp-dates input { font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 4px; }
 .icon-x { border: 0; background: none; font-size: 22px; cursor: pointer; color: var(--muted); line-height: 1; padding: 0 4px; }
 .fp-status { font-size: 12px; color: #8a5b10; min-height: 16px; margin: 2px 0; }
 .fp-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 6px; }

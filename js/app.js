@@ -340,31 +340,102 @@ async function queryPoint(ll) {
 
 }
 
-// ------------------------------------------------------------------ ricerca indirizzi (Nominatim)
+// ------------------------------------------------------------------ ricerca luoghi
+// 1) coordinate incollate ("41.86, 12.23" o "41°51'N 12°14'E"); 2) Photon (komoot, suggerimenti mentre si scrive,
+// tollera errori e nomi parziali, priorità all'Italia); 3) Nominatim come riserva.
 const sInput = document.getElementById("searchInput"), sList = document.getElementById("searchResults");
-let sTimer = null, sItems = [];
+let sTimer = null, sItems = [], sSel = -1, sAbort = null, sMarker = null;
+const sCache = {};
+const TIPI = {
+  it: { city: "città", town: "comune", village: "paese", hamlet: "frazione", locality: "località", suburb: "quartiere", street: "via",
+        house: "indirizzo", county: "provincia", state: "regione", district: "zona", farm: "azienda agricola", farmland: "terreno agricolo",
+        vineyard: "vigneto", orchard: "frutteto", peak: "monte", water: "acqua", coords: "coordinate" },
+  en: { city: "city", town: "town", village: "village", hamlet: "hamlet", locality: "locality", suburb: "suburb", street: "street",
+        house: "address", county: "province", state: "region", district: "district", farm: "farm", farmland: "farmland",
+        vineyard: "vineyard", orchard: "orchard", peak: "peak", water: "water", coords: "coordinates" },
+};
+function parseCoords(q) {
+  const dms = q.match(/(\d+)[°\s]+(\d+)['\s]+([\d.]+)?"?\s*([NS])[,\s]+(\d+)[°\s]+(\d+)['\s]+([\d.]+)?"?\s*([EOW])/i);
+  if (dms) {
+    const lat = (+dms[1] + dms[2] / 60 + (+dms[3] || 0) / 3600) * (/S/i.test(dms[4]) ? -1 : 1);
+    const lon = (+dms[5] + dms[6] / 60 + (+dms[7] || 0) / 3600) * (/W/i.test(dms[8]) ? -1 : 1);
+    return { lat, lon };
+  }
+  const m = q.match(/^\s*(-?\d{1,2}(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:[.,]\d+)?)\s*$/);
+  if (!m) return null;
+  const lat = +m[1].replace(",", "."), lon = +m[2].replace(",", ".");
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : null;
+}
+async function photon(q) {
+  const c = map.getCenter();
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=${LANG === "it" ? "default" : "en"}` +
+    `&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}&bbox=6.0,35.3,19.0,47.2`;
+  const j = await fetch(url, { signal: sAbort.signal }).then((r) => r.json());
+  return (j.features || []).filter((f) => !f.properties.countrycode || f.properties.countrycode === "IT").map((f) => {
+    const p = f.properties, [lon, lat] = f.geometry.coordinates;
+    const nome = [p.name, p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street].filter(Boolean)[0] || p.city || "";
+    const dove = [p.city !== nome ? p.city : null, p.county, p.state].filter(Boolean).join(", ");
+    const tipo = p.type === "other" ? p.osm_value : p.type;
+    return { nome, dove, tipo, lat, lon, ext: p.extent ? [p.extent[1], p.extent[0], p.extent[3], p.extent[2]] : null };
+  });
+}
+async function nominatim(q) {
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=it&limit=8&addressdetails=1&accept-language=${LANG}&q=${encodeURIComponent(q)}`;
+  const j = await fetch(url, { signal: sAbort.signal }).then((r) => r.json());
+  return j.map((r) => {
+    const a = r.address || {}, bb = r.boundingbox.map(Number);
+    return { nome: r.name || r.display_name.split(",")[0], dove: [a.city || a.town || a.village, a.county, a.state].filter(Boolean).join(", "),
+      tipo: r.addresstype || r.type, lat: +r.lat, lon: +r.lon, ext: [bb[0], bb[2], bb[1], bb[3]] };
+  });
+}
 async function doSearch(q) {
-  if (q.trim().length < 3) { sList.hidden = true; return; }
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=it&limit=6&accept-language=${LANG}&q=${encodeURIComponent(q)}`;
+  q = q.trim();
+  sSel = -1;
+  if (q.length < 2) { sList.hidden = true; return; }
+  const co = parseCoords(q);
+  if (co) { sItems = [{ nome: `${co.lat.toFixed(5)}, ${co.lon.toFixed(5)}`, dove: "", tipo: "coords", lat: co.lat, lon: co.lon }]; renderResults(); return; }
+  if (sAbort) sAbort.abort();
+  sAbort = new AbortController();
   try {
-    sItems = await fetch(url).then((r) => r.json());
-    sList.innerHTML = sItems.length ? sItems.map((r, i) => `<li data-i="${i}">${escapeHtml(r.display_name)}</li>`).join("")
-      : `<li>${t("search_none")}</li>`;
-    sList.hidden = false;
-    sList.querySelectorAll("li[data-i]").forEach((li) => li.onclick = () => goTo(sItems[+li.dataset.i]));
-  } catch (e) { sList.hidden = true; }
+    sItems = sCache[q] || (sCache[q] = await photon(q).catch(() => []));
+    if (!sItems.length) sItems = sCache[q] = await nominatim(q);
+  } catch (e) { if (e.name === "AbortError") return; sItems = []; }
+  renderResults();
+}
+function renderResults() {
+  const tip = (t) => (TIPI[LANG] && TIPI[LANG][t]) || t || "";
+  sList.innerHTML = sItems.length ? sItems.map((r, i) =>
+    `<li data-i="${i}" class="${i === sSel ? "sel" : ""}"><b>${escapeHtml(r.nome)}</b> <span class="s-tipo">${escapeHtml(tip(r.tipo))}</span>` +
+    (r.dove ? `<br><small>${escapeHtml(r.dove)}</small>` : "") + `</li>`).join("") : `<li>${t("search_none")}</li>`;
+  sList.hidden = false;
+  sList.querySelectorAll("li[data-i]").forEach((li) => (li.onmousedown = (e) => { e.preventDefault(); goTo(sItems[+li.dataset.i]); }));
 }
 function goTo(r) {
   sList.hidden = true;
-  sInput.value = r.display_name;
-  const bb = r.boundingbox.map(Number); // [s, n, w, e]
-  map.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { maxZoom: 17 });
+  sInput.value = r.nome + (r.dove ? ", " + r.dove : "");
+  const zoomTipo = { house: 18, street: 17, farm: 16, farmland: 16, vineyard: 16, orchard: 16, hamlet: 15, locality: 15, village: 14, suburb: 14, town: 13, city: 12, district: 12, county: 10, state: 8, coords: 16 };
+  if (r.ext && !["house", "street", "coords"].includes(r.tipo)) map.fitBounds([[r.ext[0], r.ext[1]], [r.ext[2], r.ext[3]]], { maxZoom: zoomTipo[r.tipo] || 16 });
+  else map.setView([r.lat, r.lon], zoomTipo[r.tipo] || 16);
+  if (sMarker) map.removeLayer(sMarker);
+  sMarker = L.circleMarker([r.lat, r.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 0.9 }).addTo(map);
+  setTimeout(() => { if (sMarker) { map.removeLayer(sMarker); sMarker = null; } }, 8000);
 }
-sInput.addEventListener("input", () => { clearTimeout(sTimer); sTimer = setTimeout(() => doSearch(sInput.value), 600); });
-document.getElementById("searchForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  if (sItems[0] && !sList.hidden) goTo(sItems[0]); else doSearch(sInput.value);
+sInput.addEventListener("input", () => { clearTimeout(sTimer); sTimer = setTimeout(() => doSearch(sInput.value), 250); });
+sInput.addEventListener("keydown", (e) => {
+  if (sList.hidden || !sItems.length) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    sSel = (sSel + (e.key === "ArrowDown" ? 1 : -1) + sItems.length) % sItems.length;
+    renderResults();
+  } else if (e.key === "Escape") sList.hidden = true;
 });
+document.getElementById("searchForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  clearTimeout(sTimer);
+  if (!sItems.length || sList.hidden) await doSearch(sInput.value);
+  if (sItems.length) goTo(sItems[Math.max(0, sSel)]);
+});
+sInput.addEventListener("focus", () => { if (sItems.length && sInput.value.trim().length >= 2) sList.hidden = false; });
 document.addEventListener("click", (e) => { if (!e.target.closest(".search")) sList.hidden = true; });
 
 // ------------------------------------------------------------------ tab, lingua, mobile

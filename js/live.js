@@ -47,6 +47,11 @@ const LT = {
     cty_none: "Nessuna coltura Copernicus registrata qui (2017–2024).",
     cty_dubbio: "Probabile errore di classificazione",
     y_title: "Resa media ISTAT in provincia di {p}:",
+    fy_title: "Resa stimata di questo campo ({c}, {y})",
+    fy_range: "intervallo plausibile",
+    fy_vs: "media provinciale ISTAT {r} t/ha: questo campo {x}%",
+    fy_none: "Resa del campo non stimabile per questa coltura o annata (serve un seminativo con stagione intera nell'intervallo scelto).",
+    fy_note: "Modello a efficienza d'uso della radiazione (Monteith): radiazione solare ERA5 × frazione assorbita dalla coltura (dall'NDVI del campo) × efficienza e indice di raccolto tipici della coltura, su {d} giorni di stagione ({a} → {b}); coltura da {f}. Non è una misura: l'errore tipico è del 20–30%.",
     y_year: "Anno",
     y_species: "Frutteti in provincia di {p} (quota di superficie, indica la specie più probabile):",
     y_note: "Rese provinciali ISTAT (produzione raccolta / superficie in produzione); gli ultimi anni sono provvisori. Non è la resa di questo campo.",
@@ -76,6 +81,7 @@ const LT = {
     field_src: "Confine: Fields of The World 2025 (valori = media su tutto il campo)",
     area: "Superficie",
     from_sm: "Da San Martino",
+    from: "dal", to: "al", apply: "Applica",
     from_jan: "Dal 1° gennaio",
     last12: "Ultimi 12 mesi",
     radar: "Aggiungi radar Sentinel-1",
@@ -120,6 +126,11 @@ const LT = {
     cty_none: "No Copernicus crop recorded here (2017–2024).",
     cty_dubbio: "Likely classification error",
     y_title: "ISTAT average yield in the province of {p}:",
+    fy_title: "Estimated yield of this field ({c}, {y})",
+    fy_range: "plausible range",
+    fy_vs: "ISTAT provincial mean {r} t/ha: this field {x}%",
+    fy_none: "Field yield cannot be estimated for this crop or season (needs an arable crop with a full season in the chosen interval).",
+    fy_note: "Radiation-use-efficiency model (Monteith): ERA5 solar radiation × fraction absorbed by the crop (from the field NDVI) × typical crop efficiency and harvest index, over {d} season days ({a} → {b}); crop from {f}. Not a measurement: typical error 20–30%.",
     y_year: "Year",
     y_species: "Orchards in the province of {p} (share of area, indicates the most likely species):",
     y_note: "ISTAT provincial yields (harvested production / area in production); latest years are provisional. Not the yield of this field.",
@@ -149,6 +160,7 @@ const LT = {
     field_src: "Boundary: Fields of The World 2025 (values = mean over the whole field)",
     area: "Area",
     from_sm: "Since St Martin's Day",
+    from: "from", to: "to", apply: "Apply",
     from_jan: "Since 1 January",
     last12: "Last 12 months",
     radar: "Add Sentinel-1 radar",
@@ -607,12 +619,74 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const ha = rr.reduce((a, r) => a + r[3], 0), t = rr.reduce((a, r) => a + r[4], 0);
     return ha ? { resa: t / ha, ha, dettaglio: rr.map((r) => ({ c: r[1], ha: r[3], resa: r[5] })).sort((a, b) => b.ha - a.ha) } : null;
   }
+  // ---- resa stimata del campo: modello a efficienza d'uso della radiazione (Monteith)
+  // biomassa = Σ RUE × fAPAR × PAR ; resa = biomassa × indice di raccolto / (1 − umidità commerciale)
+  // fAPAR = 1,24·NDVI − 0,168 (Myneni & Williams 1994); PAR = 0,48 × radiazione globale (ERA5)
+  // RUE (g di sostanza secca per MJ di PAR assorbita) e indice di raccolto: valori tipici di letteratura.
+  const RESA_PAR = {
+    1: { rue: 2.8, hi: 0.45, u: 0.13, n: ["frumento", "wheat"] }, 2: { rue: 2.7, hi: 0.45, u: 0.13, n: ["orzo", "barley"] },
+    3: { rue: 3.8, hi: 0.50, u: 0.155, n: ["mais", "maize"] }, 4: { rue: 2.6, hi: 0.45, u: 0.14, n: ["riso", "rice"] },
+    5: { rue: 2.6, hi: 0.40, u: 0.13, n: ["altri cereali", "other cereals"] }, 7: { rue: 2.0, hi: 0.35, u: 0.13, n: ["legumi", "pulses"] },
+    8: { rue: 2.8, hi: 0.75, u: 0.78, n: ["patate (tuberi freschi)", "potatoes (fresh tubers)"] },
+    9: { rue: 3.2, hi: 0.65, u: 0.77, n: ["barbabietola (radici fresche)", "sugar beet (fresh roots)"] },
+    10: { rue: 2.4, hi: 0.33, u: 0.09, n: ["girasole", "sunflower"] }, 11: { rue: 2.0, hi: 0.40, u: 0.13, n: ["soia", "soybean"] },
+    12: { rue: 2.3, hi: 0.30, u: 0.09, n: ["colza", "rapeseed"] },
+  };
+  function fieldYield(cls) {
+    const P = RESA_PAR[cls];
+    const sm = smooth("ndvi");
+    const met = (current.meteo || []).filter((r) => !r.fc && r.rad != null);
+    if (!P || sm.length < 10 || met.length < 60) return null;
+    // stagione della coltura: tratto continuo attorno al picco con NDVI smussato > 0,3
+    let ip = 0; sm.forEach((p, i) => { if (p.y > sm[ip].y) ip = i; });
+    if (sm[ip].y < 0.45) return null;
+    let a = ip, b = ip;
+    while (a > 0 && sm[a - 1].y > 0.3) a--;
+    while (b < sm.length - 1 && sm[b + 1].y > 0.3) b++;
+    const t0 = sm[a].x, t1 = sm[b].x;
+    const ndviAt = (t) => { let j = 0; while (j < sm.length - 1 && sm[j + 1].x < t) j++; const p = sm[j], q = sm[Math.min(j + 1, sm.length - 1)];
+      return q.x > p.x ? p.y + ((t - p.x) / (q.x - p.x)) * (q.y - p.y) : p.y; };
+    let bio = 0, giorni = 0;
+    met.forEach((r) => { if (r.t >= t0 && r.t <= t1) { const fapar = Math.min(0.95, Math.max(0, 1.24 * ndviAt(r.t) - 0.168)); bio += P.rue * fapar * 0.48 * r.rad; giorni++; } });
+    if (giorni < 40) return null;
+    const resa = (bio * P.hi) / 100 / (1 - P.u);          // g/m² -> t/ha, a umidità commerciale
+    return { resa, giorni, t0, t1, nome: P.n[LANG === "it" ? 0 : 1], bio: bio / 100 };
+  }
+  // classe della coltura per l'annata mostrata: Copernicus se esiste per quell'anno, altrimenti stima fenologica
+  function classeAnnata() {
+    const y = endDate(range).getUTCFullYear();
+    const c = (current.cty || []).find((r) => r.year === y && !r.dubbio);
+    if (c) return { cls: c.cls, fonte: "Copernicus", anno: y };
+    const lab = current.crop && current.crop.label ? current.crop.label.toLowerCase() : "";
+    const map = [[/frumento|wheat|cereale autunno|winter cereal/, 1], [/mais|maize/, 3], [/riso|rice/, 4], [/girasole|sunflower|soia|soy|estiva|summer/, 10]];
+    const m = map.find(([re]) => re.test(lab));
+    return m ? { cls: m[1], fonte: LANG === "it" ? "stima fenologica" : "phenology estimate", anno: y } : null;
+  }
+  function drawFieldYield() {
+    const el = document.getElementById("fpFieldYield");
+    if (!el) return;
+    const ca = classeAnnata();
+    const y = ca && fieldYield(ca.cls);
+    if (!y) { el.innerHTML = ca ? `<span class="hint small">${lt("fy_none")}</span>` : ""; return; }
+    let conf = "";
+    if (RESE_DATA && PROV) {
+      const pv = provinceAt(current.ll), ist = pv && pv.nuts && (resaClasse(RESE_DATA, pv.nuts, ca.cls, ca.anno) || resaClasse(RESE_DATA, pv.nuts, ca.cls, ca.anno - 1));
+      if (ist) { const r = y.resa / ist.resa; conf = ` · ${lt("fy_vs").replace("{p}", pv.prov_name).replace("{r}", ist.resa.toFixed(1)).replace("{x}", (r >= 1 ? "+" : "") + Math.round((r - 1) * 100))}`; }
+    }
+    current.fieldYield = { ...y, classe: ca.cls };
+    el.innerHTML = `<b>${lt("fy_title").replace("{c}", y.nome).replace("{y}", ca.anno)}:</b> <span class="big">${y.resa.toFixed(1)} t/ha</span>
+      <small>(${lt("fy_range")} ${(y.resa * 0.7).toFixed(1)}–${(y.resa * 1.3).toFixed(1)})</small>${conf}
+      <div class="hint small">${lt("fy_note").replace("{d}", y.giorni).replace("{a}", fmtDate(y.t0)).replace("{b}", fmtDate(y.t1)).replace("{f}", ca.fonte)}</div>`;
+  }
+  let RESE_DATA = null;
+
   async function showYields(my) {
     const el = document.getElementById("fpYield");
     if (!el) return;
     const R = await loadRese();
     if (!R || my !== runId) return;
     if (!R.rows) R.rows = R.righe;
+    RESE_DATA = R; drawFieldYield();
     const pv = provinceAt(current.ll);
     if (!pv || !pv.nuts) { el.innerHTML = ""; return; }
     const cname = (c) => (R.colture[c] ? R.colture[c][LANG] : c);
@@ -642,6 +716,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   let current = null; // { feature, ll, s2:[], s1:[], meteo:{}, range }
   let range = "sm";
   let year = null; // annata scelta (null = automatica)
+  let customStart = null, customEnd = null; // intervallo libero scelto dall'utente
   let charts = {};
   let runId = 0;
 
@@ -657,12 +732,14 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   const selYear = () => year ?? defaultYear(range);
   function startDate(r) {
     const now = new Date();
+    if (r === "custom" && customStart) return customStart;
     if (r === "12m") return new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), now.getUTCDate()));
     const Y = selYear();
     return r === "jan" ? new Date(Date.UTC(Y, 0, 1)) : new Date(Date.UTC(Y, 10, 11));
   }
   function endDate(r) {
     const now = new Date();
+    if (r === "custom" && customEnd) return customEnd < now ? customEnd : now;
     if (r === "12m") return now;
     const Y = selYear();
     const e = r === "jan" ? new Date(Date.UTC(Y, 11, 31)) : new Date(Date.UTC(Y + 1, 10, 10));
@@ -797,14 +874,15 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const ll = current.ll, start = startDate(range), end = endDate(range);
     const recent = new Date(Date.now() - 6 * 86400000);
     const archEnd = end < recent ? end : recent;
-    const vars = "precipitation_sum,temperature_2m_mean,temperature_2m_max,temperature_2m_min,et0_fao_evapotranspiration";
+    const vars = "precipitation_sum,temperature_2m_mean,temperature_2m_max,temperature_2m_min,et0_fao_evapotranspiration,shortwave_radiation_sum";
     const out = {};
     const add = (j, fc) => {
       if (!j || !j.daily) return;
       j.daily.time.forEach((d, i) => {
         if (out[d] && !fc) return;
         out[d] = { date: d, t: Date.parse(d), rain: j.daily.precipitation_sum[i], tmean: j.daily.temperature_2m_mean[i],
-          tmax: j.daily.temperature_2m_max[i], tmin: j.daily.temperature_2m_min[i], et0: j.daily.et0_fao_evapotranspiration[i], fc: false };
+          tmax: j.daily.temperature_2m_max[i], tmin: j.daily.temperature_2m_min[i], et0: j.daily.et0_fao_evapotranspiration[i],
+          rad: j.daily.shortwave_radiation_sum ? j.daily.shortwave_radiation_sum[i] : null, fc: false };
       });
     };
     const lat = ll.lat.toFixed(4), lon = ll.lng.toFixed(4);
@@ -833,7 +911,10 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
           <span class="fp-src">${f.properties._square ? lt("no_field") : f.properties._seg ? lt("field_seg") : lt("field_src")}</span></div>
         <div class="fp-ctrl">
           ${["sm", "jan", "12m"].map((r) => `<button class="seg ${r === range ? "active" : ""}" data-r="${r}">${lt(r === "sm" ? "from_sm" : r === "jan" ? "from_jan" : "last12")}</button>`).join("")}
-          ${range !== "12m" ? `<select id="fpYear" class="seg">${yearOptions()}</select>` : ""}
+          ${range === "sm" || range === "jan" ? `<select id="fpYear" class="seg">${yearOptions()}</select>` : ""}
+          <span class="fp-dates">${lt("from")} <input type="date" id="fpFrom" min="2016-01-01" max="${iso(new Date())}" value="${iso(startDate(range))}">
+            ${lt("to")} <input type="date" id="fpTo" min="2016-01-01" max="${iso(new Date())}" value="${iso(endDate(range))}">
+            <button class="seg ${range === "custom" ? "active" : ""}" id="fpApply">${lt("apply")}</button></span>
           <button id="fpRadar" class="small-btn">${lt("radar")}</button>
           <button id="fpCsv" class="small-btn">${lt("csv")}</button>
           <button id="fpClose" class="icon-x" title="${lt("close")}">×</button>
@@ -842,6 +923,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       <div id="fpStatus" class="fp-status"></div>
       <div id="fpCty" class="fp-cty"></div>
       <div id="fpCrop" class="fp-crop"></div>
+      <div id="fpFieldYield" class="fp-fieldyield"></div>
       <div id="fpYield" class="fp-yield"></div>
       <div id="fpSummary" class="fp-summary"></div>
       <div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
@@ -861,6 +943,11 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     document.body.classList.add("fp-open");
     setTimeout(() => map.invalidateSize(), 50);
     panel().querySelectorAll("button.seg").forEach((b) => (b.onclick = () => { range = b.dataset.r; year = null; run(); }));
+    document.getElementById("fpApply").onclick = () => {
+      const a = document.getElementById("fpFrom").value, b = document.getElementById("fpTo").value;
+      if (!a || !b || a >= b) return;
+      customStart = new Date(a + "T00:00:00Z"); customEnd = new Date(b + "T23:59:59Z"); range = "custom"; run();
+    };
     const ys = document.getElementById("fpYear");
     if (ys) ys.onchange = () => { year = +ys.value; run(); };
     document.getElementById("fpClose").onclick = close;
@@ -1120,6 +1207,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       last ? `<span><em>${lt("sum_last")}</em><b>${last.ndvi.toFixed(2)}</b> <small>${fmtDate(last.t)}</small></span>` : "",
       max ? `<span><em>${lt("sum_max")}</em><b>${max.ndvi.toFixed(2)}</b> <small>${fmtDate(max.t)}</small></span>` : "",
     ].join("");
+    drawFieldYield();
     const cb = document.getElementById("fpCrop");
     if (cb) {
       const c = classifyCrop(s2);
@@ -1127,6 +1215,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       cb.innerHTML = c ? `<b>${lt("crop")}:</b> ${c.label} <small>(${c.why}${c.conf && c.conf !== "—" ? `; ${LANG === "it" ? "affidabilità" : "confidence"} ${c.conf}` : ""})</small><div class="hint small">${lt("crop_note")}</div>`
         : (s2.length ? `<span class="hint small">${lt("crop_short")}</span>` : "");
     }
+    drawFieldYield();
   }
 
   function exportCsv() {
