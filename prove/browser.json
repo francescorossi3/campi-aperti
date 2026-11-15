@@ -1,7 +1,7 @@
 {
  "lodi": {
   "ok": true,
-  "s": 6.124299999999995,
+  "s": 4.710300000000003,
   "campi": 178,
   "date": [
    "2026-09-27"
@@ -11,7 +11,7 @@
  },
  "maccarese": {
   "ok": true,
-  "s": 6.991800000000003,
+  "s": 6.3485999999999985,
   "campi": 73,
   "date": [
    "2026-07-05"
@@ -21,7 +21,7 @@
  },
  "muccese": {
   "ok": true,
-  "s": 5.979699999999997,
+  "s": 4.945400000000009,
   "campi": 149,
   "date": [
    "2026-08-27"
@@ -30,13 +30,13 @@
   "H": 512
  },
  "copernicus_campo": "35 date, media di circa 4 pixel Copernicus sul campo.",
- "avvisi": "Avvisi per la coltura coltura del campo non determinata: disegna il campo (✏️) e indica la coltura per avere gli avvisi.",
- "modello_annata_corrente": "Modello di riconoscimento non disponibile.",
- "modello_2024": "Modello di riconoscimento non disponibile.",
+ "avvisi": "Avvisi per la coltura: Mais\nGradi giorno dal 1° aprile (base 10 °C)\n742 °C·giorno: un mais classe 500–600 FAO ne chiede circa 1500–1700 dalla semina alla maturazione.\n\nRischi stimati solo dal meteo (Open-Meteo, ERA5 e previsioni) con modelli pubblicati: non sono diagnosi. Verifica in campo e segui i bollettini fitosanitari della tua regione.",
+ "modello_annata_corrente": "Coltura riconosciuta dal modello (annata 2025/26): Mais \nMais 100%\nRiso 0%\nSoia 0%\nModello Campi Aperti v2 (3 reti neurali addestrate su etichette Copernicus 2019–2024; accuratezza su zone mai viste circa 74%): 10 mesi Sentinel-2, 181 immagini radar.",
+ "modello_2024": "Coltura riconosciuta dal modello (annata 2023/24): Mais \nMais 98%\nFrutta 1%\nSoia 1%\nModello Campi Aperti v2 (3 reti neurali addestrate su etichette Copernicus 2019–2024; accuratezza su zone mai viste circa 74%): 10 mesi Sentinel-2, 88 immagini radar.",
  "copernicus": "Coltura ufficiale Copernicus (HRL Crop Types):\n2024 Mais 99%\n2023 Mais 100%\n2022 Mais 99%\n2021 Mais 100%\n2020 Mais 100%\n2019 Mais 99%\n2018 Non agricolo 88%\n2017 Mais 99%",
  "pannello": {
   "titolo": "Campo · Superficie 28.49 ha Confine: modello Delineate Anything (YOLO) su Sentinel-2 (valori = media su tutto il campo)",
-  "suolo": "Suolo (0–30 cm) franco\nSabbia 39%\nLimo 39%\nArgilla 22%\nCarbonio organico 24.5 g/kg\nAzoto totale 2.33 g/kg\nC/N 10.5\npH 6.9\nCSC 19 cmol/kg\nAcqua disponibile 149 mm/m\nISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
+  "suolo": "Il servizio SoilGrids è lento, riprovo…",
   "resa": "Resa stimata di questo campo (mais, 2024): 5.3 t/ha (intervallo plausibile 3.7–6.8; tarata sulle rese ISTAT, fattore 0.47) · media provinciale ISTAT 9.6 t/ha: questo campo +15%\nModello idrico FAO-33: 11.8 t/ha (acqua disponibile nelle radici 179 mm; consumo reale 99% del potenziale; 1 giorni di stress; resa raggiungibile in provincia 12.0 t/ha)\nModello a efficienza d'uso della radiazione (Monteith): radiazione solare ERA5 × frazione assorbita dalla coltura (dall'NDVI del campo) × efficienza e indice di raccolto tipici della coltura, su 97 giorni di stagione (26 lug → 30 ott); coltura da Copernicus. Non è una misura: l'errore tipico è del 20–30%.",
   "stato": "",
   "mappa": "2853 pixel da 10 m · media 0.573 · deviazione standard 0.043 · variabilità 8%"
@@ -77,8 +77,6 @@
   "Campi divisi per colture diverse: 40",
   "Campi divisi per colture diverse: 20",
   "Campi divisi per colture diverse: 50",
-  "Campi divisi per colture diverse: 40",
-  "Failed to load resource: the server responded with a status of 502 ()",
-  "Failed to load resource: the server responded with a status of 404 ()"
+  "Campi divisi per colture diverse: 40"
  ]
 }
