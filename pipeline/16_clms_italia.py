@@ -23,7 +23,7 @@ TOKEN_URL = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/
 ITALIA = (6.5, 35.4, 18.6, 47.1)
 CFG = {   # filtro sul nome del prodotto, parola chiave del file da leggere
     "LAI": ("c_gls_LAI300-RT", "-LAI-"), "FAPAR": ("c_gls_FAPAR300-RT", "-FAPAR-"), "FCOVER": ("c_gls_FCOVER300-RT", "-FCOVER-"),
-    "NDVI": ("c_gls_NDVI300_", "NDVI"), "GDMP": ("c_gls_GDMP300-RT", "-GDMP-"), "SWI": ("c_gls_SWI_", "SWI-010"), "SSM": ("c_gls_SSM1km_", "SSM"),
+    "NDVI": ("c_gls_NDVI300_", "NDVI"), "GDMP": ("c_gls_GDMP300-RT", "-GDMP-"), "SWI": ("c_gls_SWI_", "SWI010"), "SSM": ("c_gls_SSM1km_", "SSM"),
 }
 ESCLUDI = ("QFLAG", "RMSE", "NOBS", "LAFTER", "LBEFORE", "LENGTH", "NOISE", "STD", "FLAG", "UNC")
 filtro, chiave = CFG[PRODOTTO]
@@ -58,7 +58,8 @@ for p in prodotti:
     rt = int(p["Name"].split("-RT")[1][0]) if "-RT" in p["Name"] else 0
     if dec not in per_dec or rt > per_dec[dec][0]:
         per_dec[dec] = (rt, p)
-da_fare = [(d, v[1]) for d, v in sorted(per_dec.items()) if d not in presenti]
+forza = PRODOTTO in os.environ.get("FORZA", "").split(",")          # rielabora anche i file già presenti
+da_fare = [(d, v[1]) for d, v in sorted(per_dec.items()) if forza or d not in presenti]
 print(PRODOTTO, len(prodotti), "prodotti,", len(per_dec), "decadi,", len(da_fare), "da elaborare", flush=True)
 
 tok, t_tok = token(), time.time()

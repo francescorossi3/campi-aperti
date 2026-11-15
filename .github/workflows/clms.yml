@@ -1,6 +1,10 @@
 name: Variabili biogeofisiche Copernicus (Italia)
 on:
   workflow_dispatch:
+    inputs:
+      forza:
+        description: "Prodotti da rielaborare da capo (es. SWI,LAI)"
+        default: ""
   schedule:
     - cron: "23 5 */3 * *"
   push:
@@ -17,6 +21,7 @@ jobs:
         prodotto: [LAI, FAPAR, FCOVER, NDVI, GDMP, SWI, SSM]
     env:
       PRODOTTO: ${{ matrix.prodotto }}
+      FORZA: ${{ inputs.forza }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_DATA_REPO: Bradipo92/campi-aperti-data
       CDSE_USERNAME: ${{ secrets.CDSE_USERNAME }}
