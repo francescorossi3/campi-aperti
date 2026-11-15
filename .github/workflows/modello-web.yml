@@ -1,0 +1,24 @@
+name: Classificatore per il sito (pesi pubblici)
+on:
+  workflow_dispatch:
+  push:
+    paths: ["pipeline/18_modello_web.py"]
+jobs:
+  esporta:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q pandas pyarrow numpy scikit-learn huggingface_hub
+      - run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && MODO=giu CARTELLE=dataset_v2 python hf_sync.py
+      - run: cd pipeline && python -u 18_modello_web.py
+      - run: |
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(path_or_fileobj="data/modelli_web/colture_v2_mlp.json", path_in_repo="modelli/colture_v2_mlp.json",
+              repo_id=os.environ["HF_DATA_REPO"], repo_type="dataset", commit_message="classificatore colture per il browser")
+          PY
