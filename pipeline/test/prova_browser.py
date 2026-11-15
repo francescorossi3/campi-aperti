@@ -43,10 +43,20 @@ async def main():
         }""")
         await pg.mouse.click(pt[0], pt[1])
         await pg.wait_for_timeout(60000)
+        await pg.locator('.ch-tabs .seg[data-ch="chClms"]').click(); await pg.wait_for_timeout(15000)
+        rep["copernicus_campo"] = await pg.locator("#clmsSt").inner_text()
+        print("copernicus campo:", rep["copernicus_campo"])
+        await pg.screenshot(path=os.path.join(OUT, "browser_copernicus_serie.png"))
+        rep["avvisi"] = await pg.locator("#fpAdvice").inner_text()
+        print("avvisi:", rep["avvisi"][:300].replace("\n", " | "))
         rep["pannello"] = await pg.evaluate("""() => ({ titolo: document.querySelector('.fp-title')?.innerText, suolo: document.querySelector('#fpSoil')?.innerText,
           resa: document.querySelector('#fpFieldYield')?.innerText, stato: document.querySelector('#fpStatus')?.innerText, mappa: document.querySelector('#fmStats')?.innerText })""")
         print(json.dumps(rep["pannello"], ensure_ascii=False, indent=1))
         await pg.screenshot(path=os.path.join(OUT, "browser_pannello.png"), full_page=False)
+        # layer Copernicus LAI sulla mappa
+        await pg.evaluate("document.getElementById('chk_cl_lai').click()"); await pg.wait_for_timeout(1000)
+        await pg.evaluate("map.setView([43.5, 12.5], 8)"); await pg.wait_for_timeout(12000)
+        await pg.screenshot(path=os.path.join(OUT, "browser_copernicus_lai.png"))
         # dove sta "Località Strada" (Camerino)?
         rep["strada"] = await pg.evaluate("fetch('https://photon.komoot.io/api/?q=Strada&osm_tag=place&lat=43.13&lon=13.06&limit=3').then(r=>r.json()).then(j=>j.features.map(f=>[f.properties.name,f.properties.city||f.properties.county,f.geometry.coordinates]))")
         print("strada", rep["strada"])

@@ -133,8 +133,7 @@ const Delineate = (() => {
       try {
         const ab = await fetch(`${PC}/data/v1/item/bbox/${X0},${Y0},${X1},${Y1}.npy?collection=sentinel-2-l2a&item=${it.id}&expression=${expr}&asset_as_band=true` +
           `&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${W2}&height=${H2}&resampling=average`).then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); });
-        const dv = new DataView(ab), hl = dv.getUint16(8, true), hdr = new TextDecoder().decode(new Uint8Array(ab, 10, hl));
-        const raw = hdr.includes("<f8") ? new Float64Array(ab.slice(10 + hl)) : new Float32Array(ab.slice(10 + hl));
+        const raw = Segment.parseNpy(ab).data;
         const n = W2 * H2, out = new Float32Array(n);
         let ok = 0;
         for (let i = 0; i < n; i++) { const v = raw[i], c = raw[n + i]; if (isFinite(v) && Math.abs(v) <= 1 && c < 0.5) { out[i] = v; ok++; } else out[i] = NaN; }

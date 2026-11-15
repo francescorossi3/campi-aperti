@@ -294,5 +294,5 @@ const Segment = (() => {
   function clear() { if (overlay) map.removeLayer(overlay); overlay = null; result = null; }
   const has = () => !!result;
   const info = () => result && { dates: result.dates, nSeg: result.nSeg, bounds: result.bounds };
-  return { run, smart, useLabels, method, fieldAt, allFields, clear, has, info };
+  return { run, smart, useLabels, method, fieldAt, allFields, clear, has, info, parseNpy };
 })();

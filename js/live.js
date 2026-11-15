@@ -1174,13 +1174,8 @@ const Live = (() => {
     fmTipCtl.getContainer().hidden = !ok;
     if (ok) fmTipCtl.getContainer().innerHTML = `${lt("fm_" + (F.idx === "zone" ? "ndvi" : F.idx))}: <b>${F.arr.data[i].toFixed(3)}</b>`;
   };
-  function parseNpy(buf) {
-    const u8 = new Uint8Array(buf), hl = u8[8] | (u8[9] << 8);
-    const hdr = new TextDecoder().decode(u8.subarray(10, 10 + hl));
-    const off = 10 + hl, f8 = hdr.includes("<f8");
-    const data = f8 ? new Float64Array(buf.slice(off)) : new Float32Array(buf.slice(off));
-    return { data: Float32Array.from(data), hdr };
-  }
+  const parseNpy = (buf) => { const r = Segment.parseNpy(buf); return { data: Float32Array.from(r.data) }; };
+
 
   // un grafico alla volta, a tutta larghezza e ridimensionabile (trascinando l'angolo in basso)
   const CHARTS = [["chIndex", "ch_index"], ["chMeteo", "ch_meteo"], ["chEt", "ch_et"], ["chYield", "ch_yield"], ["chCmp", "ch_cmp"], ["chClms", "ch_clms"], ["chRadar", "ch_radar"]];
