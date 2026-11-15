@@ -917,12 +917,6 @@ const Live = (() => {
         </div>
       </div>
       <div id="fpStatus" class="fp-status"></div>
-      <div id="fpCty" class="fp-cty"></div>
-      <div id="fpCrop" class="fp-crop"></div>
-      <div id="fpFieldYield" class="fp-fieldyield"></div>
-      <div id="fpSoil" class="fp-soil"></div>
-      <div id="fpAdvice" class="fp-advice"></div>
-      <div id="fpYield" class="fp-yield"></div>
       <div class="ch-tabs">${CHARTS.map(([id, key]) => `<button class="seg ${id === chartSel ? "active" : ""}" data-ch="${id}">${lt(key)}</button>`).join("")}
         <button class="small-btn ch-dl" id="fpCsv2">⬇ ${lt("csv")}</button></div>
       <figure class="ch-fig" data-ch="chIndex"><div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
@@ -936,6 +930,12 @@ const Live = (() => {
       <figure class="ch-fig" data-ch="chClms"><label class="norm">${lt("clms_var")} <select id="clmsVar">${Object.keys(Clms.P).filter((k) => k !== "ETA").map((k) => `<option value="${k}" ${k === clmsSel ? "selected" : ""}>${Clms.label(k)}</option>`).join("")}</select></label>
         <span class="hint small" id="clmsSt"></span><div class="cbox"><canvas id="chClms"></canvas></div></figure>
       <figure class="ch-fig" data-ch="chRadar"><div class="cbox"><canvas id="chRadar"></canvas></div><p class="hint small">${lt("radar_hint")}</p></figure>
+      <div id="fpCty" class="fp-cty"></div>
+      <div id="fpCrop" class="fp-crop"></div>
+      <div id="fpFieldYield" class="fp-fieldyield"></div>
+      <div id="fpSoil" class="fp-soil"></div>
+      <div id="fpAdvice" class="fp-advice"></div>
+      <div id="fpYield" class="fp-yield"></div>
       <p class="hint small fp-foot">${lt("s2_src")} ${lt("meteo_src")} ${lt("et_note")}</p>`;
     panel().hidden = false;
     document.body.classList.add("fp-open");
