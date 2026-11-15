@@ -1,7 +1,7 @@
 {
  "lodi": {
   "ok": true,
-  "s": 2.3445,
+  "s": 2.7446999999999973,
   "campi": 138,
   "date": [
    "2026-09-27"
@@ -11,7 +11,7 @@
  },
  "maccarese": {
   "ok": true,
-  "s": 1.9670999999999985,
+  "s": 2.4206000000000056,
   "campi": 52,
   "date": [
    "2026-07-05"
@@ -20,11 +20,11 @@
   "H": 512
  },
  "pannello": {
-  "titolo": "Campo · Superficie 2.25 ha Confine: segmentazione Sentinel-2 di questa zona (valori = media su tutto il campo)",
-  "suolo": "Carico i dati del suolo…",
+  "titolo": "Campo · Superficie 1600 m² Nessun campo rilevato qui: uso un quadrato di 40 m attorno al punto. Usa “Dividi in campi la zona visibile”.",
+  "suolo": "Suolo (0–30 cm) sabbioso\nSabbia 4%\nLimo 4%\nArgilla 2%\nCarbonio organico 20.4 g/kg\nAzoto totale 2.21 g/kg\nC/N 9.2\npH 6.9\nCSC 21 cmol/kg\nAcqua disponibile 283 mm/m\nISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
   "resa": "",
-  "stato": "32 immagini serene su 68 date (36 scartate per nuvole).",
-  "mappa": "215 pixel da 10 m · media 0.824 · deviazione standard 0.037 · variabilità 4%"
+  "stato": "37 immagini serene su 68 date (31 scartate per nuvole).",
+  "mappa": "12 pixel da 10 m · media 0.787 · deviazione standard 0.051 · variabilità 7%"
  },
  "errori": [
   "Failed to load resource: the server responded with a status of 404 ()",
