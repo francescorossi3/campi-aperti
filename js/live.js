@@ -10,6 +10,7 @@ const PC = "https://planetarycomputer.microsoft.com/api";
 
 // Indici Sentinel-2. Le immagini L2A dal 2022 hanno un offset di +1000 sulla riflettanza:
 // (a-1000)-(b-1000) = a-b ; (a-1000)+(b-1000) = a+b-2000
+const BANDE = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"];
 const S2_INDEX = {
   ndvi: "(B08-B04)/(B08+B04-2000)",
   ndre: "(B8A-B05)/(B8A+B05-2000)",
@@ -53,6 +54,10 @@ const LT = {
     fw_title: "Modello idrico FAO-33", fw_det: "(acqua disponibile nelle radici {taw} mm; consumo reale {r}% del potenziale; {s} giorni di stress; resa raggiungibile in provincia {ym} t/ha)",
     fw_irr: "Campo irrigato: nessuno stress idrico.",
     fm_title: "Mappa del campo a 10 m",
+    cm_title: "Coltura riconosciuta dal modello (annata {y})", cm_run: "Riconosco la coltura dell'annata {y} (Sentinel-2, radar Sentinel-1, quota)…",
+    cm_err: "Modello di riconoscimento non disponibile.", cm_short: "Troppi pochi mesi sereni nell'annata per riconoscere la coltura.",
+    cm_note: "Modello Campi Aperti v2 (3 reti neurali addestrate su etichette Copernicus 2019–2024; accuratezza su zone mai viste circa 74%): {m} mesi Sentinel-2, {s1} immagini radar.",
+    cm_src: "modello Campi Aperti",
     ch_clms: "Copernicus 300 m", clms_var: "Variabile", clms_none: "Nessun dato Copernicus in questo intervallo (le mappe coprono gli ultimi 14 mesi).",
     clms_load: "Leggo {n}/{t} date…", clms_ok: "{n} date, media di circa {px} pixel Copernicus sul campo.", fm_lai: "LAI (indice di area fogliare)",
     dl_title: "Scarica:", dl_one: "mappa della data (GeoTIFF)", dl_all: "tutte le date (GeoTIFF multibanda)", dl_csv: "serie temporale media (CSV)",
@@ -153,6 +158,10 @@ const LT = {
     fw_title: "FAO-33 water model", fw_det: "(available water in the root zone {taw} mm; actual use {r}% of potential; {s} stress days; attainable yield in the province {ym} t/ha)",
     fw_irr: "Irrigated field: no water stress.",
     fm_title: "Field map at 10 m",
+    cm_title: "Crop recognised by the model ({y} season)", cm_run: "Recognising the {y} crop (Sentinel-2, Sentinel-1 radar, elevation)…",
+    cm_err: "Recognition model not available.", cm_short: "Too few clear months in the season to recognise the crop.",
+    cm_note: "Campi Aperti v2 model (3 neural networks trained on Copernicus labels 2019–2024; accuracy on unseen areas about 74%): {m} Sentinel-2 months, {s1} radar images.",
+    cm_src: "Campi Aperti model",
     ch_clms: "Copernicus 300 m", clms_var: "Variable", clms_none: "No Copernicus data in this interval (maps cover the last 14 months).",
     clms_load: "Reading {n}/{t} dates…", clms_ok: "{n} dates, mean of about {px} Copernicus pixels over the field.", fm_lai: "LAI (leaf area index)",
     dl_title: "Download:", dl_one: "map of the date (GeoTIFF)", dl_all: "all dates (multi-band GeoTIFF)", dl_csv: "mean time series (CSV)",
@@ -517,10 +526,82 @@ const Live = (() => {
     return { resa, giorni, t0, t1, nome: P.n[LANG === "it" ? 0 : 1], bio: bio / 100 };
   }
   // classe della coltura per l'annata mostrata: Copernicus se esiste per quell'anno, altrimenti stima fenologica
+  // ================================================================== classificatore delle colture (v2, nel browser)
+  // 3 reti neurali addestrate su 2 milioni di pixel etichettati Copernicus (2019–2024): mediane mensili nov→ott di 10 bande
+  // Sentinel-2 e 3 indici, radar Sentinel-1 VV/VH, quota, pendenza, latitudine. Qui le variabili sono medie sul campo.
+  const MODEL_URL = "https://huggingface.co/datasets/Bradipo92/campi-aperti-data/resolve/main/modelli/colture_v2_mlp.json";
+  let modelP = null;
+  const loadModel = () => (modelP ||= fetch(MODEL_URL).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+  async function demStats(f) {
+    const items = await stacSearch("cop-dem-glo-30", f.geometry, "2000-01-01", "2030-01-01").catch(() => []);
+    if (!items.length) return { quota: NaN, pendenza: NaN };
+    const G = fieldGrid(), W = Math.max(3, Math.round(G.W / 3)), H = Math.max(3, Math.round(G.H / 3));
+    try {
+      const ab = await fetch(`${PC}/data/v1/item/bbox/${G.X0},${G.Y0},${G.X1},${G.Y1}.npy?collection=cop-dem-glo-30&item=${items[0].id}&assets=data&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${W}&height=${H}`).then((r) => r.arrayBuffer());
+      const z = parseNpy(ab).data, dx = ((G.X1 - G.X0) / W) * Math.cos((current.ll.lat * Math.PI) / 180);
+      let q = 0, sl = 0, n = 0;
+      for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+        const i = y * W + x, gx = (z[i + 1] - z[i - 1]) / (2 * dx), gy = (z[i + W] - z[i - W]) / (2 * dx);
+        if (isFinite(gx) && isFinite(gy)) { q += z[i]; sl += (Math.atan(Math.hypot(gx, gy)) * 180) / Math.PI; n++; }
+      }
+      return n ? { quota: q / n, pendenza: sl / n } : { quota: NaN, pendenza: NaN };
+    } catch (e) { return { quota: NaN, pendenza: NaN }; }
+  }
+  function features(Y, dem) {
+    const mesi = [[Y - 1, 10], [Y - 1, 11], ...Array.from({ length: 10 }, (_, i) => [Y, i])];   // nov … ott (mesi 0-based)
+    const med = (a) => { const v = a.filter(isFinite).sort((x, y) => x - y); return v.length ? v[v.length >> 1] : NaN; };
+    const per = (rows, key) => mesi.map(([y, m]) => med(rows.filter((r) => { const d = new Date(r.t); return d.getUTCFullYear() === y && d.getUTCMonth() === m; }).map((r) => r[key])));
+    const fill = (a) => { const ok = a.map((v, i) => (isFinite(v) ? i : -1)).filter((i) => i >= 0);
+      if (ok.length < 3) return a; return a.map((v, i) => { if (isFinite(v)) return v; const l = ok.filter((j) => j < i).pop(), r = ok.find((j) => j > i);
+        if (l == null) return a[r]; if (r == null) return a[l]; return a[l] + ((a[r] - a[l]) * (i - l)) / (r - l); }); };
+    const s2 = clean(), F = {};
+    const okMesi = per(s2, "B04").filter(isFinite).length;
+    BANDE.forEach((b) => (F[b] = fill(per(s2, b))));
+    const nd = (a, b) => F[a].map((v, i) => (v - F[b][i]) / (v + F[b][i]));
+    F.ndvi = nd("B08", "B04"); F.ndmi = nd("B8A", "B11"); F.ndre = nd("B8A", "B05");
+    F.vv = fill(per(current.s1 || [], "vv")); F.vh = fill(per(current.s1 || [], "vh")); F.vhvv = F.vh.map((v, i) => v - F.vv[i]);
+    return { okMesi, get: (name) => { if (name === "quota") return dem.quota; if (name === "pendenza") return dem.pendenza; if (name === "lat") return current.ll.lat;
+      const [k, m] = name.split("_"); return F[k] ? F[k][+m] : NaN; } };
+  }
+  function predict(M, x) {
+    const P = new Array(M.classi.length).fill(0);
+    M.reti.forEach((net) => {
+      let h = x.map((v, i) => { const z = (v - net.mu[i]) / net.sd[i]; return isFinite(z) ? z : 0; });
+      net.W.forEach((W, l) => {
+        const o = net.b[l].slice();
+        for (let i = 0; i < h.length; i++) { const hi = h[i]; if (hi) for (let j = 0; j < o.length; j++) o[j] += hi * W[i][j]; }
+        h = l < net.W.length - 1 ? o.map((v) => Math.max(0, v)) : o;
+      });
+      const mx = Math.max(...h), e = h.map((v) => Math.exp(v - mx)), se = e.reduce((a, b) => a + b, 0);
+      e.forEach((v, j) => (P[j] += v / se / M.reti.length));
+    });
+    return M.classi.map((c, j) => ({ cls: c, p: P[j] })).sort((a, b) => b.p - a.p);
+  }
+  async function classifyField(my) {
+    const el = document.getElementById("fpModel");
+    if (!el) return;
+    const Y = endDate(range).getUTCFullYear();
+    el.innerHTML = `<span class="hint small">${lt("cm_run", { y: `${Y - 1}/${String(Y).slice(2)}` })}</span>`;
+    if (!s1Loaded) { s1Loaded = true; await loadS1(); }
+    const [M, dem] = await Promise.all([loadModel(), demStats(current.feature)]);
+    if (my !== runId) return;
+    if (!M) { el.innerHTML = `<span class="hint small">${lt("cm_err")}</span>`; return; }
+    const f = features(Y, dem);
+    if (f.okMesi < 5) { el.innerHTML = `<span class="hint small">${lt("cm_short")}</span>`; return; }
+    const res = predict(M, M.variabili.map(f.get));
+    current.model = { anno: Y, top: res[0], res };
+    const nome = (c) => CTY_NOMI[c][LANG === "it" ? 0 : 1];
+    el.innerHTML = `<b>${lt("cm_title", { y: `${Y - 1}/${String(Y).slice(2)}` })}:</b> <span class="cm-main">${nome(res[0].cls)}</span> ` +
+      res.slice(0, 3).map((r) => `<span class="cm-bar"><i style="width:${Math.round(r.p * 100)}%;background:${(typeof CROP_COLORS !== "undefined" && CROP_COLORS[r.cls]) || "#7a9"}"></i>${nome(r.cls)} ${Math.round(r.p * 100)}%</span>`).join("") +
+      `<div class="hint small">${lt("cm_note", { m: f.okMesi, s1: (current.s1 || []).length })}</div>`;
+    renderAdvice(); drawFieldYield();
+  }
+
   function classeAnnata() {
     const y = endDate(range).getUTCFullYear();
     const c = (current.cty || []).find((r) => r.year === y && !r.dubbio);
     if (c) return { cls: c.cls, fonte: "Copernicus", anno: y };
+    if (current.model && current.model.anno === y && current.model.top.p >= 0.5) return { cls: current.model.top.cls, fonte: lt("cm_src"), anno: y };
     const lab = current.crop && current.crop.label ? current.crop.label.toLowerCase() : "";
     const map = [[/frumento|wheat|cereale autunno|winter cereal/, 1], [/mais|maize/, 3], [/riso|rice/, 4], [/girasole|sunflower|soia|soy|estiva|summer/, 10]];
     const m = map.find(([re]) => re.test(lab));
@@ -779,8 +860,8 @@ const Live = (() => {
     const byDate = {};
     items.forEach((it) => { const d = it.properties.datetime.slice(0, 10); (byDate[d] = byDate[d] || []).push(it); });
     const dates = Object.keys(byDate).sort();
-    const keys = ["ndvi", "ndre", "ndmi", "evi", "savi", "cire", "ndwi", "nbr", "aot", "cloud"];
-    const exprs = keys.map((k) => S2_INDEX[k]);
+    const keys = ["ndvi", "ndre", "ndmi", "evi", "savi", "cire", "ndwi", "nbr", ...BANDE, "aot", "cloud"];
+    const exprs = keys.map((k) => S2_INDEX[k] || `(${k}-1000)/10000`);
     const params = `expression=${encodeURIComponent(exprs.join(";"))}&asset_as_band=true`;
     let done = 0, cloudy = 0;
     current.s2 = [];
@@ -931,6 +1012,7 @@ const Live = (() => {
         <span class="hint small" id="clmsSt"></span><div class="cbox"><canvas id="chClms"></canvas></div></figure>
       <figure class="ch-fig" data-ch="chRadar"><div class="cbox"><canvas id="chRadar"></canvas></div><p class="hint small">${lt("radar_hint")}</p></figure>
       <div id="fpCty" class="fp-cty"></div>
+      <div id="fpModel" class="fp-crop fp-model"></div>
       <div id="fpCrop" class="fp-crop"></div>
       <div id="fpFieldYield" class="fp-fieldyield"></div>
       <div id="fpSoil" class="fp-soil"></div>
@@ -1464,10 +1546,12 @@ const Live = (() => {
     if (!el || typeof Advice === "undefined" || !current) return;
     const user = current.feature.properties && current.feature.properties.coltura;
     const lab = current.crop && current.crop.label;
-    const k = Advice.cropKey(user || lab, current.ctyPerm);
+    // classe: coltura permanente Copernicus, oppure quella riconosciuta dal modello per l'annata mostrata
+    const cls = current.ctyPerm || (current.model && current.model.top.p >= 0.5 ? current.model.top.cls : null);
+    const k = Advice.cropKey(user || (cls ? null : lab), cls);
     if (k === adviceKey && el.innerHTML) return;
     adviceKey = k;
-    Advice.render(el, current.ll.lat, current.ll.lng, user || lab, current.ctyPerm);
+    Advice.render(el, current.ll.lat, current.ll.lng, user || (cls ? null : lab), cls);
   }
 
   function run() {
@@ -1477,7 +1561,7 @@ const Live = (() => {
     renderPanel();
     setStatus(lt("loading_meteo"));
     loadMeteo(my).catch((e) => setStatus(lt("err", { e: e.message })));
-    loadS2(my).catch((e) => setStatus(lt("err", { e: e.message })));
+    loadS2(my).then(() => my === runId && classifyField(my)).catch((e) => setStatus(lt("err", { e: e.message })));
     showCropHistory(my).then(() => { showYields(my); renderAdvice(); }).catch(() => {});
     loadEta(my);
     loadSoil(my);

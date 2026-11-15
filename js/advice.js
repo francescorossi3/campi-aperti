@@ -59,7 +59,7 @@ const Advice = (() => {
     if (/frumento|orzo|cereal|avena|segale|wheat|barley|winter/.test(u)) return "cereali";
     if (/nocciol|mandorl|noce|castagn|pistacch/.test(u)) return "guscio";
     if (/melo|pero|pesco|albicocc|ciliegi|susin|kiwi|agrum/.test(u)) return "frutteto";
-    return { 14: "vite", 15: "olivo", 16: "frutteto", 17: "guscio" }[cls] || null;
+    return { 14: "vite", 15: "olivo", 16: "frutteto", 17: "guscio", 1: "cereali", 2: "cereali", 5: "cereali", 3: "mais", 8: "patata" }[cls] || null;
   }
 
   async function meteo(lat, lon) {
