@@ -14,44 +14,19 @@
  ],
  "zone": {
   "Maccarese_visual": {
-   "candidati": 251,
-   "ultralytics": 36,
-   "media": 69.63706461588542
-  },
-  "Maccarese_stretch": {
-   "candidati": 216,
-   "ultralytics": 30,
-   "media": 105.22224680582683
+   "candidati": 334,
+   "ultralytics": 93,
+   "media": 108.8484280904134
   },
   "Lodi_visual": {
-   "candidati": 175,
-   "ultralytics": 42,
-   "media": 85.45978418986003
-  },
-  "Lodi_stretch": {
-   "candidati": 164,
-   "ultralytics": 37,
-   "media": 131.3265062967936
+   "candidati": 905,
+   "ultralytics": 185,
+   "media": 83.89608256022136
   },
   "Tavoliere_visual": {
-   "candidati": 13,
-   "ultralytics": 4,
-   "media": 37.003255208333336
-  },
-  "Tavoliere_stretch": {
    "candidati": 0,
    "ultralytics": 0,
-   "media": 48.9414316813151
-  },
-  "Val_dOrcia_visual": {
-   "candidati": 185,
-   "ultralytics": 38,
-   "media": 116.79418818155925
-  },
-  "Val_dOrcia_stretch": {
-   "candidati": 75,
-   "ultralytics": 22,
-   "media": 169.29092407226562
+   "media": 0.0
   }
  }
 }
