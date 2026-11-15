@@ -1,8 +1,8 @@
 {
  "lodi": {
   "ok": true,
-  "s": 2.901600000000006,
-  "campi": 138,
+  "s": 5.147,
+  "campi": 178,
   "date": [
    "2026-09-27"
   ],
@@ -11,10 +11,20 @@
  },
  "maccarese": {
   "ok": true,
-  "s": 2.4555,
-  "campi": 52,
+  "s": 6.565299999999988,
+  "campi": 73,
   "date": [
    "2026-07-05"
+  ],
+  "W": 512,
+  "H": 512
+ },
+ "muccese": {
+  "ok": true,
+  "s": 5.537200000000012,
+  "campi": 162,
+  "date": [
+   "2026-08-27"
   ],
   "W": 512,
   "H": 512
@@ -26,8 +36,17 @@
   "stato": "30 immagini serene su 68 date (38 scartate per nuvole).",
   "mappa": "2853 pixel da 10 m · media 0.830 · deviazione standard 0.086 · variabilità 10%"
  },
+ "ricerca maceratta": "Macerata provincia\nMarche\nMacerata città\nMacerata, Marche\nMaceratola zona\nFoligno, Perugia, Umbria\nMacerata indirizzo\nMacerata, Marche\nMacerato zona\nColi, Piacenza, Emilia-Romagna\nMacerata località\nRiolo Terme, Ravenna, Emilia-Romagna\nMaceratoi località\nCampertogno, Vercelli, Piemonte\nMacerato zona\n",
+ "ricerca Località Strada": "Strada statale Località Draghetto via\nLandriano, Pavia, Lombardia\nStrada statale località Draghetto via\nCarpiano, Milano, Lombardia\nStrada Località Chignoli via\nBorgonovo Val Tidone, Piacenza, Emilia-Romagna\nStrada Località Tassara via\nAlta Val Tidone, Piacenza, Emilia-Romagna\nStrada Località Tassar",
+ "ricerca 41.86, 12.23": "41.86000, 12.23000 coordinate",
+ "ricerca Sant Angelo Lodigiano": "Sant'Angelo Lodigiano città\nLodi, Lombardia\nCastello di Sant'Angelo Lodigiano indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - Via Don Carlo Dolcini indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - Fraz. Maiano indirizzo\nSant'Angelo Lodigiano, Lodi, Lo",
  "errori": [
-  "Failed to load resource: the server responded with a status of 404 ()",
+  "Campi divisi per colture diverse: 40",
+  "Campi divisi per colture diverse: 20",
+  "Campi divisi per colture diverse: 83",
+  "Campi divisi per colture diverse: 40",
+  "Failed to load resource: the server responded with a status of 404 (File not found)",
+  "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
   "Failed to load resource: the server responded with a status of 404 (File not found)"
  ]
 }
