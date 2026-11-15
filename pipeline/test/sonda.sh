@@ -1,16 +1,19 @@
 #!/bin/bash
-# Sonda di servizi esterni (eseguita in GitHub Actions)
-curl -s -m 120 "https://phenology.vgt.vito.be/wms?service=WMS&request=GetCapabilities&version=1.3.0" -o cap.xml; ls -la cap.xml
+curl -s -m 120 "https://phenology.vgt.vito.be/wms?service=WMS&request=GetCapabilities&version=1.1.1" -o cap.xml
 python3 - <<'PY'
 import re
 x = open("cap.xml", encoding="utf-8", errors="ignore").read()
-print(x[:300])
 names = re.findall(r"<Name>([^<]+)</Name>", x)
-print(len(names), "layer")
-print([n for n in names if "VPP" in n or "PPI" in n or "ST" in n][:80])
-i = x.find("CLMS_HRVPP_VPP_SOSD_SEASON1_10M")
-print(x[i-200:i+2500] if i > 0 else "no SOSD")
-print("CRS:", sorted(set(re.findall(r"<CRS>([^<]+)</CRS>", x)))[:20])
+print([n for n in names if "SEASON1_10M" in n and "LAEA" not in n])
+for L in ["CLMS_HRVPP_VPP_LENGTH_SEASON1_10M", "CLMS_HRVPP_VPP_TPROD_SEASON1_10M", "CLMS_HRVPP_ST_PPI_10M"]:
+    i = x.find("<Name>" + L)
+    print(L, re.findall(r"<Style>\s*<Name>([^<]+)</Name>", x[i:i + 4000])[:3], re.findall(r'<Dimension[^>]*>([^<]{0,200})', x[i:i + 4000])[:1])
 PY
-curl -s -m 60 -D - -o /dev/null "https://phenology.vgt.vito.be/wms?service=WMS&request=GetMap&version=1.3.0&layers=CLMS_HRVPP_VPP_SOSD_SEASON1_10M&crs=EPSG:3857&bbox=1360000,5130000,1365000,5135000&width=256&height=256&format=image/png&transparent=true" | head -15
-curl -s -m 60 "https://api.open-meteo.com/v1/forecast?latitude=41.9&longitude=12.5&hourly=temperature_2m,relative_humidity_2m,leaf_wetness_probability,precipitation&past_days=2&forecast_days=1" | head -c 600; echo
+B="1360000,5130000,1370000,5140000"
+for ST in "" "hrvpp_dates_2024.txt"; do
+  for L in CLMS_HRVPP_VPP_SOSD_SEASON1_10M CLMS_HRVPP_VPP_TPROD_SEASON1_10M; do
+    curl -s -m 60 -o t.png -w "$L style=[$ST] %{http_code} %{content_type} %{size_download}\n" "https://phenology.vgt.vito.be/wms?service=WMS&request=GetMap&version=1.1.1&layers=$L&styles=$ST&srs=EPSG:3857&bbox=$B&width=256&height=256&format=image/png&transparent=true&time=2024-01-01"
+  done
+done
+curl -s -m 60 -D - -o /dev/null "https://phenology.vgt.vito.be/wms?service=WMS&request=GetMap&version=1.1.1&layers=CLMS_HRVPP_VPP_SOSD_SEASON1_10M&styles=&srs=EPSG:3857&bbox=$B&width=256&height=256&format=image/png" | grep -i "access-control\|content-type"
+curl -s -m 60 -o leg.png -w "legend %{http_code} %{content_type}\n" "https://phenology.vgt.vito.be/wms?service=WMS&request=GetLegendGraphic&version=1.1.1&layer=CLMS_HRVPP_VPP_SOSD_SEASON1_10M&format=image/png"
