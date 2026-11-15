@@ -40,8 +40,12 @@ def salva():
         tutto.to_parquet(DEST, index=False)
         print("salvate", len(celle_nuove), "celle; totale", tutto.cella.nunique())
 
-stop = False
+T0 = time.time()
+MAX_MIN = float(os.environ.get("MAX_MINUTI", "90"))     # poi mi fermo e salvo: il resto la prossima volta
 for k, c in enumerate(da_fare):
+    if (time.time() - T0) / 60 > MAX_MIN:
+        print(f"tempo massimo di {MAX_MIN:.0f} minuti raggiunto: salvo e riprendo al prossimo giro")
+        break
     lat, lon = c.split("_")
     url = (f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}"
            f"&start_date={INIZIO}&end_date={FINE}&daily=precipitation_sum,et0_fao_evapotranspiration&timezone=Europe%2FRome")
