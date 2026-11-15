@@ -1,0 +1,51 @@
+{
+ "esempi": 2042732,
+ "zone": 123,
+ "annate": [
+  2019,
+  2020,
+  2021,
+  2022,
+  2023,
+  2024
+ ],
+ "variabili": 195,
+ "spaziale_v2": {
+  "accuratezza": 0.7415,
+  "f1_macro": 0.6803
+ },
+ "spaziale_solo_indici": {
+  "accuratezza": 0.5816,
+  "f1_macro": 0.5128
+ },
+ "spaziale_per_classe": {
+  "1": 0.79,
+  "2": 0.567,
+  "3": 0.842,
+  "4": 0.906,
+  "5": 0.461,
+  "6": 0.628,
+  "7": 0.654,
+  "8": 0.599,
+  "9": 0.566,
+  "10": 0.768,
+  "11": 0.805,
+  "12": 0.72,
+  "13": 0.15,
+  "14": 0.799,
+  "15": 0.874,
+  "16": 0.762,
+  "17": 0.673
+ },
+ "temporale_v2": {
+  "anno_verifica": 2024,
+  "accuratezza": 0.7098,
+  "f1_macro": 0.6331
+ },
+ "importanza_per_prodotto": {
+  "DEM e latitudine": 0.171,
+  "Sentinel-1": 0.214,
+  "bande S2": 0.313,
+  "indici S2": 0.301
+ }
+}
