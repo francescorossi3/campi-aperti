@@ -5,7 +5,7 @@
 //  cereali: septoria e fusariosi della spiga (pioggia, umidità e temperatura nel periodo sensibile)
 //  pomodoro e patata: peronospora (periodi di Smith)
 //  frutteti e frutta a guscio: ore di freddo dal 1° novembre, gelate tardive
-//  mais e tutte le colture: gradi giorno, gelo e caldo nei prossimi giorni
+//  mais: gradi giorno; colture legnose: gelo nei prossimi giorni
 // Sono indicazioni di rischio dal meteo, non diagnosi: vanno sempre verificate in campo e con i bollettini fitosanitari regionali.
 
 const Advice = (() => {
@@ -13,7 +13,7 @@ const Advice = (() => {
     it: {
       title: "Avvisi per la coltura", crop: "Coltura", loading: "Calcolo gli avvisi dal meteo…", err: "Meteo non disponibile.",
       note: "Rischi stimati solo dal meteo (Open-Meteo, ERA5 e previsioni) con modelli pubblicati: non sono diagnosi. Verifica in campo e segui i bollettini fitosanitari della tua regione.",
-      lv: ["basso", "medio", "alto"], none: "Scegli la coltura per vedere gli avvisi.",
+      lv: ["basso", "medio", "alto"], none: "coltura del campo non determinata: disegna il campo (✏️) e indica la coltura per avere gli avvisi.", nothing: "Nessun avviso per questa coltura in questo periodo.",
       crops: { vite: "Vite", olivo: "Olivo", cereali: "Frumento / orzo / cereali", mais: "Mais", pomodoro: "Pomodoro", patata: "Patata", frutteto: "Frutteto (pomacee, drupacee, actinidia, agrumi)", guscio: "Nocciolo / mandorlo / noce", altro: "Altra coltura" },
       pero: "Peronospora della vite (regola dei tre dieci)", pero_d: "Ultime 48 h: {r} mm di pioggia, temperatura media {t} °C. Previsti {f} mm nei prossimi 3 giorni.",
       oidio: "Oidio della vite (indice di Gubler-Thomas)", oidio_d: "Indice {i}/100: sopra 60 conviene accorciare gli intervalli tra i trattamenti.",
@@ -25,14 +25,12 @@ const Advice = (() => {
       smith: "Peronospora (periodi di Smith)", smith_d: "{n} periodi di Smith negli ultimi 7 giorni (2 giorni con minima ≥ 10 °C e almeno 11 ore di umidità ≥ 90%).",
       chill: "Ore di freddo dal 1° novembre (sotto 7,2 °C)", chill_d: "{h} ore: molte varietà di pesco e melo ne chiedono 400–1000 per fiorire bene.",
       gelo: "Gelo nei prossimi 7 giorni", gelo_d: "Minima prevista {t} °C il {d}.",
-      caldo: "Caldo nei prossimi 7 giorni", caldo_d: "Massima prevista {t} °C il {d}.",
       gdd: "Gradi giorno dal 1° aprile (base 10 °C)", gdd_d: "{g} °C·giorno: un mais classe 500–600 FAO ne chiede circa 1500–1700 dalla semina alla maturazione.",
-      irr: "Acqua: pioggia − evapotraspirazione degli ultimi 7 giorni", irr_d: "{b} mm (negativo = deficit; per una coltura in piena crescita moltiplica l'ET0 per circa 1).",
     },
     en: {
       title: "Crop alerts", crop: "Crop", loading: "Computing alerts from the weather…", err: "Weather not available.",
       note: "Risks estimated from weather only (Open-Meteo, ERA5 and forecast) with published models: not a diagnosis. Check in the field and follow your regional plant-protection bulletins.",
-      lv: ["low", "medium", "high"], none: "Choose the crop to see the alerts.",
+      lv: ["low", "medium", "high"], none: "the field's crop is unknown: draw the field (✏️) and set the crop to get alerts.", nothing: "No alerts for this crop in this period.",
       crops: { vite: "Grapevine", olivo: "Olive", cereali: "Wheat / barley / cereals", mais: "Maize", pomodoro: "Tomato", patata: "Potato", frutteto: "Orchard (pome, stone fruit, kiwi, citrus)", guscio: "Hazelnut / almond / walnut", altro: "Other crop" },
       pero: "Grapevine downy mildew (three-tens rule)", pero_d: "Last 48 h: {r} mm of rain, mean temperature {t} °C. {f} mm forecast in the next 3 days.",
       oidio: "Grapevine powdery mildew (Gubler-Thomas index)", oidio_d: "Index {i}/100: above 60 shorten the spray intervals.",
@@ -44,9 +42,7 @@ const Advice = (() => {
       smith: "Late blight (Smith periods)", smith_d: "{n} Smith periods in the last 7 days (2 days with minimum ≥ 10 °C and at least 11 hours at humidity ≥ 90%).",
       chill: "Chill hours since 1 November (below 7.2 °C)", chill_d: "{h} hours: many peach and apple varieties need 400–1000 to flower well.",
       gelo: "Frost in the next 7 days", gelo_d: "Forecast minimum {t} °C on {d}.",
-      caldo: "Heat in the next 7 days", caldo_d: "Forecast maximum {t} °C on {d}.",
       gdd: "Degree days since 1 April (base 10 °C)", gdd_d: "{g} °C·days: a FAO 500–600 maize needs about 1500–1700 from sowing to maturity.",
-      irr: "Water: rain − evapotranspiration over the last 7 days", irr_d: "{b} mm (negative = deficit; for a crop in full growth multiply ET0 by about 1).",
     },
   };
   const at = (k, v) => { let s = (AT[LANG] || AT.it)[k] ?? AT.it[k]; if (v && typeof s === "string") Object.entries(v).forEach(([a, b]) => (s = s.replace("{" + a + "}", b))); return s; };
@@ -59,11 +55,11 @@ const Advice = (() => {
     if (/olivo/.test(u)) return "olivo";
     if (/pomodoro/.test(u)) return "pomodoro";
     if (/patat/.test(u)) return "patata";
-    if (/mais/.test(u)) return "mais";
-    if (/frumento|orzo|cereal|avena|segale/.test(u)) return "cereali";
+    if (/mais|maize|corn/.test(u)) return "mais";
+    if (/frumento|orzo|cereal|avena|segale|wheat|barley|winter/.test(u)) return "cereali";
     if (/nocciol|mandorl|noce|castagn|pistacch/.test(u)) return "guscio";
     if (/melo|pero|pesco|albicocc|ciliegi|susin|kiwi|agrum/.test(u)) return "frutteto";
-    return { 14: "vite", 15: "olivo", 16: "frutteto", 17: "guscio", 1: "cereali", 2: "cereali", 5: "cereali", 3: "mais", 8: "patata" }[cls] || null;
+    return { 14: "vite", 15: "olivo", 16: "frutteto", 17: "guscio" }[cls] || null;
   }
 
   async function meteo(lat, lon) {
@@ -135,37 +131,28 @@ const Advice = (() => {
       if (m >= 11 || m <= 3) add(at("chill"), -1, at("chill_d", { h: ch }));
     }
     if (key === "mais") { const g = gddSince(); if (g != null) add(at("gdd"), -1, at("gdd_d", { g })); }
-    // per tutte: gelo, caldo, bilancio idrico
+    // gelo solo per le colture legnose sensibili (fioritura e germogli)
     const nx = next(7);
-    if (nx.length) {
-      const iMin = nx.reduce((a, i) => (D.temperature_2m_min[i] < D.temperature_2m_min[a] ? i : a), nx[0]);
-      const iMax = nx.reduce((a, i) => (D.temperature_2m_max[i] > D.temperature_2m_max[a] ? i : a), nx[0]);
-      const tmin = D.temperature_2m_min[iMin], tmax = D.temperature_2m_max[iMax];
-      const sens = (m >= 3 && m <= 5) || key === "olivo" || key === "frutteto";
-      if (tmin < 2) add(at("gelo"), tmin < -2 && sens ? 2 : 1, at("gelo_d", { t: tmin.toFixed(1), d: fmtD(iMin) }));
-      if (tmax > 32) add(at("caldo"), tmax > 36 ? 2 : 1, at("caldo_d", { t: tmax.toFixed(0), d: fmtD(iMax) }));
+    if (nx.length && ["vite", "olivo", "frutteto", "guscio"].includes(key)) {
+      const iMin = nx.reduce((a, i) => (D.temperature_2m_min[i] < D.temperature_2m_min[a] ? i : a), nx[0]), tmin = D.temperature_2m_min[iMin];
+      if (tmin < 1) add(at("gelo"), tmin < -2 && ((m >= 3 && m <= 5) || key === "olivo") ? 2 : 1, at("gelo_d", { t: tmin.toFixed(1), d: fmtD(iMin) }));
     }
-    const p7 = past(7), bal = sum(p7, D.precipitation_sum) - sum(p7, D.et0_fao_evapotranspiration);
-    add(at("irr"), bal < -25 ? 2 : bal < -10 ? 1 : 0, at("irr_d", { b: bal.toFixed(0) }));
     return out;
   }
 
   async function render(el, lat, lon, userCrop, cls) {
-    let key = cropKey(userCrop, cls);
-    const draw = async () => {
-      const sel = `<label class="adv-crop">${at("crop")} <select id="advCrop"><option value="">—</option>${Object.entries(at("crops")).map(([k, v]) => `<option value="${k}" ${k === key ? "selected" : ""}>${v}</option>`).join("")}</select></label>`;
-      el.innerHTML = `<b>${at("title")}</b> ${sel}<div class="adv-list"><span class="hint small">${key ? at("loading") : at("none")}</span></div>`;
-      el.querySelector("#advCrop").onchange = (e) => { key = e.target.value || null; draw(); };
-      if (!key) return;
-      let j;
-      try { j = await meteo(lat, lon); } catch (e) { el.querySelector(".adv-list").innerHTML = `<span class="hint small">${at("err")}</span>`; return; }
-      if (!j || !j.hourly) { el.querySelector(".adv-list").innerHTML = `<span class="hint small">${at("err")}</span>`; return; }
-      const ms = models(key, j);
-      el.querySelector(".adv-list").innerHTML = ms.map((x) => `<div class="adv lv${x.lv}"><span class="adv-dot"></span><div><b>${x.name}</b>` +
-        `${x.lv >= 0 ? ` <span class="adv-lv">${at("lv")[x.lv]}</span>` : ""}<br><small>${x.desc}</small></div></div>`).join("") +
-        `<p class="hint small">${at("note")}</p>`;
-    };
-    draw();
+    const key = cropKey(userCrop, cls);
+    if (!key) { el.innerHTML = `<b>${at("title")}</b> <span class="hint small">${at("none")}</span>`; return; }
+    el.innerHTML = `<b>${at("title")}: ${at("crops")[key]}</b><div class="adv-list"><span class="hint small">${at("loading")}</span></div>`;
+    let j;
+    try { j = await meteo(lat, lon); } catch (e) { j = null; }
+    const list = el.querySelector(".adv-list");
+    if (!list) return;
+    if (!j || !j.hourly) { list.innerHTML = `<span class="hint small">${at("err")}</span>`; return; }
+    const ms = models(key, j);
+    list.innerHTML = (ms.length ? ms.map((x) => `<div class="adv lv${x.lv}"><span class="adv-dot"></span><div><b>${x.name}</b>` +
+      `${x.lv >= 0 ? ` <span class="adv-lv">${at("lv")[x.lv]}</span>` : ""}<br><small>${x.desc}</small></div></div>`).join("") : `<span class="hint small">${at("nothing")}</span>`) +
+      `<p class="hint small">${at("note")}</p>`;
   }
   return { render, cropKey };
 })();

@@ -7,8 +7,6 @@
 //  - Meteo: ERA5 / ERA5-Land (Copernicus C3S) e previsioni, tramite Open-Meteo
 
 const PC = "https://planetarycomputer.microsoft.com/api";
-const FTW_ITALY = "https://data.source.coop/ftw/global-data/predictions/vectors/alpha/results-by-admin-conf/admin:country_code=IT/Italy.pmtiles";
-const FTW_LAYER = "2025";
 
 // Indici Sentinel-2. Le immagini L2A dal 2022 hanno un offset di +1000 sulla riflettanza:
 // (a-1000)-(b-1000) = a-b ; (a-1000)+(b-1000) = a+b-2000
@@ -54,7 +52,9 @@ const LT = {
     soil_note: "ISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
     fw_title: "Modello idrico FAO-33", fw_det: "(acqua disponibile nelle radici {taw} mm; consumo reale {r}% del potenziale; {s} giorni di stress; resa raggiungibile in provincia {ym} t/ha)",
     fw_irr: "Campo irrigato: nessuno stress idrico.",
-    fm_title: "Mappa del campo a 10 m",
+    fm_title: "Mappa del campo a 10 m", fm_lai: "LAI (indice di area fogliare)",
+    dl_title: "Scarica:", dl_one: "mappa della data (GeoTIFF)", dl_all: "tutte le date (GeoTIFF multibanda)", dl_csv: "serie temporale media (CSV)",
+    dl_prog: "Scarico {n}/{t} date…", dl_done: "File pronto: {n} date, valori a 10 m, EPSG:3857, nullo = −9999.", dl_noidx: "Scegli un indice (non colori reali o zone).",
     fl_title: "Campo selezionato: mappe a 10 m", fl_map: "Mappa", fl_date: "Data", fl_op: "Trasparenza", fl_hide: "Togli la mappa del campo",
     fl_soil: "Suolo:", fl_sg_clay: "argilla", fl_sg_sand: "sabbia", fl_sg_soc: "carbonio", fl_sg_nitrogen: "azoto", fl_sg_phh2o: "pH", fl_sg_cec: "CSC",
     fl_pheno: "Fenologia Copernicus:", fl_hv_sosd: "inizio stagione", fl_hv_eosd: "fine stagione", fl_hv_length: "durata", fl_hv_tprod: "produttività", fm_ndvi: "NDVI (vigore)", fm_ndre: "NDRE (clorofilla)", fm_ndmi: "NDMI (acqua nelle foglie)", fm_evi: "EVI",
@@ -74,7 +74,6 @@ const LT = {
     seg_auto: "Divido in campi la zona attorno al punto (immagini Sentinel-2 degli ultimi 12 mesi)…",
     outliers: "date scartate (rumore)",
     ch_et: "Evapotraspirazione nel tempo",
-    ch_cum: "Acqua e calore accumulati dall'inizio del periodo", c_rain_cum: "Pioggia cumulata", c_etc_cum: "ET coltura cumulata", c_bal: "Pioggia − ET coltura", c_gdd: "Gradi giorno (base 10 °C)",
     ch_yield: "Rese: ISTAT in provincia e stima del campo", yc_grown: "Resa ISTAT della coltura di quell'anno", yc_ref: "Serie ISTAT {c}", yc_monteith: "Campo: modello Monteith", yc_fao: "Campo: modello idrico FAO-33",
     et0d: "ET0 riferimento (mm/g)", etcd: "ET coltura FAO-56 con Kc da NDVI (mm/g)", etad: "ET reale Copernicus 300 m (mm/g)",
     etc_cum: "ET coltura cumulata", eta_cum: "ET reale cumulata",
@@ -151,7 +150,9 @@ const LT = {
     soil_note: "ISRIC SoilGrids 2.0 (250 m, model-based estimate: indicative, not a substitute for a soil test). Plant-available water between field capacity and wilting point, from texture and organic matter (Saxton & Rawls 2006).",
     fw_title: "FAO-33 water model", fw_det: "(available water in the root zone {taw} mm; actual use {r}% of potential; {s} stress days; attainable yield in the province {ym} t/ha)",
     fw_irr: "Irrigated field: no water stress.",
-    fm_title: "Field map at 10 m",
+    fm_title: "Field map at 10 m", fm_lai: "LAI (leaf area index)",
+    dl_title: "Download:", dl_one: "map of the date (GeoTIFF)", dl_all: "all dates (multi-band GeoTIFF)", dl_csv: "mean time series (CSV)",
+    dl_prog: "Downloading {n}/{t} dates…", dl_done: "File ready: {n} dates, 10 m values, EPSG:3857, no-data = −9999.", dl_noidx: "Choose an index (not true colour or zones).",
     fl_title: "Selected field: 10 m maps", fl_map: "Map", fl_date: "Date", fl_op: "Opacity", fl_hide: "Remove the field map",
     fl_soil: "Soil:", fl_sg_clay: "clay", fl_sg_sand: "sand", fl_sg_soc: "carbon", fl_sg_nitrogen: "nitrogen", fl_sg_phh2o: "pH", fl_sg_cec: "CEC",
     fl_pheno: "Copernicus phenology:", fl_hv_sosd: "season start", fl_hv_eosd: "season end", fl_hv_length: "length", fl_hv_tprod: "productivity", fm_ndvi: "NDVI (vigour)", fm_ndre: "NDRE (chlorophyll)", fm_ndmi: "NDMI (leaf water)", fm_evi: "EVI",
@@ -171,7 +172,6 @@ const LT = {
     seg_auto: "Splitting the area around the point into fields (Sentinel-2 images of the last 12 months)…",
     outliers: "discarded dates (noise)",
     ch_et: "Evapotranspiration over time",
-    ch_cum: "Water and heat accumulated since the start of the period", c_rain_cum: "Cumulative rain", c_etc_cum: "Cumulative crop ET", c_bal: "Rain − crop ET", c_gdd: "Growing degree days (base 10 °C)",
     ch_yield: "Yields: ISTAT in the province and field estimate", yc_grown: "ISTAT yield of that year's crop", yc_ref: "ISTAT series {c}", yc_monteith: "Field: Monteith model", yc_fao: "Field: FAO-33 water model",
     et0d: "Reference ET0 (mm/d)", etcd: "FAO-56 crop ET with NDVI Kc (mm/d)", etad: "Copernicus actual ET 300 m (mm/d)",
     etc_cum: "Cumulative crop ET", eta_cum: "Cumulative actual ET",
@@ -356,192 +356,16 @@ const Live = (() => {
   }
 
   // ================================================================== confini dei campi (PMTiles)
-  const pm = new pmtiles.PMTiles(FTW_ITALY);
-  let pmHeader = null;
-  const headerP = pm.getHeader().then((h) => (pmHeader = h)).catch((e) => console.warn("PMTiles", e));
-
-  function makeFieldsLayer(def) {
-    return protomapsL.leafletLayer({
-      url: FTW_ITALY,
-      maxDataZoom: 13, // zoom massimo dell'archivio PMTiles FTW Italia
-      paintRules: [{ dataLayer: FTW_LAYER, symbolizer: new protomapsL.LineSymbolizer({ color: "#ffd84a", width: 1.3 }) }],
-      labelRules: [],
-      minZoom: def.minZoom || 12,
-      pane: "overlayPane",
-      attribution: "Campi: Fields of The World 2025 (CC BY 4.0)",
-    });
-  }
-
-  // --- decodifica Mapbox Vector Tile (minimale) ---
-  function PB(buf) { this.b = buf; this.p = 0; }
-  PB.prototype.varint = function () { let r = 0, s = 1, b; do { b = this.b[this.p++]; r += (b & 0x7f) * s; s *= 128; } while (b >= 0x80); return r; };
-  PB.prototype.skip = function (wt) { if (wt === 0) this.varint(); else if (wt === 1) this.p += 8; else if (wt === 2) { const l = this.varint(); this.p += l; } else if (wt === 5) this.p += 4; };
-  const zz = (n) => (n % 2 === 1 ? -(n + 1) / 2 : n / 2);
-
-  function decodeTile(buf) {
-    const pb = new PB(new Uint8Array(buf)), layers = {};
-    while (pb.p < pb.b.length) {
-      const tag = pb.varint(), f = tag >> 3, wt = tag & 7;
-      if (f === 3) { const len = pb.varint(), end = pb.p + len; const ly = decodeLayer(pb, end); layers[ly.name] = ly; pb.p = end; }
-      else pb.skip(wt);
-    }
-    return layers;
-  }
-  function decodeLayer(pb, end) {
-    const ly = { name: "", extent: 4096, keys: [], values: [], features: [] };
-    while (pb.p < end) {
-      const tag = pb.varint(), f = tag >> 3, wt = tag & 7;
-      if (f === 1) { const l = pb.varint(); ly.name = new TextDecoder().decode(pb.b.subarray(pb.p, pb.p + l)); pb.p += l; }
-      else if (f === 2) { const l = pb.varint(), e = pb.p + l; ly.features.push(decodeFeature(pb, e)); pb.p = e; }
-      else if (f === 3) { const l = pb.varint(); ly.keys.push(new TextDecoder().decode(pb.b.subarray(pb.p, pb.p + l))); pb.p += l; }
-      else if (f === 4) { const l = pb.varint(), e = pb.p + l; ly.values.push(decodeValue(pb, e)); pb.p = e; }
-      else if (f === 5) ly.extent = pb.varint();
-      else pb.skip(wt);
-    }
-    ly.features.forEach((ft) => { ft.props = {}; for (let i = 0; i < ft.tags.length; i += 2) ft.props[ly.keys[ft.tags[i]]] = ly.values[ft.tags[i + 1]]; });
-    return ly;
-  }
-  function decodeValue(pb, end) {
-    let v = null;
-    while (pb.p < end) {
-      const tag = pb.varint(), f = tag >> 3;
-      if (f === 1) { const l = pb.varint(); v = new TextDecoder().decode(pb.b.subarray(pb.p, pb.p + l)); pb.p += l; }
-      else if (f === 2) { v = new DataView(pb.b.buffer, pb.b.byteOffset + pb.p, 4).getFloat32(0, true); pb.p += 4; }
-      else if (f === 3) { v = new DataView(pb.b.buffer, pb.b.byteOffset + pb.p, 8).getFloat64(0, true); pb.p += 8; }
-      else if (f === 4 || f === 5) v = pb.varint();
-      else if (f === 6) v = zz(pb.varint());
-      else if (f === 7) v = !!pb.varint();
-      else pb.skip(tag & 7);
-    }
-    return v;
-  }
-  function decodeFeature(pb, end) {
-    const ft = { id: null, type: 0, tags: [], geom: [] };
-    while (pb.p < end) {
-      const tag = pb.varint(), f = tag >> 3, wt = tag & 7;
-      if (f === 1) ft.id = pb.varint();
-      else if (f === 2) { const l = pb.varint(), e = pb.p + l; while (pb.p < e) ft.tags.push(pb.varint()); }
-      else if (f === 3) ft.type = pb.varint();
-      else if (f === 4) { const l = pb.varint(), e = pb.p + l; while (pb.p < e) ft.geom.push(pb.varint()); }
-      else pb.skip(wt);
-    }
-    return ft;
-  }
-  // geometria -> anelli in coordinate tassello, poi poligoni (esterno + buchi)
-  function featureRings(ft) {
-    const rings = []; let x = 0, y = 0, ring = null, i = 0;
-    while (i < ft.geom.length) {
-      const c = ft.geom[i++], cmd = c & 7, n = c >> 3;
-      if (cmd === 1 || cmd === 2) {
-        for (let k = 0; k < n; k++) {
-          x += zz(ft.geom[i++]); y += zz(ft.geom[i++]);
-          if (cmd === 1) { ring = [[x, y]]; rings.push(ring); } else ring.push([x, y]);
-        }
-      } else if (cmd === 7 && ring) ring.push([ring[0][0], ring[0][1]]);
-    }
-    const polys = [];
-    rings.forEach((r) => {
-      let a = 0; for (let j = 0; j < r.length - 1; j++) a += r[j][0] * r[j + 1][1] - r[j + 1][0] * r[j][1];
-      if (a > 0 || !polys.length) polys.push([r]); else polys[polys.length - 1].push(r);
-    });
-    return polys;
-  }
+  // punto nel poligono (anelli in coordinate qualsiasi)
   function inRing(pt, r) {
-    let c = false;
+    let inside = false;
     for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
-      if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < ((r[j][0] - r[i][0]) * (pt[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) c = !c;
+      const [xi, yi] = r[i], [xj, yj] = r[j];
+      if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) inside = !inside;
     }
-    return c;
+    return inside;
   }
   const inPoly = (pt, poly) => inRing(pt, poly[0]) && !poly.slice(1).some((h) => inRing(pt, h));
-
-  // ritaglio di un anello al quadrato [0,E] (Sutherland–Hodgman), per unire pezzi di tasselli vicini
-  function clipRing(ring, E) {
-    let out = ring.slice(0, -1);
-    const edges = [[(p) => p[0] >= 0, (a, b) => { const t = (0 - a[0]) / (b[0] - a[0]); return [0, a[1] + t * (b[1] - a[1])]; }],
-      [(p) => p[0] <= E, (a, b) => { const t = (E - a[0]) / (b[0] - a[0]); return [E, a[1] + t * (b[1] - a[1])]; }],
-      [(p) => p[1] >= 0, (a, b) => { const t = (0 - a[1]) / (b[1] - a[1]); return [a[0] + t * (b[0] - a[0]), 0]; }],
-      [(p) => p[1] <= E, (a, b) => { const t = (E - a[1]) / (b[1] - a[1]); return [a[0] + t * (b[0] - a[0]), E]; }]];
-    for (const [inside, cut] of edges) {
-      const inp = out; out = [];
-      if (!inp.length) break;
-      for (let i = 0; i < inp.length; i++) {
-        const cur = inp[i], prev = inp[(i + inp.length - 1) % inp.length];
-        if (inside(cur)) { if (!inside(prev)) out.push(cut(prev, cur)); out.push(cur); }
-        else if (inside(prev)) out.push(cut(prev, cur));
-      }
-    }
-    if (out.length < 3) return null;
-    out.push(out[0]);
-    return out;
-  }
-
-  const n2 = (z) => Math.pow(2, z);
-  function lonLatToTile(lon, lat, z) {
-    const n = n2(z), r = (lat * Math.PI) / 180;
-    return [((lon + 180) / 360) * n, ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n];
-  }
-  function tileToLonLat(x, y, px, py, E, z) {
-    const n = n2(z), X = x + px / E, Y = y + py / E;
-    return [(X / n) * 360 - 180, (Math.atan(Math.sinh(Math.PI * (1 - (2 * Y) / n))) * 180) / Math.PI];
-  }
-  const tileCache = {};
-  async function getTileLayer(z, x, y) {
-    const k = `${z}/${x}/${y}`;
-    if (!tileCache[k]) tileCache[k] = pm.getZxy(z, x, y).then((r) => (r && r.data ? decodeTile(r.data)[FTW_LAYER] : null));
-    return tileCache[k];
-  }
-  // i tasselli FTW non hanno un id: uso la superficie totale del campo (metrics:area), identica in tutti i pezzi
-const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? ft.id;
-
-  // trova il campo che contiene il punto; restituisce un GeoJSON MultiPolygon in lon/lat
-  async function findField(ll) {
-    await headerP;
-    if (!pmHeader) return null;
-    const z = pmHeader.maxZoom;
-    const [tx, ty] = lonLatToTile(ll.lng, ll.lat, z);
-    const x = Math.floor(tx), y = Math.floor(ty);
-    const ly = await getTileLayer(z, x, y);
-    if (!ly) return null;
-    const E = ly.extent, pt = [(tx - x) * E, (ty - y) * E];
-    let hit = null, hitPoly = null;
-    for (const ft of ly.features) {
-      if (ft.type !== 3) continue;
-      const polys = featureRings(ft);
-      const p = polys.find((pp) => inPoly(pt, pp));
-      if (p) { hit = ft; hitPoly = p; break; }
-    }
-    if (!hit) return null;
-    const id = fid(hit);
-    // pezzi del campo nei tasselli vicini (i campi grandi sono tagliati ai bordi del tassello)
-    const pieces = [];
-    const touches = { l: false, r: false, t: false, b: false };
-    const addFrom = (ly2, dx, dy, onlyHit) => {
-      (onlyHit ? [hit] : ly2.features.filter((f) => f.type === 3 && id != null && fid(f) === id)).forEach((ft) => {
-        featureRings(ft).forEach((poly) => {
-          if (onlyHit && poly !== hitPoly && !featureRings(hit).length) return;
-          const clipped = poly.map((r) => clipRing(r, ly2.extent)).filter(Boolean);
-          if (!clipped.length) return;
-          poly[0].forEach(([px, py]) => { if (px <= 0) touches.l = true; if (px >= ly2.extent) touches.r = true; if (py <= 0) touches.t = true; if (py >= ly2.extent) touches.b = true; });
-          pieces.push(clipped.map((r) => r.map(([px, py]) => tileToLonLat(x + dx, y + dy, px, py, ly2.extent, z))));
-        });
-      });
-    };
-    // solo il poligono colpito (non tutte le parti multiple del feature), poi i vicini con lo stesso id
-    const clippedHit = hitPoly.map((r) => clipRing(r, E)).filter(Boolean);
-    hitPoly[0].forEach(([px, py]) => { if (px <= 0) touches.l = true; if (px >= E) touches.r = true; if (py <= 0) touches.t = true; if (py >= E) touches.b = true; });
-    pieces.push(clippedHit.map((r) => r.map(([px, py]) => tileToLonLat(x, y, px, py, E, z))));
-    if (id != null && (touches.l || touches.r || touches.t || touches.b)) {
-      const nb = [];
-      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-        if (!dx && !dy) continue;
-        if ((dx === -1 && !touches.l) || (dx === 1 && !touches.r) || (dy === -1 && !touches.t) || (dy === 1 && !touches.b)) continue;
-        nb.push(getTileLayer(z, x + dx, y + dy).then((l2) => l2 && addFrom(l2, dx, dy, false)));
-      }
-      await Promise.all(nb);
-    }
-    return { type: "Feature", properties: { ...hit.props, _id: id }, geometry: { type: "MultiPolygon", coordinates: pieces } };
-  }
 
   function squareAround(ll, half = 20) {
     const dLat = half / 111320, dLon = half / (111320 * Math.cos((ll.lat * Math.PI) / 180));
@@ -817,27 +641,6 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   }
   let RESE_DATA = null, TARATURA = null, taraturaChiesta = false;
 
-  // ---- grafico dei cumulati: pioggia, ET0, ET coltura, bilancio (mm) e gradi giorno (asse destro)
-  function drawCumulative() {
-    const met = (current.meteo || []).filter((r) => !r.fc && r.t <= endDate(range).getTime());
-    if (met.length < 3) return;
-    const sm = smooth("ndvi");
-    const ndviAt = (t) => { if (!sm.length) return null; let j = 0; while (j < sm.length - 1 && sm[j + 1].x < t) j++; return sm[j].y; };
-    let cr = 0, ce = 0, cc = 0, gd = 0;
-    const R = [], E = [], C = [], B = [], G = [];
-    met.forEach((r) => {
-      cr += r.rain || 0; ce += r.et0 || 0; gd += Math.max(0, (r.tmean ?? 10) - 10);
-      const nd = ndviAt(r.t); cc += nd == null ? 0 : Math.min(1.25, Math.max(0.15, 1.457 * nd - 0.1725)) * (r.et0 || 0);
-      R.push({ x: r.t, y: cr }); E.push({ x: r.t, y: ce }); C.push({ x: r.t, y: cc }); B.push({ x: r.t, y: cr - cc }); G.push({ x: r.t, y: gd });
-    });
-    upsert("chCum", { type: "line", data: { datasets: [
-      { label: lt("c_rain_cum"), data: R, borderColor: "#2b6cb0", backgroundColor: "#2b6cb022", fill: true, pointRadius: 0, borderWidth: 2 },
-      { label: "ET0", data: E, borderColor: "#8a5b10", borderDash: [4, 3], pointRadius: 0, borderWidth: 1.5 },
-      { label: lt("c_etc_cum"), data: C, borderColor: "#d0572b", pointRadius: 0, borderWidth: 2 },
-      { label: lt("c_bal"), data: B, borderColor: "#333", pointRadius: 0, borderWidth: 1.5, borderDash: [2, 2] },
-      { label: lt("c_gdd"), data: G, borderColor: "#c9a227", pointRadius: 0, borderWidth: 1.5, yAxisID: "y2" },
-    ] }, options: baseOpts({ y: { title: { display: true, text: "mm" } }, y2: { position: "right", grid: { display: false }, title: { display: true, text: lt("c_gdd") } } }) });
-  }
   // ---- grafico delle rese: ISTAT della coltura coltivata ogni anno (colore = coltura Copernicus), serie ISTAT della coltura
   // principale, e la resa stimata del campo con i due modelli
   function drawYieldChart(R, pv, ref) {
@@ -1105,7 +908,6 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
           <span class="fp-dates">${lt("from")} <input type="date" id="fpFrom" min="2016-01-01" max="${iso(new Date())}" value="${iso(startDate(range))}">
             ${lt("to")} <input type="date" id="fpTo" min="2016-01-01" max="${iso(new Date())}" value="${iso(endDate(range))}">
             <button class="seg ${range === "custom" ? "active" : ""}" id="fpApply">${lt("apply")}</button></span>
-          <button id="fpRadar" class="small-btn">${lt("radar")}</button>
           <button id="fpCsv" class="small-btn">${lt("csv")}</button>
           <button id="fpClose" class="icon-x" title="${lt("close")}">×</button>
         </div>
@@ -1117,21 +919,17 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       <div id="fpSoil" class="fp-soil"></div>
       <div id="fpAdvice" class="fp-advice"></div>
       <div id="fpYield" class="fp-yield"></div>
-      <div id="fpSummary" class="fp-summary"></div>
-      <div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
-      <div class="fp-charts">
-        <figure><figcaption>${lt("ch_index")}</figcaption><div class="cbox"><canvas id="chIndex"></canvas></div></figure>
-        <figure><figcaption>${lt("ch_meteo")}</figcaption><div class="cbox"><canvas id="chMeteo"></canvas></div></figure>
-        <figure><figcaption>${lt("ch_et")}</figcaption><div class="cbox"><canvas id="chEt"></canvas></div></figure>
-        <figure><figcaption>${lt("ch_cum")}</figcaption><div class="cbox"><canvas id="chCum"></canvas></div></figure>
-        <figure><figcaption id="chYieldCap">${lt("ch_yield")}</figcaption><div class="cbox"><canvas id="chYield"></canvas></div></figure>
-        <figure class="cmp-fig"><figcaption>${lt("ch_cmp")}
-          <label class="norm"><input type="checkbox" id="cmpNorm" ${cmpNorm ? "checked" : ""}> ${lt("cmp_norm")}</label></figcaption>
-          <div class="chips cmp-chips">${CMP.map(([k, c]) => `<label class="chip"><input type="checkbox" data-c="${k}" ${cmpSel.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("c_" + k)}</label>`).join("")}</div>
-          <div class="cbox"><canvas id="chCmp"></canvas></div></figure>
-        <figure id="radarFig" hidden><figcaption>${lt("ch_radar")}</figcaption><div class="cbox"><canvas id="chRadar"></canvas></div>
-          <p class="hint small">${lt("radar_hint")}</p></figure>
-      </div>
+      <div class="ch-tabs">${CHARTS.map(([id, key]) => `<button class="seg ${id === chartSel ? "active" : ""}" data-ch="${id}">${lt(key)}</button>`).join("")}
+        <button class="small-btn ch-dl" id="fpCsv2">⬇ ${lt("csv")}</button></div>
+      <figure class="ch-fig" data-ch="chIndex"><div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
+        <div class="cbox"><canvas id="chIndex"></canvas></div></figure>
+      <figure class="ch-fig" data-ch="chMeteo"><div class="cbox"><canvas id="chMeteo"></canvas></div></figure>
+      <figure class="ch-fig" data-ch="chEt"><div class="cbox"><canvas id="chEt"></canvas></div></figure>
+      <figure class="ch-fig" data-ch="chYield"><figcaption id="chYieldCap"></figcaption><div class="cbox"><canvas id="chYield"></canvas></div></figure>
+      <figure class="ch-fig" data-ch="chCmp"><label class="norm"><input type="checkbox" id="cmpNorm" ${cmpNorm ? "checked" : ""}> ${lt("cmp_norm")}</label>
+        <div class="chips cmp-chips">${CMP.map(([k, c]) => `<label class="chip"><input type="checkbox" data-c="${k}" ${cmpSel.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("c_" + k)}</label>`).join("")}</div>
+        <div class="cbox"><canvas id="chCmp"></canvas></div></figure>
+      <figure class="ch-fig" data-ch="chRadar"><div class="cbox"><canvas id="chRadar"></canvas></div><p class="hint small">${lt("radar_hint")}</p></figure>
       <p class="hint small fp-foot">${lt("s2_src")} ${lt("meteo_src")} ${lt("et_note")}</p>`;
     panel().hidden = false;
     document.body.classList.add("fp-open");
@@ -1151,9 +949,12 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       drawCompare(); }));
     document.getElementById("cmpNorm").onchange = (e) => { cmpNorm = e.target.checked; drawCompare(); };
     document.getElementById("fpCsv").onclick = exportCsv;
-    document.getElementById("fpRadar").onclick = () => { document.getElementById("radarFig").hidden = false; loadS1(); };
+    document.getElementById("fpCsv2").onclick = exportCsv;
+    panel().querySelectorAll(".ch-tabs .seg").forEach((b) => (b.onclick = () => showChart(b.dataset.ch)));
+    showChart(chartSel);
     Object.values(charts).forEach((c) => c.destroy());
     charts = {};
+    s1Loaded = false;
     buildFieldLayerBox();
     fmDatesKey = "";
   }
@@ -1165,7 +966,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   const RAMP = [[165, 0, 38], [215, 48, 39], [244, 109, 67], [253, 174, 97], [254, 224, 139], [217, 239, 139], [166, 217, 106], [102, 189, 99], [26, 152, 80], [0, 104, 55]];
   const ramp = (u) => { u = Math.min(1, Math.max(0, u)) * (RAMP.length - 1); const i = Math.min(RAMP.length - 2, Math.floor(u)), f = u - i;
     return RAMP[i].map((c, k) => Math.round(c + f * (RAMP[i + 1][k] - c))); };
-  const FIX = { ndvi: [0, 0.9], ndre: [0, 0.6], ndmi: [-0.3, 0.5], evi: [0, 0.8], savi: [0, 0.7] };
+  const FIX = { lai: [0, 6], ndvi: [0, 0.9], ndre: [0, 0.6], ndmi: [-0.3, 0.5], evi: [0, 0.8], savi: [0, 0.7] };
   const ZONE_COL = [[214, 64, 50], [240, 200, 60], [40, 150, 70]];
   const mercX = (lon) => (lon * 20037508.34) / 180;
   const mercY = (lat) => Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) * 6378137;
@@ -1181,12 +982,14 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const prev = { idx: (document.getElementById("fmIdx") || {}).value || "ndvi", op: (document.getElementById("fmOp") || {}).value || 0.9 };
     box.hidden = false;
     box.innerHTML = `<h3>${lt("fl_title")}</h3>
-      <label class="fl-row">${lt("fl_map")} <select id="fmIdx">${["ndvi", "ndre", "ndmi", "evi", "savi", "rgb", "zone"].map((k) => `<option value="${k}" ${k === prev.idx ? "selected" : ""}>${lt("fm_" + k)}</option>`).join("")}</select></label>
+      <label class="fl-row">${lt("fl_map")} <select id="fmIdx">${["ndvi", "lai", "ndre", "ndmi", "evi", "savi", "rgb", "zone"].map((k) => `<option value="${k}" ${k === prev.idx ? "selected" : ""}>${lt("fm_" + k)}</option>`).join("")}</select></label>
       <label class="fl-row">${lt("fl_date")} <select id="fmDate"><option>…</option></select></label>
       <label class="fl-row small"><input type="checkbox" id="fmAuto" checked> ${lt("fm_auto")}</label>
       <label class="fl-row small">${lt("fl_op")} <input type="range" id="fmOp" min="0" max="1" step="0.05" value="${prev.op}"></label>
       <div class="fm-legend" id="fmLegend"></div>
       <div class="hint small" id="fmStats"></div>
+      <div class="fl-dl"><b>${lt("dl_title")}</b> <button class="small-btn" id="dlOne">${lt("dl_one")}</button>
+        <button class="small-btn" id="dlAll">${lt("dl_all")}</button> <button class="small-btn" id="dlCsv">${lt("dl_csv")}</button></div>
       <div class="fl-soil"><b>${lt("fl_soil")}</b> ${["sg_clay", "sg_sand", "sg_soc", "sg_nitrogen", "sg_phh2o", "sg_cec"].map((id) =>
         `<button class="seg fl-sg" data-id="${id}">${lt("fl_" + id)}</button>`).join("")}</div>
       <div class="fl-soil"><b>${lt("fl_pheno")}</b> ${["hv_sosd", "hv_eosd", "hv_length", "hv_tprod"].map((id) =>
@@ -1194,6 +997,9 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       <button class="small-btn" id="fmHide">${lt("fl_hide")}</button>`;
     ["fmIdx", "fmDate", "fmAuto"].forEach((id) => (document.getElementById(id).onchange = () => drawFieldMap()));
     document.getElementById("fmOp").oninput = (e) => fmOverlay && fmOverlay.setOpacity(+e.target.value);
+    document.getElementById("dlOne").onclick = () => downloadMaps(false);
+    document.getElementById("dlAll").onclick = () => downloadMaps(true);
+    document.getElementById("dlCsv").onclick = exportCsv;
     document.getElementById("fmHide").onclick = () => { if (fmOverlay) { map.removeLayer(fmOverlay); fmOverlay = null; } };
     box.querySelectorAll(".fl-sg").forEach((b) => {
       const on = () => document.querySelector(`.layer[data-id="${b.dataset.id}"] input[type=checkbox]`);
@@ -1216,13 +1022,8 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     drawFieldMap();
   }
   function ringsOf(g) { return g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : []; }
-  async function drawFieldMap() {
-    if (!document.getElementById("fmIdx") || !current) return;
-    const idx = document.getElementById("fmIdx").value, date = document.getElementById("fmDate").value, auto = document.getElementById("fmAuto").checked;
-    const row = clean().find((r) => r.date === date);
-    if (!row) return;
-    const stats = document.getElementById("fmStats");
-    stats.textContent = lt("fm_loading");
+  // griglia a ~10 m (Web Mercator) attorno al campo, con maschera del poligono
+  function fieldGrid() {
     const polys = ringsOf(current.feature.geometry);
     let lo0 = 180, la0 = 90, lo1 = -180, la1 = -90;
     polys.forEach((p) => p[0].forEach(([x, y]) => { lo0 = Math.min(lo0, x); lo1 = Math.max(lo1, x); la0 = Math.min(la0, y); la1 = Math.max(la1, y); }));
@@ -1230,15 +1031,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const X0 = mercX(lo0), X1 = mercX(lo1), Y0 = mercY(la0), Y1 = mercY(la1);
     const k = Math.cos(((la0 + la1) / 2) * Math.PI / 180);          // metri veri per metro Mercatore
     let W = Math.max(4, Math.round(((X1 - X0) * k) / 10)), H = Math.max(4, Math.round(((Y1 - Y0) * k) / 10));
-    const sc = Math.min(1, 400 / Math.max(W, H)); W = Math.round(W * sc); H = Math.round(H * sc);
-    const exprs = idx === "rgb" ? ["B04", "B03", "B02"] : [S2_INDEX[idx === "zone" ? "ndvi" : idx]];
-    const url = `${PC}/data/v1/item/bbox/${X0},${Y0},${X1},${Y1}.npy?collection=sentinel-2-l2a&item=${row.item}` +
-      `&expression=${encodeURIComponent(exprs.join(";"))}&asset_as_band=true&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${W}&height=${H}&resampling=nearest`;
-    let arr;
-    try { arr = parseNpy(await fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })); }
-    catch (e) { stats.textContent = lt("fm_err"); return; }
-    if (document.getElementById("fmDate").value !== date || document.getElementById("fmIdx").value !== idx) return;
-    // maschera del poligono
+    const sc = Math.min(1, 600 / Math.max(W, H)); W = Math.round(W * sc); H = Math.round(H * sc);
     const mk = document.createElement("canvas"); mk.width = W; mk.height = H;
     const mc = mk.getContext("2d"); mc.fillStyle = "#000"; mc.beginPath();
     polys.forEach((p) => p.forEach((ring) => ring.forEach(([x, y], i) => {
@@ -1246,7 +1039,83 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       i ? mc.lineTo(px, py) : mc.moveTo(px, py);
     })));
     mc.fill("evenodd");
-    const inside = mc.getImageData(0, 0, W, H).data;
+    return { W, H, X0, X1, Y0, Y1, polys, inside: mc.getImageData(0, 0, W, H).data };
+  }
+  const EXPR_MAP = (idx) => (idx === "rgb" ? ["B04", "B03", "B02"] : idx === "lai" ? [`3.618*(${S2_INDEX.evi})-0.118`] : [S2_INDEX[idx === "zone" ? "ndvi" : idx]]);
+  async function fetchIndex(item, idx, G) {
+    const url = `${PC}/data/v1/item/bbox/${G.X0},${G.Y0},${G.X1},${G.Y1}.npy?collection=sentinel-2-l2a&item=${item}` +
+      `&expression=${encodeURIComponent(EXPR_MAP(idx).join(";"))}&asset_as_band=true&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${G.W}&height=${G.H}&resampling=nearest`;
+    return parseNpy(await fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }));
+  }
+  // GeoTIFF float32 multibanda (una banda per data), EPSG:3857, valore nullo -9999, nomi delle bande = date
+  function geotiff(bands, names, G) {
+    const W = G.W, H = G.H, N = bands.length, n = W * H;
+    const tags = [], extra = [];
+    const put = (tag, type, vals) => tags.push({ tag, type, vals });
+    const pixScale = [(G.X1 - G.X0) / W, (G.Y1 - G.Y0) / H, 0], tie = [0, 0, 0, G.X0, G.Y1, 0];
+    const keys = [1, 1, 0, 3, 1024, 0, 1, 1, 1025, 0, 1, 1, 3072, 0, 1, 3857];
+    const meta = `<GDALMetadata>${names.map((d, i) => `<Item name="DESCRIPTION" sample="${i}" role="description">${d}</Item>`).join("")}</GDALMetadata>\0`;
+    const nod = "-9999\0";
+    put(256, 4, [W]); put(257, 4, [H]); put(258, 3, Array(N).fill(32)); put(259, 3, [1]); put(262, 3, [1]);
+    put(273, 4, [0]); put(277, 3, [N]); put(278, 4, [H]); put(279, 4, [n * N * 4]); put(284, 3, [1]);
+    if (N > 1) put(338, 3, Array(N - 1).fill(0));
+    put(339, 3, Array(N).fill(3)); put(33550, 12, pixScale); put(33922, 12, tie); put(34735, 3, keys);
+    put(42112, 2, meta); put(42113, 2, nod);
+    const size = { 2: 1, 3: 2, 4: 4, 12: 8 };
+    const len = (t) => (t.type === 2 ? t.vals.length : t.vals.length) * size[t.type];
+    const ifdLen = 2 + tags.length * 12 + 4;
+    let off = 8 + ifdLen;
+    tags.forEach((t) => { if (len(t) > 4) { t.off = off; off += len(t) + (len(t) % 2); } });
+    const dataOff = off, buf = new ArrayBuffer(dataOff + n * N * 4), dv = new DataView(buf);
+    tags.find((t) => t.tag === 273).vals = [dataOff];
+    dv.setUint16(0, 0x4949); dv.setUint16(2, 42, true); dv.setUint32(4, 8, true); dv.setUint16(8, tags.length, true);
+    const wr = (t, o) => (t.type === 2 ? [...t.vals].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0) & 255))
+      : t.vals.forEach((v, i) => (t.type === 3 ? dv.setUint16(o + i * 2, v, true) : t.type === 4 ? dv.setUint32(o + i * 4, v, true) : dv.setFloat64(o + i * 8, v, true))));
+    tags.forEach((t, i) => {
+      const o = 10 + i * 12;
+      dv.setUint16(o, t.tag, true); dv.setUint16(o + 2, t.type, true); dv.setUint32(o + 4, t.vals.length, true);
+      if (len(t) > 4) { dv.setUint32(o + 8, t.off, true); wr(t, t.off); } else wr(t, o + 8);
+    });
+    dv.setUint32(10 + tags.length * 12, 0, true);
+    for (let i = 0; i < n; i++) for (let b = 0; b < N; b++) {
+      const v = bands[b][i];
+      dv.setFloat32(dataOff + (i * N + b) * 4, G.inside[i * 4 + 3] > 127 && isFinite(v) ? v : -9999, true);
+    }
+    return new Blob([buf], { type: "image/tiff" });
+  }
+  function saveBlob(blob, name) {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  async function downloadMaps(all) {
+    const idx = document.getElementById("fmIdx").value, st = document.getElementById("fmStats");
+    if (idx === "rgb" || idx === "zone") { st.textContent = lt("dl_noidx"); return; }
+    const rows = all ? clean().filter((r) => r.item) : clean().filter((r) => r.date === document.getElementById("fmDate").value);
+    if (!rows.length) return;
+    const G = fieldGrid(), bands = [], names = [];
+    let k = 0;
+    await pool(rows, 4, async (r) => {
+      try { const a = await fetchIndex(r.item, idx, G); bands.push([r.date, a.data.slice(0, G.W * G.H)]); } catch (e) { /* data saltata */ }
+      st.textContent = lt("dl_prog", { n: ++k, t: rows.length });
+    });
+    bands.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    const tag = `${idx}_${current.ll.lat.toFixed(5)}_${current.ll.lng.toFixed(5)}`;
+    saveBlob(geotiff(bands.map((b) => b[1]), bands.map((b) => `${idx} ${b[0]}`), G), all ? `${tag}_serie_${bands.length}date.tif` : `${tag}_${bands[0][0]}.tif`);
+    st.textContent = lt("dl_done", { n: bands.length });
+  }
+
+  async function drawFieldMap() {
+    if (!document.getElementById("fmIdx") || !current) return;
+    const idx = document.getElementById("fmIdx").value, date = document.getElementById("fmDate").value, auto = document.getElementById("fmAuto").checked;
+    const row = clean().find((r) => r.date === date);
+    if (!row) return;
+    const stats = document.getElementById("fmStats");
+    stats.textContent = lt("fm_loading");
+    const G = fieldGrid(), { W, H, X0, X1, Y0, Y1, inside, polys } = G;
+    let arr;
+    try { arr = await fetchIndex(row.item, idx, G); }
+    catch (e) { stats.textContent = lt("fm_err"); return; }
+    if (document.getElementById("fmDate").value !== date || document.getElementById("fmIdx").value !== idx) return;
     const n = W * H, band = (b) => arr.data.subarray(b * n, (b + 1) * n);
     const vals = [];
     for (let i = 0; i < n; i++) if (inside[i * 4 + 3] > 127 && isFinite(arr.data[i])) vals.push(arr.data[i]);
@@ -1303,6 +1172,17 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const off = 10 + hl, f8 = hdr.includes("<f8");
     const data = f8 ? new Float64Array(buf.slice(off)) : new Float32Array(buf.slice(off));
     return { data: Float32Array.from(data), hdr };
+  }
+
+  // un grafico alla volta, a tutta larghezza e ridimensionabile (trascinando l'angolo in basso)
+  const CHARTS = [["chIndex", "ch_index"], ["chMeteo", "ch_meteo"], ["chEt", "ch_et"], ["chYield", "ch_yield"], ["chCmp", "ch_cmp"], ["chRadar", "ch_radar"]];
+  let chartSel = "chIndex", s1Loaded = false;
+  function showChart(id) {
+    chartSel = id;
+    panel().querySelectorAll(".ch-tabs .seg").forEach((b) => b.classList.toggle("active", b.dataset.ch === id));
+    panel().querySelectorAll(".ch-fig").forEach((f) => (f.hidden = f.dataset.ch !== id));
+    if (id === "chRadar" && !s1Loaded) { s1Loaded = true; loadS1(); }
+    if (charts[id]) charts[id].resize();
   }
 
   function yearOptions() {
@@ -1475,25 +1355,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   }
 
   // ET coltura: Kc giornaliero interpolato dalle date Sentinel-2 serene
-  function waterBalance() {
-    const m = (current.meteo || []).filter((r) => !r.fc), s2 = clean();
-    if (!m.length) return null;
-    const kcAt = (t) => {
-      if (!s2.length) return null;
-      if (t <= s2[0].t) return s2[0].kc;
-      if (t >= s2[s2.length - 1].t) return s2[s2.length - 1].kc;
-      let i = 0; while (s2[i + 1].t < t) i++;
-      const a = s2[i], b = s2[i + 1], w = (t - a.t) / (b.t - a.t);
-      return a.kc + w * (b.kc - a.kc);
-    };
-    let rain = 0, et0 = 0, etc = 0, gdd = 0;
-    m.forEach((r) => {
-      rain += r.rain || 0; et0 += r.et0 || 0;
-      const kc = kcAt(r.t); if (kc != null) etc += kc * (r.et0 || 0);
-      gdd += Math.max(0, (r.tmax + r.tmin) / 2 - 10);
-    });
-    return { rain, et0, etc: s2.length ? etc : null, gdd };
-  }
+
 
   // ---- stima della coltura dalla curva NDVI (regole fenologiche per l'Italia) ----
   function classifyCrop(s2) {
@@ -1533,15 +1395,8 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   const monthName = (m) => new Date(Date.UTC(2020, m, 15)).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { month: "long" });
 
   function drawSummary() {
-    const el = document.getElementById("fpSummary");
-    if (!el) return;
+    if (!current) return;
     const s2 = clean();
-    const wb = waterBalance();
-    const last = s2[s2.length - 1], max = s2.reduce((a, r) => (!a || r.ndvi > a.ndvi ? r : a), null);
-    const mean = s2.length ? s2.reduce((a, r) => a + r.ndvi, 0) / s2.length : null;
-    const d0 = startDate(range).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
-    el.innerHTML = "";
-    drawCumulative();
     drawFieldYield();
     fillFieldDates();
     const cb = document.getElementById("fpCrop");
@@ -1551,6 +1406,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       cb.innerHTML = c ? `<b>${lt("crop")}:</b> ${c.label} <small>(${c.why}${c.conf && c.conf !== "—" ? `; ${LANG === "it" ? "affidabilità" : "confidence"} ${c.conf}` : ""})</small><div class="hint small">${lt("crop_note")}</div>`
         : (s2.length ? `<span class="hint small">${lt("crop_short")}</span>` : "");
     }
+    renderAdvice();
     drawFieldYield();
   }
 
@@ -1590,19 +1446,29 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     setTimeout(() => map.invalidateSize(), 50);
   }
 
+  // avvisi per la coltura del campo: quella indicata dall'utente, la coltura permanente di Copernicus (olivo, vite, frutteti),
+  // altrimenti quella stimata dalla curva NDVI dell'annata (le colture annuali ruotano: la mappa di anni passati non vale)
+  let adviceKey = null;
+  function renderAdvice() {
+    const el = document.getElementById("fpAdvice");
+    if (!el || typeof Advice === "undefined" || !current) return;
+    const user = current.feature.properties && current.feature.properties.coltura;
+    const lab = current.crop && current.crop.label;
+    const k = Advice.cropKey(user || lab, current.ctyPerm);
+    if (k === adviceKey && el.innerHTML) return;
+    adviceKey = k;
+    Advice.render(el, current.ll.lat, current.ll.lng, user || lab, current.ctyPerm);
+  }
+
   function run() {
     const my = ++runId;
+    adviceKey = null;
     current.s2 = []; current.s1 = []; current.meteo = []; current.eta = [];
     renderPanel();
     setStatus(lt("loading_meteo"));
     loadMeteo(my).catch((e) => setStatus(lt("err", { e: e.message })));
     loadS2(my).catch((e) => setStatus(lt("err", { e: e.message })));
-    showCropHistory(my).then(() => {
-      showYields(my);
-      const el = document.getElementById("fpAdvice"), h = (current.cty || []).filter((r) => !r.dubbio);
-      if (el && typeof Advice !== "undefined" && my === runId)
-        Advice.render(el, current.ll.lat, current.ll.lng, current.feature.properties && current.feature.properties.coltura, current.ctyPerm || (h.length ? h[h.length - 1].cls : null));
-    }).catch(() => {});
+    showCropHistory(my).then(() => { showYields(my); renderAdvice(); }).catch(() => {});
     loadEta(my);
     loadSoil(my);
   }
@@ -1647,5 +1513,5 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     return feature;
   }
 
-  return { analyze, cropOfField, CTY_NOMI: () => CTY_NOMI, current: () => current, cropHistory, makeS2Layer, makeFieldsLayer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, findField, refreshLang: () => current && run(), _debug: () => current };
+  return { analyze, cropOfField, CTY_NOMI: () => CTY_NOMI, current: () => current, cropHistory, makeS2Layer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, refreshLang: () => current && run(), _debug: () => current };
 })();
