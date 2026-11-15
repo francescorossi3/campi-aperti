@@ -54,7 +54,7 @@ const I18N = {
       </ul>
       <h4>Avvertenza</h4>
       <p>La mappa catastale ha valore indicativo e non sostituisce le visure ufficiali. I layer Copernicus hanno risoluzione da 5 m a 500 m e anni di riferimento diversi.</p>`,
-    credits: "Dati: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Fields of The World (CC BY 4.0), Agenzia delle Entrate (CC BY 4.0), OpenStreetMap, EOX, Esri.",
+    credits: "Dati: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Agenzia delle Entrate (CC BY 4.0), ISTAT, ISRIC SoilGrids (CC BY 4.0), OpenStreetMap, EOX, Esri. Confini dei campi: modello Delineate Anything S (Lavreniuk et al. 2025, AGPL-3.0).",
   },
   en: {
     title: "Open Fields Italy",
@@ -110,7 +110,7 @@ const I18N = {
       </ul>
       <h4>Disclaimer</h4>
       <p>The cadastral map is indicative and does not replace official cadastral records. Copernicus layers range from 5 m to 500 m resolution and have different reference years.</p>`,
-    credits: "Data: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Fields of The World (CC BY 4.0), Agenzia delle Entrate (CC BY 4.0), OpenStreetMap, EOX, Esri.",
+    credits: "Data: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Agenzia delle Entrate (CC BY 4.0), ISTAT, ISRIC SoilGrids (CC BY 4.0), OpenStreetMap, EOX, Esri. Confini dei campi: modello Delineate Anything S (Lavreniuk et al. 2025, AGPL-3.0).",
   },
 };
 
