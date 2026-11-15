@@ -52,7 +52,9 @@ const LT = {
     soil_note: "ISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
     fw_title: "Modello idrico FAO-33", fw_det: "(acqua disponibile nelle radici {taw} mm; consumo reale {r}% del potenziale; {s} giorni di stress; resa raggiungibile in provincia {ym} t/ha)",
     fw_irr: "Campo irrigato: nessuno stress idrico.",
-    fm_title: "Mappa del campo a 10 m", fm_lai: "LAI (indice di area fogliare)",
+    fm_title: "Mappa del campo a 10 m",
+    ch_clms: "Copernicus 300 m", clms_var: "Variabile", clms_none: "Nessun dato Copernicus in questo intervallo (le mappe coprono gli ultimi 14 mesi).",
+    clms_load: "Leggo {n}/{t} date…", clms_ok: "{n} date, media di circa {px} pixel Copernicus sul campo.", fm_lai: "LAI (indice di area fogliare)",
     dl_title: "Scarica:", dl_one: "mappa della data (GeoTIFF)", dl_all: "tutte le date (GeoTIFF multibanda)", dl_csv: "serie temporale media (CSV)",
     dl_prog: "Scarico {n}/{t} date…", dl_done: "File pronto: {n} date, valori a 10 m, EPSG:3857, nullo = −9999.", dl_noidx: "Scegli un indice (non colori reali o zone).",
     fl_title: "Campo selezionato: mappe a 10 m", fl_map: "Mappa", fl_date: "Data", fl_op: "Trasparenza", fl_hide: "Togli la mappa del campo",
@@ -150,7 +152,9 @@ const LT = {
     soil_note: "ISRIC SoilGrids 2.0 (250 m, model-based estimate: indicative, not a substitute for a soil test). Plant-available water between field capacity and wilting point, from texture and organic matter (Saxton & Rawls 2006).",
     fw_title: "FAO-33 water model", fw_det: "(available water in the root zone {taw} mm; actual use {r}% of potential; {s} stress days; attainable yield in the province {ym} t/ha)",
     fw_irr: "Irrigated field: no water stress.",
-    fm_title: "Field map at 10 m", fm_lai: "LAI (leaf area index)",
+    fm_title: "Field map at 10 m",
+    ch_clms: "Copernicus 300 m", clms_var: "Variable", clms_none: "No Copernicus data in this interval (maps cover the last 14 months).",
+    clms_load: "Reading {n}/{t} dates…", clms_ok: "{n} dates, mean of about {px} Copernicus pixels over the field.", fm_lai: "LAI (leaf area index)",
     dl_title: "Download:", dl_one: "map of the date (GeoTIFF)", dl_all: "all dates (multi-band GeoTIFF)", dl_csv: "mean time series (CSV)",
     dl_prog: "Downloading {n}/{t} dates…", dl_done: "File ready: {n} dates, 10 m values, EPSG:3857, no-data = −9999.", dl_noidx: "Choose an index (not true colour or zones).",
     fl_title: "Selected field: 10 m maps", fl_map: "Map", fl_date: "Date", fl_op: "Opacity", fl_hide: "Remove the field map",
@@ -929,6 +933,8 @@ const Live = (() => {
       <figure class="ch-fig" data-ch="chCmp"><label class="norm"><input type="checkbox" id="cmpNorm" ${cmpNorm ? "checked" : ""}> ${lt("cmp_norm")}</label>
         <div class="chips cmp-chips">${CMP.map(([k, c]) => `<label class="chip"><input type="checkbox" data-c="${k}" ${cmpSel.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("c_" + k)}</label>`).join("")}</div>
         <div class="cbox"><canvas id="chCmp"></canvas></div></figure>
+      <figure class="ch-fig" data-ch="chClms"><label class="norm">${lt("clms_var")} <select id="clmsVar">${Object.keys(Clms.P).filter((k) => k !== "ETA").map((k) => `<option value="${k}" ${k === clmsSel ? "selected" : ""}>${Clms.label(k)}</option>`).join("")}</select></label>
+        <span class="hint small" id="clmsSt"></span><div class="cbox"><canvas id="chClms"></canvas></div></figure>
       <figure class="ch-fig" data-ch="chRadar"><div class="cbox"><canvas id="chRadar"></canvas></div><p class="hint small">${lt("radar_hint")}</p></figure>
       <p class="hint small fp-foot">${lt("s2_src")} ${lt("meteo_src")} ${lt("et_note")}</p>`;
     panel().hidden = false;
@@ -950,11 +956,13 @@ const Live = (() => {
     document.getElementById("cmpNorm").onchange = (e) => { cmpNorm = e.target.checked; drawCompare(); };
     document.getElementById("fpCsv").onclick = exportCsv;
     document.getElementById("fpCsv2").onclick = exportCsv;
+    document.getElementById("clmsVar").onchange = (e) => { clmsSel = e.target.value; drawClms(); };
     panel().querySelectorAll(".ch-tabs .seg").forEach((b) => (b.onclick = () => showChart(b.dataset.ch)));
     showChart(chartSel);
     Object.values(charts).forEach((c) => c.destroy());
     charts = {};
     s1Loaded = false;
+    if (current) current.clms = {};
     buildFieldLayerBox();
     fmDatesKey = "";
   }
@@ -1175,13 +1183,14 @@ const Live = (() => {
   }
 
   // un grafico alla volta, a tutta larghezza e ridimensionabile (trascinando l'angolo in basso)
-  const CHARTS = [["chIndex", "ch_index"], ["chMeteo", "ch_meteo"], ["chEt", "ch_et"], ["chYield", "ch_yield"], ["chCmp", "ch_cmp"], ["chRadar", "ch_radar"]];
+  const CHARTS = [["chIndex", "ch_index"], ["chMeteo", "ch_meteo"], ["chEt", "ch_et"], ["chYield", "ch_yield"], ["chCmp", "ch_cmp"], ["chClms", "ch_clms"], ["chRadar", "ch_radar"]];
   let chartSel = "chIndex", s1Loaded = false;
   function showChart(id) {
     chartSel = id;
     panel().querySelectorAll(".ch-tabs .seg").forEach((b) => b.classList.toggle("active", b.dataset.ch === id));
     panel().querySelectorAll(".ch-fig").forEach((f) => (f.hidden = f.dataset.ch !== id));
     if (id === "chRadar" && !s1Loaded) { s1Loaded = true; loadS1(); }
+    if (id === "chClms" && !(current.clms && current.clms[clmsSel])) drawClms();
     if (charts[id]) charts[id].resize();
   }
 
@@ -1319,30 +1328,34 @@ const Live = (() => {
   }
 
   // ---- ET reale Copernicus (CLMS ETA 300 m) per il campo, dai ritagli Italia su Hugging Face
-  const HF_DATA = "https://huggingface.co/datasets/Bradipo92/campi-aperti-data";
-  let etaFiles = null;
+  // ET reale Copernicus (300 m, decadale): media sul campo dalle mappe ritagliate sull'Italia
   async function loadEta(my) {
-    try {
-      if (!etaFiles) etaFiles = fetch(`https://huggingface.co/api/datasets/Bradipo92/campi-aperti-data/tree/main/eta/italia`).then((r) => (r.ok ? r.json() : []));
-      const files = (await etaFiles).map((f) => f.path).filter((p) => /ET-ENSEMBLE\.tif$/.test(p));
-      const start = iso(startDate(range)), end = iso(endDate(range));
-      const pick = files.map((p) => ({ p, d: p.match(/ETA300_(\d{4}-\d{2}-\d{2})_/)[1] })).filter((f) => f.d >= start && f.d <= end);
-      if (!pick.length) return;
-      const ll = current.ll, out = [];
-      await pool(pick, 6, async (f) => {
-        const t = await GeoTIFF.fromUrl(`${HF_DATA}/resolve/main/${f.p}`);
-        const im = await t.getImage(), [ox, oy] = im.getOrigin(), [rx, ry] = im.getResolution();
-        const c = Math.floor((ll.lng - ox) / rx), r = Math.floor((ll.lat - oy) / ry);
-        const [b] = await im.readRasters({ window: [c, r, c + 1, r + 1], samples: [0] });
-        const v = b[0], d0 = new Date(f.d + "T00:00:00Z");
-        const days = d0.getUTCDate() < 21 ? 10 : new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 0)).getUTCDate() - 20;
-        if (isFinite(v) && v > -1) out.push({ t: d0.getTime(), et: v, days });
-      });
-      if (my !== runId) return;
-      current.eta = out.sort((a, b) => a.t - b.t);
-      drawEt(); drawCompare();
-    } catch (e) { console.warn("ETa", e); }
+    const idx = await Clms.loadIndex(), start = iso(startDate(range)), end = iso(endDate(range));
+    const dates = (idx.ETA || []).filter((d) => d >= start && d <= end);
+    if (!dates.length) return;
+    const ser = await Clms.series("ETA", current.feature, dates);
+    if (my !== runId) return;
+    current.eta = ser.map((r) => { const d0 = new Date(r.x); const days = d0.getUTCDate() < 21 ? 10 : new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 0)).getUTCDate() - 20;
+      return { t: r.x, et: r.y, days }; });
+    drawEt(); drawCompare();
   }
+  // grafico "Copernicus": serie della variabile scelta, media sul campo
+  let clmsSel = "LAI";
+  async function drawClms() {
+    const my = runId, el = document.getElementById("chClms"), st = document.getElementById("clmsSt");
+    if (!el || !current) return;
+    const idx = await Clms.loadIndex(), start = iso(startDate(range)), end = iso(endDate(range));
+    const dates = (idx[clmsSel] || []).filter((d) => d >= start && d <= end);
+    if (!dates.length) { st.textContent = lt("clms_none"); if (charts.chClms) { charts.chClms.destroy(); delete charts.chClms; } return; }
+    const ser = await Clms.series(clmsSel, current.feature, dates, (k, t) => (st.textContent = lt("clms_load", { n: k, t })));
+    if (my !== runId) return;
+    (current.clms = current.clms || {})[clmsSel] = ser;
+    st.textContent = lt("clms_ok", { n: ser.length, px: ser.length ? Math.round(ser.reduce((a, r) => a + r.n, 0) / ser.length) : 0 });
+    const u = Clms.P[clmsSel][2];
+    upsert("chClms", { type: "line", data: { datasets: [{ label: Clms.label(clmsSel), data: ser, borderColor: "#2f8f3a", backgroundColor: "#2f8f3a", pointRadius: 3, tension: 0.25 }] },
+      options: baseOpts({ y: { title: { display: !!u, text: u } } }) });
+  }
+
 
   function drawRadar() {
     const d = current.s1 || [];
@@ -1415,9 +1428,11 @@ const Live = (() => {
     const IK = INDEX_DEF.map((x) => x[0]);
     const E = (n) => Array(n).fill("");
     const ctyHead = (current.cty || []).map((r) => `${r.year}:${CTY_NOMI[r.cls] ? CTY_NOMI[r.cls][0] : r.cls}(${Math.round(r.share * 100)}%)`).join(" ");
-    const rows = [["source", "date", ...IK, "pixels", "vv_db", "vh_db", "orbit", "rain_mm", "tmean_c", "tmin_c", "tmax_c", "et0_mm", "forecast"]];
+    const rows = [["source", "date", ...IK, "pixels", "vv_db", "vh_db", "orbit", "rain_mm", "tmean_c", "tmin_c", "tmax_c", "et0_mm", "forecast", "copernicus"]];
     (current.s2 || []).forEach((r) => rows.push(["sentinel-2", r.date, ...IK.map((k) => (isFinite(r[k]) ? r[k].toFixed(4) : "")), r.npx, ...E(9)]));
     (current.s1 || []).forEach((r) => rows.push(["sentinel-1", r.date, ...E(IK.length + 1), r.vv.toFixed(2), r.vh.toFixed(2), r.orbit, ...E(6)]));
+    Object.entries(current.clms || {}).forEach(([p, ser]) => ser.forEach((r) => rows.push([`copernicus-${p}`, iso(new Date(r.x)), ...E(IK.length + 1 + 3 + 6), `${p}=${r.y.toFixed(4)}`])));
+    (current.eta || []).forEach((r) => rows.push(["copernicus-ETA", iso(new Date(r.t)), ...E(IK.length + 1 + 3 + 6), `ETA_mm_giorno=${r.et.toFixed(3)}`]));
     (current.meteo || []).forEach((r) => rows.push(["open-meteo", r.date, ...E(IK.length + 4), r.rain, r.tmean, r.tmin, r.tmax, r.et0, r.fc ? 1 : 0]));
     const head = `# Campi Aperti — lat ${current.ll.lat.toFixed(6)}, lon ${current.ll.lng.toFixed(6)}, ${areaHa(current.feature.geometry).toFixed(3)} ha` +
       (current.crop ? `, coltura stimata: ${current.crop.label}` : "") + ` — valori Sentinel-2 = media sul campo\n` +

@@ -11,6 +11,7 @@ const LAYER_GROUPS = [
   { id: "live", it: "Satellite in tempo reale (Sentinel-2)", en: "Real-time satellite (Sentinel-2)" },
   { id: "fields", it: "Campi e colture", en: "Fields and crops" },
   { id: "catasto", it: "Catasto (Agenzia delle Entrate)", en: "Cadastre (Italian Revenue Agency)" },
+  { id: "clms", it: "Variabili Copernicus (LAI, FAPAR, umidità del suolo…)", en: "Copernicus variables (LAI, FAPAR, soil moisture…)" },
   { id: "hrvpp", it: "Fenologia e produttività (Copernicus HR-VPP, 10 m)", en: "Phenology and productivity (Copernicus HR-VPP, 10 m)" },
   { id: "soil", it: "Suolo (SoilGrids, 250 m)", en: "Soil (SoilGrids, 250 m)" },
 ];
@@ -18,6 +19,39 @@ const LAYER_GROUPS = [
 const ARCHIVE_GROUPS = ["landcover", "trees", "agri", "pheno", "water", "nature"];
 
 const LAYERS = [
+  // ---------------- VARIABILI BIOGEOFISICHE COPERNICUS ----------------
+  { id: "cl_lai", group: "clms", type: "clms", product: "LAI", minZoom: 5, opacity: 0.8,
+    it: { name: Clms.P.LAI[4], desc: "Indice di area fogliare: m² di foglie per m² di suolo. Copernicus Land Monitoring Service, ogni 10 giorni, ultimi 14 mesi." },
+    en: { name: Clms.P.LAI[5], desc: "Leaf area index: m² of leaves per m² of ground. Copernicus Land Monitoring Service, every 10 days, last 14 months." },
+    source: "Copernicus Land Monitoring Service", link: "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables" },
+  { id: "cl_fapar", group: "clms", type: "clms", product: "FAPAR", minZoom: 5, opacity: 0.8,
+    it: { name: Clms.P.FAPAR[4], desc: "Frazione della radiazione fotosintetica assorbita dalla vegetazione. Copernicus Land Monitoring Service, ogni 10 giorni, ultimi 14 mesi." },
+    en: { name: Clms.P.FAPAR[5], desc: "Fraction of photosynthetic radiation absorbed by vegetation. Copernicus Land Monitoring Service, every 10 days, last 14 months." },
+    source: "Copernicus Land Monitoring Service", link: "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables" },
+  { id: "cl_fcover", group: "clms", type: "clms", product: "FCOVER", minZoom: 5, opacity: 0.8,
+    it: { name: Clms.P.FCOVER[4], desc: "Frazione di suolo coperta da vegetazione verde. Copernicus Land Monitoring Service, ogni 10 giorni, ultimi 14 mesi." },
+    en: { name: Clms.P.FCOVER[5], desc: "Fraction of ground covered by green vegetation. Copernicus Land Monitoring Service, every 10 days, last 14 months." },
+    source: "Copernicus Land Monitoring Service", link: "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables" },
+  { id: "cl_ndvi", group: "clms", type: "clms", product: "NDVI", minZoom: 5, opacity: 0.8,
+    it: { name: Clms.P.NDVI[4], desc: "NDVI Copernicus a 300 m da Sentinel-3. Copernicus Land Monitoring Service, ogni 10 giorni, ultimi 14 mesi." },
+    en: { name: Clms.P.NDVI[5], desc: "Copernicus NDVI at 300 m from Sentinel-3. Copernicus Land Monitoring Service, every 10 days, last 14 months." },
+    source: "Copernicus Land Monitoring Service", link: "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables" },
+  { id: "cl_gdmp", group: "clms", type: "clms", product: "GDMP", minZoom: 5, opacity: 0.8,
+    it: { name: Clms.P.GDMP[4], desc: "Produttività lorda di sostanza secca (kg/ha al giorno). Copernicus Land Monitoring Service, ogni 10 giorni, ultimi 14 mesi." },
+    en: { name: Clms.P.GDMP[5], desc: "Gross dry matter productivity (kg/ha per day). Copernicus Land Monitoring Service, every 10 days, last 14 months." },
+    source: "Copernicus Land Monitoring Service", link: "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables" },
+  { id: "cl_swi", group: "clms", type: "clms", product: "SWI", minZoom: 5, opacity: 0.8,
+    it: { name: Clms.P.SWI[4], desc: "Indice di umidità del suolo nello strato delle radici (ASCAT, 0,1°). Copernicus Land Monitoring Service, ogni 10 giorni, ultimi 14 mesi." },
+    en: { name: Clms.P.SWI[5], desc: "Soil water index in the root layer (ASCAT, 0.1°). Copernicus Land Monitoring Service, every 10 days, last 14 months." },
+    source: "Copernicus Land Monitoring Service", link: "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables" },
+  { id: "cl_ssm", group: "clms", type: "clms", product: "SSM", minZoom: 5, opacity: 0.8,
+    it: { name: Clms.P.SSM[4], desc: "Umidità superficiale del suolo da radar Sentinel-1 (1 km). Copernicus Land Monitoring Service, ogni 10 giorni, ultimi 14 mesi." },
+    en: { name: Clms.P.SSM[5], desc: "Surface soil moisture from Sentinel-1 radar (1 km). Copernicus Land Monitoring Service, every 10 days, last 14 months." },
+    source: "Copernicus Land Monitoring Service", link: "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables" },
+  { id: "cl_eta", group: "clms", type: "clms", product: "ETA", minZoom: 5, opacity: 0.8,
+    it: { name: Clms.P.ETA[4], desc: "Evapotraspirazione reale da Sentinel-3 (300 m, mm/giorno). Copernicus Land Monitoring Service, ogni 10 giorni, ultimi 14 mesi." },
+    en: { name: Clms.P.ETA[5], desc: "Actual evapotranspiration from Sentinel-3 (300 m, mm/day). Copernicus Land Monitoring Service, every 10 days, last 14 months." },
+    source: "Copernicus Land Monitoring Service", link: "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables" },
   // ---------------- FENOLOGIA / PHENOLOGY (HR-VPP) ----------------
   {
     id: "hv_sosd", group: "hrvpp", type: "wms", wmsVersion: "1.1.1", wmsTime: "hrvpp", minZoom: 8, opacity: 0.75,

@@ -84,11 +84,15 @@ const CatastoTiles = L.TileLayer.extend({
 });
 
 const leafletLayers = {};
-let ctyYear = 2024, hvYear = 2024;
+let ctyYear = 2024, hvYear = 2024, clmsDate = null, clmsIdx = {};
+// data Copernicus più vicina (non successiva) a quella scelta, per ogni prodotto
+const clmsPick = (p) => { const ds = clmsIdx[p] || []; if (!ds.length) return null; if (!clmsDate) return ds[ds.length - 1];
+  return ds.filter((d) => d <= clmsDate).pop() || ds[0]; };
 const state = { on: new Set() };
 
 function makeLayer(def) {
   if (def.type === "s2live") return Live.makeS2Layer(def);
+  if (def.type === "clms") return Clms.layer(def.product, clmsPick(def.product), { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.8, zIndex: 25 });
   if (def.type === "cty") return new CropLayer.Layer(ctyYear, { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.85, zIndex: 30 });
   const common = { opacity: def.opacity ?? 0.7, zIndex: 10, crossOrigin: false };
   if (def.type === "wms") {
@@ -163,6 +167,7 @@ function readHash() {
 const legendCache = {};
 async function loadLegend(def, el) {
   const box = el.querySelector(".legend");
+  if (box && def.type === "clms") { box.innerHTML = `${Clms.legendHtml(def.product)}<div class="hint small">${t("hv_date")} ${clmsPick(def.product) || "—"}</div>`; return; }
   if (box && def.type === "cty") { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${CropLayer.legendHtml()}`; return; }
   if (box && def.legendHtml) { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${def.legendHtml}`; return; }
   if (box && def.type === "wms" && !def.legendHtml) {
@@ -213,7 +218,7 @@ function renderLayerPanel() {
   list.innerHTML = LAYER_GROUPS.map((g, gi) => {
     const items = LAYERS.filter((l) => l.group === g.id);
     return `<details class="group" data-group="${g.id}" ${gi < 3 || items.some((l) => state.on.has(l.id)) ? "open" : ""}>
-      <summary>${g[LANG]}</summary>${g.id === "live" ? Live.windowControl() : ""}${g.id === "hrvpp" ? `<div class="cty-year">${t("hv_year")} <select id="hvYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === hvYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}${g.id === "fields" ? Live.segControl() + `<div class="cty-year">${t("cty_year")} <select id="ctyYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === ctyYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}
+      <summary>${g[LANG]}</summary>${g.id === "live" ? Live.windowControl() : ""}${g.id === "clms" ? `<div class="cty-year">${t("hv_date")} <select id="clmsDate">${[...new Set(Object.values(clmsIdx).flat())].sort().reverse().map((d) => `<option ${d === clmsDate ? "selected" : ""}>${d}</option>`).join("")}</select></div>` : ""}${g.id === "hrvpp" ? `<div class="cty-year">${t("hv_year")} <select id="hvYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === hvYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}${g.id === "fields" ? Live.segControl() + `<div class="cty-year">${t("cty_year")} <select id="ctyYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === ctyYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}
       ${items.map((l) => `
         <div class="layer ${state.on.has(l.id) ? "on" : ""}" data-id="${l.id}">
           <div class="layer-head">
@@ -253,6 +258,8 @@ function renderLayerPanel() {
   Live.bindWindowControl();
   const hy = document.getElementById("hvYear");
   if (hy) hy.onchange = () => { hvYear = +hy.value; LAYERS.filter((l) => l.wmsTime === "hrvpp" && leafletLayers[l.id]).forEach((l) => leafletLayers[l.id].setParams({ time: `${hvYear}-01-01` })); };
+  const cd = document.getElementById("clmsDate");
+  if (cd) cd.onchange = () => { clmsDate = cd.value; LAYERS.filter((l) => l.type === "clms" && leafletLayers[l.id]).forEach((l) => leafletLayers[l.id].setUrl(Clms.url(l.product, clmsPick(l.product)))); };
   const cy = document.getElementById("ctyYear");
   if (cy) cy.onchange = () => { ctyYear = +cy.value; if (leafletLayers.cty) leafletLayers.cty.setYear(ctyYear); };
   updateZoomNotes();
@@ -568,6 +575,7 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&a
     LAYERS.filter((l) => l.on).forEach((l) => state.on.add(l.id));
   }
   Tools.init();
+  Clms.loadIndex().then((j) => { clmsIdx = j || {}; renderLayerPanel(); });
   applyLang();
   setBase(currentBase);
   [...state.on].forEach((id) => setLayer(id, true));
