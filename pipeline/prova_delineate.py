@@ -17,13 +17,13 @@ yolo = YOLO(onnx, task="segment")
 ZONE = [("Maccarese", 12.23, 41.86), ("Lodi", 9.55, 45.25), ("Tavoliere", 15.55, 41.45), ("Val_dOrcia", 11.65, 43.05)]
 riass = {}
 for nome, lon, lat in ZONE:
-    dx, dy = 2560 / (111320 * np.cos(np.radians(lat))), 2560 / 110540
+    dx, dy = 1280 / (111320 * np.cos(np.radians(lat))), 1280 / 110540
     bb = [lon - dx, lat - dy, lon + dx, lat + dy]
     body = {"collections": ["sentinel-2-l2a"], "bbox": bb, "datetime": "2025-04-01T00:00:00Z/2025-06-30T23:59:59Z",
-            "query": {"eo:cloud_cover": {"lt": 5}}, "sortby": [{"field": "eo:cloud_cover", "direction": "asc"}], "limit": 3}
+            "query": {"eo:cloud_cover": {"lt": 5}, "s2:nodata_pixel_percentage": {"lt": 1}}, "sortby": [{"field": "eo:cloud_cover", "direction": "asc"}], "limit": 3}
     its = requests.post(f"{PC}/stac/v1/search", json=body, timeout=120).json()["features"]
     for it in its[:1]:
-        for modo, extra in (("visual", "assets=visual"), ("stretch", "assets=B04&assets=B03&assets=B02&rescale=1000,2600&asset_as_band=true")):
+        for modo, extra in (("visual", "assets=visual"),):
             url = f"{PC}/data/v1/item/bbox/{bb[0]},{bb[1]},{bb[2]},{bb[3]}/512x512.png?collection=sentinel-2-l2a&item={it['id']}&{extra}"
             r = requests.get(url, timeout=180)
             if r.status_code != 200:
@@ -37,7 +37,7 @@ for nome, lon, lat in ZONE:
             conf = p[:, 4]
             k = conf > 0.25
             # ultralytics
-            res = yolo.predict(a[:, :, ::-1], imgsz=512, conf=0.25, verbose=False)[0]
+            res = yolo.predict(a[:, :, ::-1], imgsz=512, conf=0.1, iou=0.5, verbose=False)[0]
             nu = 0 if res.masks is None else len(res.masks)
             riass[f"{nome}_{modo}"] = {"candidati": int(k.sum()), "ultralytics": nu, "media": float(a.mean())}
             print(nome, modo, it["id"], "candidati", int(k.sum()), "istanze ultralytics", nu, "luminosità", a.mean())
@@ -46,5 +46,5 @@ for nome, lon, lat in ZONE:
                 for poly in res.masks.xy:
                     if len(poly) > 2:
                         d.line([tuple(q) for q in poly] + [tuple(poly[0])], fill=(255, 255, 0), width=1)
-            Image.fromarray(np.hstack([a, np.asarray(ov)])).save(f"prove/{nome}_{modo}.jpg", quality=80)
+            Image.fromarray(np.hstack([a, np.asarray(ov)])).save(f"prove/{nome}_{modo}_x2.jpg", quality=80)
 json.dump({"shape_out": [list(o0.shape), list(o1.shape)], "zone": riass}, open("prove/riassunto.json", "w"), indent=1)
