@@ -589,7 +589,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   // ================================================================== rese ISTAT della provincia del campo
   let RESE = null, PROV = null;
   async function loadRese() {
-    if (!RESE) RESE = Promise.all([fetch("data/rese.json").then((r) => r.json()), fetch("data/province.json").then((r) => r.json())])
+    if (!RESE) RESE = Promise.all([fetch("data/rese.json?d=" + new Date().toISOString().slice(0, 13)).then((r) => r.json()), fetch("data/province.json?d=" + new Date().toISOString().slice(0, 10)).then((r) => r.json())])
       .then(([r, p]) => { PROV = p; return r; }).catch(() => null);
     return RESE;
   }
