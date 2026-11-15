@@ -17,6 +17,8 @@ from sklearn.model_selection import GroupKFold
 from sklearn.metrics import accuracy_score, f1_score, classification_report
 
 CLASSI = list(range(1, 18))
+CAP = int(os.environ.get("CAP", "2500"))          # esempi al massimo per classe e annata nell'addestramento (tempi contenuti)
+PIEGHE = 3
 os.makedirs(os.path.join("data", "modelli_v2"), exist_ok=True)
 ds = pd.concat([pd.read_parquet(f) for f in sorted(glob.glob(os.path.join("data", "dataset_v2", "ds_*.parquet")))], ignore_index=True)
 ds = ds[ds.classe.isin(CLASSI)].reset_index(drop=True)
@@ -30,7 +32,7 @@ def pesi(y):
     return pd.Series(y).map((c.max() / c) ** 0.5).values
 
 def lgbm(X, y, seed=0):
-    m = lgb.LGBMClassifier(n_estimators=600, learning_rate=0.05, num_leaves=63, subsample=0.8, subsample_freq=1, colsample_bytree=0.5,
+    m = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.08, num_leaves=63, max_bin=63, subsample=0.8, subsample_freq=1, colsample_bytree=0.5,
                            min_child_samples=30, reg_lambda=1.0, random_state=seed, verbose=-1, n_jobs=-1)
     m.fit(X, y, sample_weight=pesi(y))
     return m
@@ -38,7 +40,7 @@ def lgbm(X, y, seed=0):
 def mlp(X, y, seed=0):
     mu, sd = np.nanmean(X, 0), np.nanstd(X, 0) + 1e-6
     Z = np.nan_to_num((X - mu) / sd)
-    m = MLPClassifier(hidden_layer_sizes=(256, 128), alpha=1e-3, batch_size=512, max_iter=150, early_stopping=True, n_iter_no_change=8, random_state=seed)
+    m = MLPClassifier(hidden_layer_sizes=(256, 128), alpha=1e-3, batch_size=512, max_iter=60, early_stopping=True, n_iter_no_change=8, random_state=seed)
     m.fit(Z, y)
     return m, mu, sd
 
@@ -54,9 +56,10 @@ def prob(modelli, X, classi):
     return P
 
 def addestra(d, f, seed=0):
+    d = d.sample(frac=1, random_state=seed).groupby(["classe", "anno"]).head(CAP)
     X, y = d[f].values.astype("float32"), d.classe.values
     out = [("lgb", lgbm(X, y, seed))]
-    sub = d.sample(frac=1, random_state=seed).groupby("classe").head(6000)
+    sub = d.groupby("classe").head(3000)
     out.append(("mlp", mlp(sub[f].values.astype("float32"), sub.classe.values, seed)))
     return out
 
@@ -68,11 +71,12 @@ rep = {"esempi": int(len(ds)), "zone": int(ds.zona.nunique()), "annate": sorted(
 
 # ---- validazione spaziale (gruppi di zone)
 pred, pred1 = np.zeros(len(ds), int), np.zeros(len(ds), int)
-for k, (tr, te) in enumerate(GroupKFold(5).split(ds, ds.classe, ds.zona)):
+for k, (tr, te) in enumerate(GroupKFold(PIEGHE).split(ds, ds.classe, ds.zona)):
     d = ds.iloc[tr]
+    d1 = d.sample(frac=1, random_state=k).groupby(["classe", "anno"]).head(CAP)
     P = prob(addestra(d, feat, k), ds.iloc[te][feat].values.astype("float32"), classi)
     pred[te] = np.array(classi)[P.argmax(1)]
-    m1 = lgbm(d[feat_v1].values.astype("float32"), d.classe.values, k)
+    m1 = lgbm(d1[feat_v1].values.astype("float32"), d1.classe.values, k)
     pred1[te] = m1.predict(ds.iloc[te][feat_v1].values.astype("float32"))
     print("gruppo", k, metriche(ds.classe.values[te], pred[te]), flush=True)
 rep["spaziale_v2"] = metriche(ds.classe, pred)
