@@ -16,15 +16,17 @@ col = [f"c{k}" for k in range(1, 20)]
 
 righe = []
 anni_ok = []
-for f in sorted(glob.glob(os.path.join("data", "blocchi", "blocchi_*.parquet"))):
-    anno = int(f.split("_")[-1].split(".")[0])
-    b = pd.read_parquet(f)
-    # ettari per regione × cella × coltura
+mappe = {int(f.split("_")[-1].split(".")[0]): f for f in glob.glob(os.path.join("data", "blocchi", "blocchi_*.parquet"))}
+ultimo_meteo = int(meteo.anno.max())
+for anno in range(min(mappe), ultimo_meteo + 1):
+    # per gli anni senza mappa Copernicus (es. 2025, 2026) uso l'ultima mappa disponibile
+    anno_carta = anno if anno in mappe else max(m for m in mappe if m <= anno)
+    b = pd.read_parquet(mappe[anno_carta])
     lungo = b.melt(id_vars=["regione", "cella"], value_vars=col, var_name="classe", value_name="ha")
     lungo = lungo[lungo.ha > 0]
     lungo["classe"] = lungo.classe.str[1:].astype(int)
     rc = lungo.groupby(["regione", "cella", "classe"], as_index=False).ha.sum()
-    # annata agraria: da novembre dell'anno prima a ottobre dell'anno della mappa (la coltura raccolta in quell'anno)
+    # mesi: da novembre dell'anno prima (inizio annata agraria) a dicembre dell'anno
     mesi = [(anno - 1, 11), (anno - 1, 12)] + [(anno, m) for m in range(1, 13)]
     met = meteo[meteo[["anno", "mese"]].apply(tuple, axis=1).isin(mesi)]
     if met.empty:
@@ -39,17 +41,35 @@ for f in sorted(glob.glob(os.path.join("data", "blocchi", "blocchi_*.parquet")))
                 p = (gm.pioggia_mm * gm.ha).sum() / w
                 e0 = (gm.et0_mm * gm.ha).sum() / w
                 etc = KC[classe][m - 1] * e0
-                righe.append([anno, regione, classe, a, m, round(area, 1), round(p, 1), round(e0, 1), round(etc, 1)])
-    print(anno, "ok")
+                righe.append([anno, anno_carta, regione, classe, a, m, round(area, 1), round(p, 1), round(e0, 1), round(etc, 1)])
+    print(anno, "ok (mappa colture", anno_carta, ")")
 
-df = pd.DataFrame(righe, columns=["anno_mappa", "regione", "classe", "anno", "mese", "ha", "pioggia", "et0", "etc"])
+df = pd.DataFrame(righe, columns=["anno_mappa", "carta", "regione", "classe", "anno", "mese", "ha", "pioggia", "et0", "etc"])
+
+# ---- ET reale Copernicus (CLMS ETA 300 m, dal novembre 2025): mm/giorno × giorni della decade -> mm/mese
+eta_f = os.path.join("data", "eta", "eta_decadi.parquet")
+if os.path.exists(eta_f):
+    eta = pd.read_parquet(eta_f)
+    eta["anno"] = pd.to_datetime(eta.decade).dt.year
+    eta["mese"] = pd.to_datetime(eta.decade).dt.month
+    for v in ("et", "e", "t"):
+        eta[v] = eta[v] * eta.giorni
+    m = eta.groupby(["regione", "classe", "anno", "mese"], as_index=False).agg(eta=("et", "sum"), eva=("e", "sum"), tra=("t", "sum"), n=("decade", "nunique"))
+    m = m[m.n == 3]                                      # solo mesi con tutte e tre le decadi
+    df = df.merge(m.drop(columns="n"), on=["regione", "classe", "anno", "mese"], how="left")
+    df = df.round(1)
+else:
+    df["eta"] = df["eva"] = df["tra"] = None
+df["anno_mappa"] = df.anno_mappa.astype(int)
+df = df.astype(object).where(df.notna(), None)
 out = {
     "generato": pd.Timestamp.now("UTC").isoformat(),
-    "fonte": "Copernicus HRL Croplands Crop Types (EEA/CLMS); meteo ERA5 via Open-Meteo; Kc FAO-56",
+    "fonte": "Copernicus HRL Croplands Crop Types (EEA/CLMS); meteo ERA5 via Open-Meteo; Kc FAO-56; ETa CLMS 300 m (Sentinel-3)",
     "anni": anni_ok,
+    "carte": {str(a): int(c) for a, c in df.groupby("anno_mappa").carta.first().items()},
     "classi": {str(k): {"it": v[0], "en": v[1]} for k, v in NOMI.items()},
-    "colonne": ["anno_mappa", "regione", "classe", "anno", "mese", "ha", "pioggia", "et0", "etc"],
-    "righe": df.values.tolist(),
+    "colonne": ["anno_mappa", "regione", "classe", "anno", "mese", "ha", "pioggia", "et0", "etc", "eta", "eva", "tra"],
+    "righe": df[["anno_mappa", "regione", "classe", "anno", "mese", "ha", "pioggia", "et0", "etc", "eta", "eva", "tra"]].values.tolist(),
 }
 with open(os.path.join("data", "riepiloghi.json"), "w", encoding="utf-8") as fh:
     json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))
