@@ -49,6 +49,11 @@ const LT = {
     y_title: "Resa media ISTAT in provincia di {p}:",
     fy_title: "Resa stimata di questo campo ({c}, {y})",
     fy_range: "intervallo plausibile",
+    soil_title: "Suolo (0–30 cm)", soil_loading: "Carico i dati del suolo…", soil_err: "Dati del suolo non raggiungibili ora (SoilGrids).", soil_na: "Nessun dato di suolo qui.",
+    soil_sand: "Sabbia", soil_silt: "Limo", soil_clay: "Argilla", soil_soc: "Carbonio organico", soil_n: "Azoto totale", soil_paw: "Acqua disponibile",
+    soil_note: "ISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
+    fw_title: "Modello idrico FAO-33", fw_det: "(acqua disponibile nelle radici {taw} mm; consumo reale {r}% del potenziale; {s} giorni di stress; resa raggiungibile in provincia {ym} t/ha)",
+    fw_irr: "Campo irrigato: nessuno stress idrico.",
     fm_title: "Mappa del campo a 10 m", fm_ndvi: "NDVI (vigore)", fm_ndre: "NDRE (clorofilla)", fm_ndmi: "NDMI (acqua nelle foglie)", fm_evi: "EVI",
     fm_savi: "SAVI", fm_rgb: "Colori reali", fm_zone: "Zone di vigore (bassa / media / alta)", fm_auto: "scala adattata al campo",
     fm_onmap: "Mostra / togli sulla mappa", fm_nodate: "nessuna data serena", fm_loading: "Carico la mappa…", fm_err: "Mappa non disponibile per questa data.",
@@ -134,6 +139,11 @@ const LT = {
     y_title: "ISTAT average yield in the province of {p}:",
     fy_title: "Estimated yield of this field ({c}, {y})",
     fy_range: "plausible range",
+    soil_title: "Soil (0–30 cm)", soil_loading: "Loading soil data…", soil_err: "Soil data not reachable right now (SoilGrids).", soil_na: "No soil data here.",
+    soil_sand: "Sand", soil_silt: "Silt", soil_clay: "Clay", soil_soc: "Organic carbon", soil_n: "Total nitrogen", soil_paw: "Available water",
+    soil_note: "ISRIC SoilGrids 2.0 (250 m, model-based estimate: indicative, not a substitute for a soil test). Plant-available water between field capacity and wilting point, from texture and organic matter (Saxton & Rawls 2006).",
+    fw_title: "FAO-33 water model", fw_det: "(available water in the root zone {taw} mm; actual use {r}% of potential; {s} stress days; attainable yield in the province {ym} t/ha)",
+    fw_irr: "Irrigated field: no water stress.",
     fm_title: "Field map at 10 m", fm_ndvi: "NDVI (vigour)", fm_ndre: "NDRE (chlorophyll)", fm_ndmi: "NDMI (leaf water)", fm_evi: "EVI",
     fm_savi: "SAVI", fm_rgb: "True colour", fm_zone: "Vigour zones (low / medium / high)", fm_auto: "scale fitted to the field",
     fm_onmap: "Show / hide on the map", fm_nodate: "no clear date", fm_loading: "Loading the map…", fm_err: "Map not available for this date.",
@@ -674,6 +684,95 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const m = map.find(([re]) => re.test(lab));
     return m ? { cls: m[1], fonte: LANG === "it" ? "stima fenologica" : "phenology estimate", anno: y } : null;
   }
+  // ---- suolo (ISRIC SoilGrids 250 m) e acqua disponibile per le piante (Saxton & Rawls 2006)
+  async function loadSoil(my) {
+    const el = document.getElementById("fpSoil");
+    if (!el) return;
+    el.innerHTML = `<span class="hint small">${lt("soil_loading")}</span>`;
+    const ll = current.ll, props = ["clay", "sand", "silt", "soc", "nitrogen", "phh2o", "cec", "bdod"];
+    const url = `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${ll.lng.toFixed(5)}&lat=${ll.lat.toFixed(5)}&` +
+      props.map((p) => "property=" + p).join("&") + "&depth=0-5cm&depth=5-15cm&depth=15-30cm&value=mean";
+    let j;
+    try { j = await fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+    catch (e) { if (my === runId) el.innerHTML = `<span class="hint small">${lt("soil_err")}</span>`; return; }
+    if (my !== runId) return;
+    const W = { "0-5cm": 5, "5-15cm": 10, "15-30cm": 15 }, v = {};
+    (j.properties.layers || []).forEach((L_) => {
+      let sw = 0, sv = 0;
+      L_.depths.forEach((d) => { const x = d.values.mean; if (x != null) { sw += W[d.label] || 0; sv += (W[d.label] || 0) * x; } });
+      if (sw) v[L_.name] = sv / sw / (L_.unit_measure.d_factor || 1);
+    });
+    if (v.clay == null || v.sand == null) { el.innerHTML = `<span class="hint small">${lt("soil_na")}</span>`; return; }
+    // unità: clay/sand/silt g/kg -> %, soc g/kg, nitrogen g/kg, ph, cec cmol/kg, bdod kg/dm³
+    const S = v.sand / 10, C = v.clay / 10, Si = v.silt != null ? v.silt / 10 : 100 - S - C;
+    const OM = (v.soc / 10) * 1.724;                         // sostanza organica % (Van Bemmelen)
+    const s_ = S / 100, c_ = C / 100;
+    const t15t = -0.024 * s_ + 0.487 * c_ + 0.006 * OM + 0.005 * s_ * OM - 0.013 * c_ * OM + 0.068 * s_ * c_ + 0.031;
+    const t15 = t15t + (0.14 * t15t - 0.02);
+    const t33t = -0.251 * s_ + 0.195 * c_ + 0.011 * OM + 0.006 * s_ * OM - 0.027 * c_ * OM + 0.452 * s_ * c_ + 0.299;
+    const t33 = t33t + (1.283 * t33t * t33t - 0.374 * t33t - 0.015);
+    const paw = Math.max(0.03, t33 - t15);                   // m³/m³
+    current.soil = { sand: S, clay: C, silt: Si, soc: v.soc, n: v.nitrogen, ph: v.phh2o, cec: v.cec, bd: v.bdod, om: OM, fc: t33, wp: t15, paw, tex: usdaTexture(S, Si, C) };
+    const cn = v.soc && v.nitrogen ? v.soc / v.nitrogen : null;
+    el.innerHTML = `<b>${lt("soil_title")}</b> <span class="soil-tex">${current.soil.tex}</span>
+      <div class="soil-grid">
+        <span>${lt("soil_sand")} <b>${S.toFixed(0)}%</b></span><span>${lt("soil_silt")} <b>${Si.toFixed(0)}%</b></span><span>${lt("soil_clay")} <b>${C.toFixed(0)}%</b></span>
+        <span>${lt("soil_soc")} <b>${v.soc.toFixed(1)} g/kg</b></span><span>${lt("soil_n")} <b>${v.nitrogen != null ? v.nitrogen.toFixed(2) + " g/kg" : "—"}</b></span>
+        <span>C/N <b>${cn ? cn.toFixed(1) : "—"}</b></span><span>pH <b>${v.phh2o != null ? v.phh2o.toFixed(1) : "—"}</b></span>
+        <span>CSC <b>${v.cec != null ? v.cec.toFixed(0) + " cmol/kg" : "—"}</b></span>
+        <span>${lt("soil_paw")} <b>${Math.round(paw * 1000)} mm/m</b></span>
+      </div>
+      <div class="hint small">${lt("soil_note")}</div>`;
+    drawFieldYield();
+  }
+  function usdaTexture(S, Si, C) {
+    const it = LANG === "it";
+    const n = (a, b) => (it ? a : b);
+    if (Si + 1.5 * C < 15) return n("sabbioso", "sand");
+    if (Si + 1.5 * C >= 15 && Si + 2 * C < 30) return n("sabbioso-franco", "loamy sand");
+    if ((C >= 7 && C < 20 && S > 52 && Si + 2 * C >= 30) || (C < 7 && Si < 50 && Si + 2 * C >= 30)) return n("franco-sabbioso", "sandy loam");
+    if (C >= 7 && C < 27 && Si >= 28 && Si < 50 && S <= 52) return n("franco", "loam");
+    if ((Si >= 50 && C >= 12 && C < 27) || (Si >= 50 && Si < 80 && C < 12)) return n("franco-limoso", "silt loam");
+    if (Si >= 80 && C < 12) return n("limoso", "silt");
+    if (C >= 20 && C < 35 && Si < 28 && S > 45) return n("franco-sabbioso-argilloso", "sandy clay loam");
+    if (C >= 27 && C < 40 && S > 20 && S <= 45) return n("franco-argilloso", "clay loam");
+    if (C >= 27 && C < 40 && S <= 20) return n("franco-limoso-argilloso", "silty clay loam");
+    if (C >= 35 && S > 45) return n("argilloso-sabbioso", "sandy clay");
+    if (C >= 40 && Si >= 40) return n("argilloso-limoso", "silty clay");
+    return n("argilloso", "clay");
+  }
+  // ---- secondo modello di resa: bilancio idrico del suolo (FAO-56) + risposta della resa all'acqua (FAO-33, Doorenbos & Kassam)
+  // TAW = acqua disponibile (dalla tessitura) × profondità delle radici; Ks = stress idrico; ETa = Ks × Kc(NDVI) × ET0
+  // Ya = Ym × [1 − Ky (1 − ΣETa/ΣETc)], Ym = resa raggiungibile in provincia (90° percentile delle rese ISTAT 2017–2026)
+  const ACQUA = { 1: [1.2, 1.05, 0.55], 2: [1.1, 1.0, 0.55], 3: [1.2, 1.25, 0.55], 5: [1.1, 1.0, 0.55], 7: [0.8, 1.15, 0.45],
+    8: [0.5, 1.1, 0.35], 9: [1.0, 1.0, 0.55], 10: [1.5, 0.95, 0.45], 11: [1.0, 0.85, 0.5], 12: [1.0, 1.0, 0.6] };   // radici m, Ky, p
+  function waterYield(cls, y) {
+    const A = ACQUA[cls], so = current.soil;
+    if (!A || !so || !y || !RESE_DATA || !PROV) return null;
+    const pv = provinceAt(current.ll);
+    if (!pv || !pv.nuts) return null;
+    const anni = []; for (let a = 2017; a <= 2026; a++) { const r = resaClasse(RESE_DATA, pv.nuts, cls, a); if (r) anni.push(r.resa); }
+    if (anni.length < 3) return null;
+    anni.sort((a, b) => a - b);
+    const Ym = anni[Math.floor(0.9 * (anni.length - 1))];
+    const sm = smooth("ndvi"), met = (current.meteo || []).filter((r) => !r.fc && r.et0 != null && r.t >= y.t0 && r.t <= y.t1);
+    if (met.length < 40) return null;
+    const ndviAt = (t) => { let j = 0; while (j < sm.length - 1 && sm[j + 1].x < t) j++; return sm[j].y; };
+    const TAW = so.paw * A[0] * 1000, RAW = A[2] * TAW;
+    const irrigato = current.feature.properties && /goccia|aspersione|scorrimento|pivot/.test(current.feature.properties.irrigazione || "");
+    let Dr = 0, sEtc = 0, sEta = 0, stressDays = 0;
+    met.forEach((r) => {
+      const kc = Math.min(1.25, Math.max(0.15, 1.457 * ndviAt(r.t) - 0.1725)), etc = kc * r.et0;
+      const pe = (r.rain || 0) > 2 ? 0.8 * r.rain : 0;
+      const ks = irrigato || Dr <= RAW ? 1 : Math.max(0, (TAW - Dr) / (TAW - RAW));
+      const eta = ks * etc;
+      Dr = Math.min(TAW, Math.max(0, Dr - pe + eta));
+      sEtc += etc; sEta += eta; if (ks < 0.8) stressDays++;
+    });
+    const rel = sEtc ? sEta / sEtc : 1;
+    return { resa: Math.max(0, Ym * (1 - A[1] * (1 - rel))), Ym, rel, TAW, stressDays, irrigato };
+  }
+
   function drawFieldYield() {
     const el = document.getElementById("fpFieldYield");
     if (!el) return;
@@ -694,6 +793,8 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     current.fieldYield = { ...y, classe: ca.cls };
     el.innerHTML = `<b>${lt("fy_title").replace("{c}", y.nome).replace("{y}", ca.anno)}:</b> <span class="big">${y.resa.toFixed(1)} t/ha</span>
       <small>(${lt("fy_range")} ${(y.resa * 0.7).toFixed(1)}–${(y.resa * 1.3).toFixed(1)}${T ? "; " + lt("fy_cal").replace("{f}", T.fattore.toFixed(2)) : ""})</small>${conf}
+      ${(() => { const w = waterYield(ca.cls, y); return w ? `<div class="fy-water"><b>${lt("fw_title")}:</b> <span class="big">${w.resa.toFixed(1)} t/ha</span>
+        <small>${lt("fw_det").replace("{taw}", Math.round(w.TAW)).replace("{r}", Math.round(w.rel * 100)).replace("{s}", w.stressDays).replace("{ym}", w.Ym.toFixed(1))}${w.irrigato ? " " + lt("fw_irr") : ""}</small></div>` : ""; })()}
       <div class="hint small">${lt("fy_note").replace("{d}", y.giorni).replace("{a}", fmtDate(y.t0)).replace("{b}", fmtDate(y.t1)).replace("{f}", ca.fonte)}</div>`;
   }
   let RESE_DATA = null, TARATURA = null, taraturaChiesta = false;
@@ -942,6 +1043,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       <div id="fpCty" class="fp-cty"></div>
       <div id="fpCrop" class="fp-crop"></div>
       <div id="fpFieldYield" class="fp-fieldyield"></div>
+      <div id="fpSoil" class="fp-soil"></div>
       <div id="fpYield" class="fp-yield"></div>
       <div id="fpSummary" class="fp-summary"></div>
       <details class="fp-map" id="fpMapBox" open><summary>${lt("fm_title")}</summary>
@@ -1417,6 +1519,23 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     loadS2(my).catch((e) => setStatus(lt("err", { e: e.message })));
     showCropHistory(my).then(() => showYields(my)).catch(() => {});
     loadEta(my);
+    loadSoil(my);
+  }
+
+  // analisi di un poligono qualsiasi (disegnato dall'utente, importato, prato)
+  function analyze(feature, extra = {}) {
+    if (highlight) map.removeLayer(highlight);
+    highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fillColor: "#ffd84a", fillOpacity: 0.12 }, interactive: false }).addTo(map);
+    const c = L.geoJSON(feature).getBounds().getCenter();
+    current = { feature, ll: c, ...extra };
+    run();
+  }
+  async function cropOfField(feature, y) {
+    const polys = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+    const rings = polys.map((poly) => poly.map((ring) => ring.map(([lo, la]) => proj4("EPSG:4326", "EPSG:3035", [lo, la]))));
+    const all = rings.flat(2);
+    const bb = [Math.min(...all.map((p) => p[0])), Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[0])), Math.max(...all.map((p) => p[1]))];
+    return cropOfYear(y, rings, bb).catch(() => null);
   }
 
   async function onMapClick(ll) {
@@ -1437,5 +1556,5 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     return feature;
   }
 
-  return { cropHistory, makeS2Layer, makeFieldsLayer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, findField, refreshLang: () => current && run(), _debug: () => current };
+  return { analyze, cropOfField, CTY_NOMI: () => CTY_NOMI, current: () => current, cropHistory, makeS2Layer, makeFieldsLayer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, findField, refreshLang: () => current && run(), _debug: () => current };
 })();

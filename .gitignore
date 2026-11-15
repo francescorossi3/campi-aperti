@@ -1,7 +1,9 @@
 data/*
+!data/contributi
 !data/riepiloghi.json
 !data/rese.json
 !data/province.json
 !data/monteith_province.json
+!data/contributi/
 pipeline/data
 __pycache__/

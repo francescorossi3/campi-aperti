@@ -208,3 +208,50 @@ body.wide-sidebar .sidebar { width: min(640px, 55vw); }
 .fm-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; flex-wrap: wrap; margin: 2px 0; }
 .fm-legend .fm-bar { display: inline-block; width: 160px; height: 10px; border-radius: 3px; }
 .fm-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 3px; vertical-align: -2px; }
+
+/* ---------- strumenti sulla mappa ---------- */
+.tool-bar { background: #fff; }
+.tool-bar a { display: flex !important; align-items: center; gap: 6px; width: auto !important; min-width: 34px; height: 34px !important; line-height: 34px !important;
+  padding: 0 8px; text-decoration: none; color: #1d2b20 !important; font-size: 13px; overflow: hidden; }
+.tool-bar a span { font-size: 16px; width: 18px; text-align: center; }
+.tool-bar a em { font-style: normal; max-width: 0; opacity: 0; white-space: nowrap; transition: max-width .2s, opacity .2s; }
+.tool-bar:hover a em { max-width: 220px; opacity: 1; }
+.leaflet-container.drawing { cursor: crosshair !important; }
+.leaflet-container.drop { outline: 3px dashed var(--green); outline-offset: -6px; }
+.draw-hint { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: #1d2b20e8; color: #fff;
+  padding: 7px 12px; border-radius: 10px; font-size: 13px; max-width: 80%; box-shadow: 0 4px 14px #0003; }
+.draw-hint .small-btn { margin-left: 8px; }
+.tool-card { position: absolute; top: 10px; right: 10px; z-index: 1001; width: min(380px, calc(100% - 70px)); max-height: calc(100% - 20px); overflow: auto;
+  background: #fffdf8; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px #0003; font-size: 13px; }
+.tool-card + .tool-card { top: 40px; right: 30px; }
+.tc-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: #fffdf8; font-family: Fraunces, serif; font-size: 15px; }
+.tc-body { padding: 10px 12px; }
+.tc-body label { display: block; font-size: 12px; color: var(--muted); margin: 4px 0; }
+.tc-body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), .tc-body select, .tc-body textarea { width: 100%; box-sizing: border-box;
+  padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; font: inherit; color: #1d2b20; background: #fff; }
+.tf-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.tf-form .wide, .tf-form .chk { grid-column: 1 / -1; }
+.tc-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.btn-primary { background: var(--green); color: #fff; border: 0; border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; }
+.btn-primary:hover { filter: brightness(1.1); }
+.mine-list { list-style: none; padding: 0; margin: 0 0 8px; } .mine-list li { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.file-drop { display: block; border: 2px dashed var(--line); border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; color: var(--green) !important; font-weight: 600; }
+.file-drop input { display: none; }
+.um { border-top: 1px solid var(--line); padding: 8px 0; }
+.um-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; margin: 4px 0; }
+.um-grid .wide { grid-column: 1 / -1; }
+.um-grid input.um-rgb { width: 48px !important; display: inline-block; margin-right: 3px; }
+.user-legend { background: #fffdf8ee; border-radius: 10px; padding: 6px 10px; font-size: 11px; box-shadow: 0 2px 8px #0002; max-width: 240px; }
+.ul-item + .ul-item { margin-top: 6px; }
+.ul-bar { display: block; height: 10px; border-radius: 3px; margin-top: 3px; }
+.ul-lim { display: flex; justify-content: space-between; }
+.ul-cls { display: block; } .ul-cls i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.user-hover { background: #fffdf8ee; border-radius: 8px; padding: 4px 8px; font-size: 12px; }
+.lw-big { font-size: 15px; font-weight: 600; color: var(--green); }
+
+.fp-soil { font-size: 12.5px; margin: 6px 0; padding: 6px 8px; background: #f6f1e4; border-radius: 10px; }
+.soil-tex { background: #8c6d3f; color: #fff; border-radius: 8px; padding: 0 7px; font-size: 11px; margin-left: 4px; }
+.soil-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 10px; margin: 4px 0; }
+.fy-water { margin-top: 3px; } .fy-water .big { font-size: 15px; font-weight: 700; color: #2b6cb0; }
+body.fp-open .tool-card { max-height: calc(58% - 20px); }

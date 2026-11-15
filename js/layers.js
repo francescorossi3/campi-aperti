@@ -11,11 +11,55 @@ const LAYER_GROUPS = [
   { id: "live", it: "Satellite in tempo reale (Sentinel-2)", en: "Real-time satellite (Sentinel-2)" },
   { id: "fields", it: "Campi e colture", en: "Fields and crops" },
   { id: "catasto", it: "Catasto (Agenzia delle Entrate)", en: "Cadastre (Italian Revenue Agency)" },
+  { id: "soil", it: "Suolo (SoilGrids, 250 m)", en: "Soil (SoilGrids, 250 m)" },
 ];
 // I layer statici CLMS (2012–2021) restano solo nel catalogo "Dati" come archivio.
 const ARCHIVE_GROUPS = ["landcover", "trees", "agri", "pheno", "water", "nature"];
 
 const LAYERS = [
+  // ---------------- SUOLO / SOIL ----------------
+  {
+    id: "sg_clay", group: "soil", type: "wms", minZoom: 5, opacity: 0.7,
+    wmsUrl: "https://maps.isric.org/mapserv?map=/map/clay.map", wmsLayers: "clay_0-5cm_mean",
+    it: { name: "Argilla 0–5 cm", desc: "Contenuto di argilla (g/kg) dello strato superficiale. Stima ISRIC SoilGrids 2.0 a 250 m." },
+    en: { name: "Clay 0–5 cm", desc: "Clay content (g/kg) of the topsoil. ISRIC SoilGrids 2.0 estimate at 250 m." },
+    source: "ISRIC SoilGrids 2.0 — CC BY 4.0", link: "https://soilgrids.org",
+  },
+  {
+    id: "sg_sand", group: "soil", type: "wms", minZoom: 5, opacity: 0.7,
+    wmsUrl: "https://maps.isric.org/mapserv?map=/map/sand.map", wmsLayers: "sand_0-5cm_mean",
+    it: { name: "Sabbia 0–5 cm", desc: "Contenuto di sabbia (g/kg). Stima ISRIC SoilGrids 2.0 a 250 m." },
+    en: { name: "Sand 0–5 cm", desc: "Sand content (g/kg). ISRIC SoilGrids 2.0 estimate at 250 m." },
+    source: "ISRIC SoilGrids 2.0 — CC BY 4.0", link: "https://soilgrids.org",
+  },
+  {
+    id: "sg_soc", group: "soil", type: "wms", minZoom: 5, opacity: 0.7,
+    wmsUrl: "https://maps.isric.org/mapserv?map=/map/soc.map", wmsLayers: "soc_0-5cm_mean",
+    it: { name: "Carbonio organico 0–5 cm", desc: "Carbonio organico del suolo (dg/kg). Stima ISRIC SoilGrids 2.0 a 250 m." },
+    en: { name: "Organic carbon 0–5 cm", desc: "Soil organic carbon (dg/kg). ISRIC SoilGrids 2.0 estimate at 250 m." },
+    source: "ISRIC SoilGrids 2.0 — CC BY 4.0", link: "https://soilgrids.org",
+  },
+  {
+    id: "sg_nitrogen", group: "soil", type: "wms", minZoom: 5, opacity: 0.7,
+    wmsUrl: "https://maps.isric.org/mapserv?map=/map/nitrogen.map", wmsLayers: "nitrogen_0-5cm_mean",
+    it: { name: "Azoto totale 0–5 cm", desc: "Azoto totale (cg/kg). Stima ISRIC SoilGrids 2.0 a 250 m." },
+    en: { name: "Total nitrogen 0–5 cm", desc: "Total nitrogen (cg/kg). ISRIC SoilGrids 2.0 estimate at 250 m." },
+    source: "ISRIC SoilGrids 2.0 — CC BY 4.0", link: "https://soilgrids.org",
+  },
+  {
+    id: "sg_phh2o", group: "soil", type: "wms", minZoom: 5, opacity: 0.7,
+    wmsUrl: "https://maps.isric.org/mapserv?map=/map/phh2o.map", wmsLayers: "phh2o_0-5cm_mean",
+    it: { name: "pH 0–5 cm", desc: "pH in acqua (×10). Stima ISRIC SoilGrids 2.0 a 250 m." },
+    en: { name: "pH 0–5 cm", desc: "pH in water (×10). ISRIC SoilGrids 2.0 estimate at 250 m." },
+    source: "ISRIC SoilGrids 2.0 — CC BY 4.0", link: "https://soilgrids.org",
+  },
+  {
+    id: "sg_cec", group: "soil", type: "wms", minZoom: 5, opacity: 0.7,
+    wmsUrl: "https://maps.isric.org/mapserv?map=/map/cec.map", wmsLayers: "cec_0-5cm_mean",
+    it: { name: "Capacità di scambio cationico 0–5 cm", desc: "CSC (mmol(c)/kg). Stima ISRIC SoilGrids 2.0 a 250 m." },
+    en: { name: "Cation exchange capacity 0–5 cm", desc: "CEC (mmol(c)/kg). ISRIC SoilGrids 2.0 estimate at 250 m." },
+    source: "ISRIC SoilGrids 2.0 — CC BY 4.0", link: "https://soilgrids.org",
+  },
   // ---------------- TEMPO REALE / REAL TIME ----------------
   {
     id: "s2_rgb", group: "live", type: "s2live", minZoom: 10, opacity: 1,

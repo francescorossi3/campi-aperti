@@ -193,7 +193,7 @@ const Segment = (() => {
   }
 
   // --- poligono del segmento che contiene il punto ---
-  function fieldAt(ll) {
+  function fieldAt(ll, bb) {
     if (!result) return null;
     const { bounds: [w, s, e, n], W, H, labels } = result;
     if (ll.lng < w || ll.lng > e || ll.lat < s || ll.lat > n) return null;
@@ -205,7 +205,8 @@ const Segment = (() => {
     const next = new Map(); let count = 0;
     const key = (x, y) => y * (W + 1) + x;
     const add = (x1, y1, x2, y2) => { const k = key(x1, y1); (next.get(k) || next.set(k, []).get(k)).push([x2, y2]); count++; };
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const ya = bb ? bb.y0 : 0, yb = bb ? bb.y1 : H - 1, xa = bb ? bb.x0 : 0, xb = bb ? bb.x1 : W - 1;
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
       if (labels[y * W + x] !== lab) continue;
       if (!inR(x, y - 1)) add(x + 1, y, x, y);         // lato superiore
       if (!inR(x - 1, y)) add(x, y, x, y + 1);         // lato sinistro
@@ -239,13 +240,40 @@ const Segment = (() => {
     const area = (r) => { let a = 0; for (let i = 0; i < r.length - 1; i++) a += r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1]; return a / 2; };
     rings.sort((a, b) => Math.abs(area(b)) - Math.abs(area(a)));
     const toLL = (r) => r.map(([x, y]) => [w + (x / W) * (e - w), n - (y / H) * (n - s)]);
-    let npx = 0; for (let i = 0; i < labels.length; i++) if (labels[i] === lab) npx++;
+    let npx = bb ? bb.n : 0; if (!bb) for (let i = 0; i < labels.length; i++) if (labels[i] === lab) npx++;
     return { type: "Feature", properties: { _seg: true, _px: npx, _nonAgri: result.nonAgri.has(lab) },
       geometry: { type: "Polygon", coordinates: rings.map(toLL) } };
+  }
+
+  // --- tutti i campi della segmentazione corrente come GeoJSON (per lo scaricamento), con NDVI medio per data
+  function allFields(minPx = 20) {
+    if (!result) return null;
+    const { W, H, labels, feat, K, dates, nonAgri } = result;
+    const box = new Map();
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const l = labels[y * W + x];
+      let b = box.get(l);
+      if (!b) box.set(l, (b = { x0: x, y0: y, x1: x, y1: y, n: 0, s: new Float64Array(K), c: new Uint32Array(K), px: [x, y] }));
+      if (x < b.x0) b.x0 = x; if (x > b.x1) b.x1 = x; if (y < b.y0) b.y0 = y; if (y > b.y1) b.y1 = y;
+      b.n++;
+      for (let d = 0; d < K; d++) { const v = feat[(y * W + x) * K + d]; if (!isNaN(v)) { b.s[d] += v; b.c[d]++; } }
+    }
+    const [w, s, e, n] = result.bounds, feats = [];
+    let id = 0;
+    for (const [l, b] of box) {
+      if (b.n < minPx || nonAgri.has(l)) continue;
+      const f = fieldAt({ lng: w + ((b.px[0] + 0.5) / W) * (e - w), lat: n - ((b.px[1] + 0.5) / H) * (n - s) }, b);
+      if (!f) continue;
+      const props = { id: ++id, pixel_10m: b.n };
+      dates.forEach((d, k) => (props["ndvi_" + d] = b.c[k] ? +(b.s[k] / b.c[k]).toFixed(3) : null));
+      f.properties = props;
+      feats.push(f);
+    }
+    return { type: "FeatureCollection", features: feats, dates };
   }
 
   function clear() { if (overlay) map.removeLayer(overlay); overlay = null; result = null; }
   const has = () => !!result;
   const info = () => result && { dates: result.dates, nSeg: result.nSeg, bounds: result.bounds };
-  return { run, fieldAt, clear, has, info };
+  return { run, fieldAt, allFields, clear, has, info };
 })();

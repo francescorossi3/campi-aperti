@@ -1,0 +1,62 @@
+name: Contributi degli utenti (campi disegnati)
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  raccogli:
+    if: startsWith(github.event.issue.title, '[contributo]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BODY: ${{ github.event.issue.body }}
+      NUM: ${{ github.event.issue.number }}
+      AUTORE: ${{ github.event.issue.user.login }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: aggiungi al dataset
+        id: agg
+        run: |
+          python3 - <<'PY'
+          import os, re, json, datetime
+          body = os.environ.get("BODY") or ""
+          m = re.search(r"```json\s*(\{.*?\})\s*```", body, re.S)
+          ok = False
+          try:
+              f = json.loads(m.group(1)) if m else None
+              g = f and f.get("geometry", {})
+              if f and f.get("type") == "Feature" and g.get("type") in ("Polygon", "MultiPolygon"):
+                  pts = json.dumps(g["coordinates"])
+                  assert len(pts) < 200000
+                  # solo campi in Italia (circa)
+                  xs = [float(v) for v in re.findall(r"-?\d+\.?\d*", pts)]
+                  lon, lat = xs[0::2], xs[1::2]
+                  assert 6 <= min(lon) and max(lon) <= 19 and 35 <= min(lat) and max(lat) <= 47.5
+                  p = {k: v for k, v in f.get("properties", {}).items() if k != "nome" and not isinstance(v, (dict, list))}
+                  p.update({"issue": int(os.environ["NUM"]), "ricevuto": datetime.date.today().isoformat()})
+                  os.makedirs("data/contributi", exist_ok=True)
+                  path = "data/contributi/campi.geojson"
+                  fc = json.load(open(path)) if os.path.exists(path) else {"type": "FeatureCollection", "licenza": "CC BY 4.0", "features": []}
+                  fc["features"].append({"type": "Feature", "properties": p, "geometry": g})
+                  json.dump(fc, open(path, "w"), ensure_ascii=False)
+                  ok = True
+          except Exception as e:
+              print("non valido:", e)
+          open(os.environ["GITHUB_OUTPUT"], "a").write(f"ok={'1' if ok else '0'}\n")
+          PY
+      - name: pubblica e ringrazia
+        run: |
+          if [ "${{ steps.agg.outputs.ok }}" = "1" ]; then
+            git config user.name "campi-aperti-bot"; git config user.email "actions@users.noreply.github.com"
+            git add -f data/contributi/campi.geojson
+            git commit -m "Contributo campo #$NUM" && git pull --rebase && git push
+            gh issue close "$NUM" --comment "Grazie! Il campo è stato aggiunto al dataset aperto (data/contributi/campi.geojson) e verrà usato per addestrare e verificare i modelli. / Thanks! The field has been added to the open dataset."
+          else
+            gh issue comment "$NUM" --body "Non sono riuscito a leggere i dati del campo (manca il blocco json o la geometria non è in Italia). / Could not read the field data."
+          fi

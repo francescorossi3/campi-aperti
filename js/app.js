@@ -91,6 +91,10 @@ function makeLayer(def) {
   if (def.type === "s2live") return Live.makeS2Layer(def);
   if (def.type === "cty") return new CropLayer.Layer(ctyYear, { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.85, zIndex: 30 });
   const common = { opacity: def.opacity ?? 0.7, zIndex: 10, crossOrigin: false };
+  if (def.type === "wms") {
+    return L.tileLayer.wms(def.wmsUrl, { layers: def.wmsLayers, format: "image/png", transparent: true, version: "1.3.0", opacity: def.opacity ?? 0.7,
+      zIndex: 12, minZoom: def.minZoom || 0, maxZoom: 19, attribution: def.source });
+  }
   if (def.type === "catasto") {
     return new CatastoTiles(def, { ...common, pane: "catasto", minZoom: def.minZoom || 0, maxZoom: 19, tileSize: 256,
       attribution: "Catasto © Agenzia delle Entrate (CC BY 4.0)" });
@@ -159,6 +163,10 @@ async function loadLegend(def, el) {
   const box = el.querySelector(".legend");
   if (box && def.type === "cty") { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${CropLayer.legendHtml()}`; return; }
   if (box && def.legendHtml) { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${def.legendHtml}`; return; }
+  if (box && def.type === "wms") {
+    box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div><img alt="" style="max-width:100%" src="${def.wmsUrl}&service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=${def.wmsLayers}&sld_version=1.1.0">`;
+    return;
+  }
   if (!box || box.dataset.loaded || !def.url) return;
   box.dataset.loaded = "1";
   try {
@@ -260,7 +268,7 @@ function renderCatalog() {
 
 // ------------------------------------------------------------------ clic sulla mappa / point query
 let clickMarker = null;
-map.on("click", (e) => { queryPoint(e.latlng); Live.onMapClick(e.latlng); });
+map.on("click", (e) => { if (Tools.busy()) return; queryPoint(e.latlng); Live.onMapClick(e.latlng); });
 
 const ratCache = {};
 async function getRAT(def) {
@@ -458,6 +466,7 @@ function applyLang() {
   renderLayerPanel();
   renderCatalog();
   Live.refreshLang();
+  Tools.refreshLang();
   if (document.body.classList.contains("wide-sidebar")) Regions.render();
   const info = document.getElementById("infoPanel");
   if (!clickMarker) info.innerHTML = `<p class="hint">${t("info_hint")}</p>`;
@@ -481,6 +490,7 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&a
   } else {
     LAYERS.filter((l) => l.on).forEach((l) => state.on.add(l.id));
   }
+  Tools.init();
   applyLang();
   setBase(currentBase);
   [...state.on].forEach((id) => setLayer(id, true));
