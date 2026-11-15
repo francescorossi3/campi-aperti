@@ -1,7 +1,7 @@
 {
  "lodi": {
   "ok": true,
-  "s": 5.207600000000006,
+  "s": 3.4307999999999885,
   "campi": 178,
   "date": [
    "2026-09-27"
@@ -11,7 +11,7 @@
  },
  "maccarese": {
   "ok": true,
-  "s": 7.679699999999997,
+  "s": 4.793400000000009,
   "campi": 73,
   "date": [
    "2026-07-05"
@@ -21,8 +21,8 @@
  },
  "muccese": {
   "ok": true,
-  "s": 4.741099999999991,
-  "campi": 162,
+  "s": 3.9687000000000117,
+  "campi": 192,
   "date": [
    "2026-08-27"
   ],
@@ -36,6 +36,32 @@
   "stato": "30 immagini serene su 68 date (38 scartate per nuvole).",
   "mappa": "2853 pixel da 10 m · media 0.830 · deviazione standard 0.086 · variabilità 10%"
  },
+ "strada": [
+  [
+   "Strada",
+   "Cingoli",
+   [
+    13.2189083,
+    43.3972608
+   ]
+  ],
+  [
+   "Strada",
+   "Camerino",
+   [
+    13.052413,
+    43.1167492
+   ]
+  ],
+  [
+   "Strada",
+   "Rocca San Casciano",
+   [
+    11.8762806,
+    44.066479
+   ]
+  ]
+ ],
  "ricerca maceratta": "Macerata provincia\nMarche\nMacerata località\nRiolo Terme, Ravenna, Emilia-Romagna\nMaceratoi località\nCampertogno, Vercelli, Piemonte\nMaceratola zona\nFoligno, Perugia, Umbria\nMacerata comune\nMC · Marche\nMacerata Campania comune\nCE · Campania\nMaratea comune\nPZ · Basilicata\nMaierato comune\nVV · Calabria",
  "ricerca Località Strada": "Strada zona\nCamerino, Macerata, Marche\nStrada località\nRocca San Casciano, Forlì-Cesena, Emilia-Romagna\nStrada località\nSovicille, Siena, Toscana\nStrada località\nCastel d'Aiano, Bologna, Emilia-Romagna\nStrada località\nSan Casciano in Val di Pesa, Firenze, Toscana\nStrada zona\nCingoli, Macerata, March",
  "ricerca Strada": "Strada zona\nCamerino, Macerata, Marche\nStrada località\nRocca San Casciano, Forlì-Cesena, Emilia-Romagna\nStrada località\nSovicille, Siena, Toscana\nStrada località\nCastel d'Aiano, Bologna, Emilia-Romagna\nAppiano sulla strada del vino/Eppan an der Weinstraße comune\nBZ · Trentino-Alto Adige/Südtirol\nCal",
@@ -45,9 +71,9 @@
  "errori": [
   "Campi divisi per colture diverse: 40",
   "Campi divisi per colture diverse: 20",
-  "Campi divisi per colture diverse: 83",
+  "Campi divisi per colture diverse: 90",
   "Campi divisi per colture diverse: 40",
   "Failed to load resource: the server responded with a status of 404 (File not found)",
-  "Failed to load resource: net::ERR_TIMED_OUT"
+  "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
  ]
 }
