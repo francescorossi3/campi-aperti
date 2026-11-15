@@ -30,21 +30,54 @@ cen = prov.to_crs(3035).geometry.centroid.to_crs(4326)
 prov["lon"], prov["lat"] = cen.x.round(3), cen.y.round(3)
 y0, y1 = int(nd.anno.min()) - 1, int(nd.anno.max())
 rad = {}
-for p in prov.itertuples():
-    url = (f"https://archive-api.open-meteo.com/v1/archive?latitude={p.lat}&longitude={p.lon}&start_date={y0}-11-01"
-           f"&end_date={min(pd.Timestamp.now().date() - pd.Timedelta(days=7), pd.Timestamp(f'{y1}-10-31').date())}"
-           f"&daily=shortwave_radiation_sum&timezone=UTC")
-    for tentativo in range(5):
+# cache sul repository dati: le annate già scaricate non si riscaricano
+cache = os.path.join("data", "province_ndvi", "radiazione.parquet")
+if os.path.exists(cache):
+    c = pd.read_parquet(cache)
+    for pv, g in c.groupby("provincia"):
+        rad[pv] = pd.Series(g.rad.values, index=pd.to_datetime(g.data))
+fine = min(pd.Timestamp.now().normalize() - pd.Timedelta(days=7), pd.Timestamp(f"{y1}-10-31"))
+mancano = [p for p in prov.itertuples() if p.prov_name not in rad or rad[p.prov_name].index.max() < fine - pd.Timedelta(days=40)]
+print(len(mancano), "province da scaricare (ERA5 via Open-Meteo, 20 punti per richiesta)", flush=True)
+
+
+def nasa_power(lat, lon):
+    # riserva: NASA POWER, radiazione globale giornaliera (MJ/m²/giorno)
+    u = (f"https://power.larc.nasa.gov/api/temporal/daily/point?parameters=ALLSKY_SFC_SW_DWN&community=AG&longitude={lon}&latitude={lat}"
+         f"&start={y0}1101&end={fine:%Y%m%d}&format=JSON")
+    j = requests.get(u, timeout=300).json()["properties"]["parameter"]["ALLSKY_SFC_SW_DWN"]
+    s_ = pd.Series(j, dtype=float)
+    s_.index = pd.to_datetime(s_.index, format="%Y%m%d")
+    return s_.where(s_ > -900)
+
+
+for k in range(0, len(mancano), 20):
+    lotto = mancano[k:k + 20]
+    url = (f"https://archive-api.open-meteo.com/v1/archive?latitude={','.join(str(p.lat) for p in lotto)}&longitude={','.join(str(p.lon) for p in lotto)}"
+           f"&start_date={y0}-11-01&end_date={fine:%Y-%m-%d}&daily=shortwave_radiation_sum&timezone=UTC")
+    js = None
+    for tentativo in range(4):
         try:
-            j = requests.get(url, timeout=300).json()
-            if "daily" in j:
-                rad[p.prov_name] = pd.Series(j["daily"]["shortwave_radiation_sum"], index=pd.to_datetime(j["daily"]["time"]), dtype=float)
-                break
-        except (requests.RequestException, ValueError):
-            pass
-        time.sleep(20 * (tentativo + 1))
-    time.sleep(1)
-print(len(rad), "province con radiazione")
+            r = requests.get(url, timeout=600)
+            if r.status_code == 200:
+                js = r.json(); js = js if isinstance(js, list) else [js]; break
+            print("Open-Meteo", r.status_code, r.text[:150], flush=True)
+        except (requests.RequestException, ValueError) as e:
+            print("Open-Meteo errore", e, flush=True)
+        time.sleep(60 * (tentativo + 1))
+    for i, p in enumerate(lotto):
+        try:
+            if js and "daily" in js[i]:
+                d = js[i]["daily"]
+                rad[p.prov_name] = pd.Series(d["shortwave_radiation_sum"], index=pd.to_datetime(d["time"]), dtype=float)
+            else:
+                rad[p.prov_name] = nasa_power(p.lat, p.lon)
+        except Exception as e:
+            print("radiazione non disponibile per", p.prov_name, e, flush=True)
+    print(f"radiazione: {min(k + 20, len(mancano))}/{len(mancano)}", flush=True)
+if mancano:
+    pd.concat([pd.DataFrame({"provincia": pv, "data": sr.index, "rad": sr.values}) for pv, sr in rad.items()]).to_parquet(cache, index=False)
+print(len(rad), "province con radiazione", flush=True)
 
 
 def resa(g, cls, rs):

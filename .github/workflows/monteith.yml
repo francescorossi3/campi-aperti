@@ -2,6 +2,11 @@ name: Rese per provincia (modello Monteith vs ISTAT)
 
 on:
   workflow_dispatch:
+    inputs:
+      solo_confronto:
+        description: "Salta lo scaricamento NDVI (già su Hugging Face)"
+        type: boolean
+        default: true
   schedule:
     - cron: "37 3 12 * *"
   push:
@@ -12,6 +17,7 @@ permissions:
 
 jobs:
   ndvi:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.solo_confronto }}
     runs-on: ubuntu-24.04
     timeout-minutes: 340
     strategy:
@@ -35,7 +41,7 @@ jobs:
     needs: ndvi
     if: always()
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_DATA_REPO: Bradipo92/campi-aperti-data
@@ -45,7 +51,10 @@ jobs:
       - name: scarica NDVI
         run: cd pipeline && ln -s ../data data 2>/dev/null; MODO=giu CARTELLE=province_ndvi python hf_sync.py
       - name: 12 modello Monteith e confronto ISTAT
-        run: cd pipeline && python 12_monteith_province.py
+        run: cd pipeline && python -u 12_monteith_province.py
+      - name: salva la cache della radiazione
+        if: always()
+        run: cd pipeline && MODO=su CARTELLE=province_ndvi python hf_sync.py
       - name: pubblica
         run: |
           git config user.name "campi-aperti-bot"
