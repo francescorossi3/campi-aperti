@@ -15,8 +15,8 @@ async def main():
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.on("console", lambda m: (m.type in ("error", "warning") or "divisi" in m.text) and errs.append(m.text[:300]))
-        for nome, lat, lon in [("lodi", 45.25, 9.55), ("maccarese", 41.86, 12.23), ("muccese", 43.0726, 13.1103)]:
-            await pg.goto(f"http://127.0.0.1:8770/index.html?lang=it#15/{lat}/{lon}/sat")
+        for nome, lat, lon in [("lodi", 45.25, 9.55), ("maccarese", 41.86, 12.23), ("muccese", 43.1385, 13.0245)]:
+            await pg.goto(f"http://127.0.0.1:8770/index.html?lang=it&r={nome}#15/{lat}/{lon}/sat")
             await pg.wait_for_timeout(3000)
             t = await pg.evaluate(f"""async () => {{
               const t0 = performance.now();
@@ -47,6 +47,9 @@ async def main():
           resa: document.querySelector('#fpFieldYield')?.innerText, stato: document.querySelector('#fpStatus')?.innerText, mappa: document.querySelector('#fmStats')?.innerText })""")
         print(json.dumps(rep["pannello"], ensure_ascii=False, indent=1))
         await pg.screenshot(path=os.path.join(OUT, "browser_pannello.png"), full_page=False)
+        # dove sta "Località Strada" (Camerino)?
+        rep["strada"] = await pg.evaluate("fetch('https://photon.komoot.io/api/?q=Strada&osm_tag=place&lat=43.13&lon=13.06&limit=3').then(r=>r.json()).then(j=>j.features.map(f=>[f.properties.name,f.properties.city||f.properties.county,f.geometry.coordinates]))")
+        print("strada", rep["strada"])
         # ricerca luoghi (mappa centrata vicino a Macerata)
         await pg.evaluate("map.setView([43.07, 13.11], 13)"); await pg.wait_for_timeout(1500)
         for q in ["maceratta", "Località Strada", "Strada", "Muccia", "41.86, 12.23", "Sant Angelo Lodigiano"]:
