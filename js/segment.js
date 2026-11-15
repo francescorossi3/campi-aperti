@@ -133,9 +133,10 @@ const Segment = (() => {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x, l = labels[i];
       const edge = (x + 1 < W && labels[i + 1] !== l) || (y + 1 < H && labels[i + W] !== l);
+      if (result.bgZero && edge && l === 0 && (x + 1 >= W || labels[i + 1] === 0) && (y + 1 >= H || labels[i + W] === 0)) continue;
       const o = i * 4;
       if (edge) { img.data[o] = 0; img.data[o + 1] = 229; img.data[o + 2] = 255; img.data[o + 3] = 235; }
-      else if (nonAgri.has(l)) { img.data[o] = 30; img.data[o + 1] = 30; img.data[o + 2] = 30; img.data[o + 3] = 70; }
+      else if (nonAgri.has(l) && !result.bgZero) { img.data[o] = 30; img.data[o + 1] = 30; img.data[o + 2] = 30; img.data[o + 3] = 70; }
     }
     ctx.putImageData(img, 0, 0);
     if (overlay) map.removeLayer(overlay);
