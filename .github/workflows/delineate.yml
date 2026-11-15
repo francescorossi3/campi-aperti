@@ -1,0 +1,22 @@
+name: Modello campi (Delineate Anything -> ONNX)
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ["pipeline/11_delineate_onnx.py"]
+
+jobs:
+  esporta:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision ultralytics onnx onnxslim onnxruntime huggingface_hub
+      - run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python 11_delineate_onnx.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: delineate-onnx
+          path: data/modelli/delineate_anything_s.onnx
