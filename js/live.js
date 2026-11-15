@@ -54,7 +54,10 @@ const LT = {
     soil_note: "ISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
     fw_title: "Modello idrico FAO-33", fw_det: "(acqua disponibile nelle radici {taw} mm; consumo reale {r}% del potenziale; {s} giorni di stress; resa raggiungibile in provincia {ym} t/ha)",
     fw_irr: "Campo irrigato: nessuno stress idrico.",
-    fm_title: "Mappa del campo a 10 m", fm_ndvi: "NDVI (vigore)", fm_ndre: "NDRE (clorofilla)", fm_ndmi: "NDMI (acqua nelle foglie)", fm_evi: "EVI",
+    fm_title: "Mappa del campo a 10 m",
+    fl_title: "Campo selezionato: mappe a 10 m", fl_map: "Mappa", fl_date: "Data", fl_op: "Trasparenza", fl_hide: "Togli la mappa del campo",
+    fl_soil: "Suolo:", fl_sg_clay: "argilla", fl_sg_sand: "sabbia", fl_sg_soc: "carbonio", fl_sg_nitrogen: "azoto", fl_sg_phh2o: "pH", fl_sg_cec: "CSC",
+    fl_pheno: "Fenologia Copernicus:", fl_hv_sosd: "inizio stagione", fl_hv_eosd: "fine stagione", fl_hv_length: "durata", fl_hv_tprod: "produttività", fm_ndvi: "NDVI (vigore)", fm_ndre: "NDRE (clorofilla)", fm_ndmi: "NDMI (acqua nelle foglie)", fm_evi: "EVI",
     fm_savi: "SAVI", fm_rgb: "Colori reali", fm_zone: "Zone di vigore (bassa / media / alta)", fm_auto: "scala adattata al campo",
     fm_onmap: "Mostra / togli sulla mappa", fm_nodate: "nessuna data serena", fm_loading: "Carico la mappa…", fm_err: "Mappa non disponibile per questa data.",
     fm_stats: "{n} pixel da 10 m · media {m} · deviazione standard {sd} · variabilità {cv}%",
@@ -71,6 +74,8 @@ const LT = {
     seg_auto: "Divido in campi la zona attorno al punto (immagini Sentinel-2 degli ultimi 12 mesi)…",
     outliers: "date scartate (rumore)",
     ch_et: "Evapotraspirazione nel tempo",
+    ch_cum: "Acqua e calore accumulati dall'inizio del periodo", c_rain_cum: "Pioggia cumulata", c_etc_cum: "ET coltura cumulata", c_bal: "Pioggia − ET coltura", c_gdd: "Gradi giorno (base 10 °C)",
+    ch_yield: "Rese: ISTAT in provincia e stima del campo", yc_grown: "Resa ISTAT della coltura di quell'anno", yc_ref: "Serie ISTAT {c}", yc_monteith: "Campo: modello Monteith", yc_fao: "Campo: modello idrico FAO-33",
     et0d: "ET0 riferimento (mm/g)", etcd: "ET coltura FAO-56 con Kc da NDVI (mm/g)", etad: "ET reale Copernicus 300 m (mm/g)",
     etc_cum: "ET coltura cumulata", eta_cum: "ET reale cumulata",
     ch_cmp: "Confronta le forme delle curve (max 4)",
@@ -146,7 +151,10 @@ const LT = {
     soil_note: "ISRIC SoilGrids 2.0 (250 m, model-based estimate: indicative, not a substitute for a soil test). Plant-available water between field capacity and wilting point, from texture and organic matter (Saxton & Rawls 2006).",
     fw_title: "FAO-33 water model", fw_det: "(available water in the root zone {taw} mm; actual use {r}% of potential; {s} stress days; attainable yield in the province {ym} t/ha)",
     fw_irr: "Irrigated field: no water stress.",
-    fm_title: "Field map at 10 m", fm_ndvi: "NDVI (vigour)", fm_ndre: "NDRE (chlorophyll)", fm_ndmi: "NDMI (leaf water)", fm_evi: "EVI",
+    fm_title: "Field map at 10 m",
+    fl_title: "Selected field: 10 m maps", fl_map: "Map", fl_date: "Date", fl_op: "Opacity", fl_hide: "Remove the field map",
+    fl_soil: "Soil:", fl_sg_clay: "clay", fl_sg_sand: "sand", fl_sg_soc: "carbon", fl_sg_nitrogen: "nitrogen", fl_sg_phh2o: "pH", fl_sg_cec: "CEC",
+    fl_pheno: "Copernicus phenology:", fl_hv_sosd: "season start", fl_hv_eosd: "season end", fl_hv_length: "length", fl_hv_tprod: "productivity", fm_ndvi: "NDVI (vigour)", fm_ndre: "NDRE (chlorophyll)", fm_ndmi: "NDMI (leaf water)", fm_evi: "EVI",
     fm_savi: "SAVI", fm_rgb: "True colour", fm_zone: "Vigour zones (low / medium / high)", fm_auto: "scale fitted to the field",
     fm_onmap: "Show / hide on the map", fm_nodate: "no clear date", fm_loading: "Loading the map…", fm_err: "Map not available for this date.",
     fm_stats: "{n} pixels of 10 m · mean {m} · standard deviation {sd} · variability {cv}%",
@@ -163,6 +171,8 @@ const LT = {
     seg_auto: "Splitting the area around the point into fields (Sentinel-2 images of the last 12 months)…",
     outliers: "discarded dates (noise)",
     ch_et: "Evapotranspiration over time",
+    ch_cum: "Water and heat accumulated since the start of the period", c_rain_cum: "Cumulative rain", c_etc_cum: "Cumulative crop ET", c_bal: "Rain − crop ET", c_gdd: "Growing degree days (base 10 °C)",
+    ch_yield: "Yields: ISTAT in the province and field estimate", yc_grown: "ISTAT yield of that year's crop", yc_ref: "ISTAT series {c}", yc_monteith: "Field: Monteith model", yc_fao: "Field: FAO-33 water model",
     et0d: "Reference ET0 (mm/d)", etcd: "FAO-56 crop ET with NDVI Kc (mm/d)", etad: "Copernicus actual ET 300 m (mm/d)",
     etc_cum: "Cumulative crop ET", eta_cum: "Cumulative actual ET",
     ch_cmp: "Compare curve shapes (max 4)",
@@ -800,11 +810,63 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     current.fieldYield = { ...y, classe: ca.cls };
     el.innerHTML = `<b>${lt("fy_title").replace("{c}", y.nome).replace("{y}", ca.anno)}:</b> <span class="big">${y.resa.toFixed(1)} t/ha</span>
       <small>(${lt("fy_range")} ${(y.resa * 0.7).toFixed(1)}–${(y.resa * 1.3).toFixed(1)}${T ? "; " + lt("fy_cal").replace("{f}", T.fattore.toFixed(2)) : ""})</small>${conf}
-      ${(() => { const w = waterYield(ca.cls, y); return w ? `<div class="fy-water"><b>${lt("fw_title")}:</b> <span class="big">${w.resa.toFixed(1)} t/ha</span>
+      ${(() => { const w = waterYield(ca.cls, y); if (w) current.fieldYield.acqua = w.resa; return w ? `<div class="fy-water"><b>${lt("fw_title")}:</b> <span class="big">${w.resa.toFixed(1)} t/ha</span>
         <small>${lt("fw_det").replace("{taw}", Math.round(w.TAW)).replace("{r}", Math.round(w.rel * 100)).replace("{s}", w.stressDays).replace("{ym}", w.Ym.toFixed(1))}${w.irrigato ? " " + lt("fw_irr") : ""}</small></div>` : ""; })()}
       <div class="hint small">${lt("fy_note").replace("{d}", y.giorni).replace("{a}", fmtDate(y.t0)).replace("{b}", fmtDate(y.t1)).replace("{f}", ca.fonte)}</div>`;
+    if (current._yieldArgs) drawYieldChart(...current._yieldArgs);
   }
   let RESE_DATA = null, TARATURA = null, taraturaChiesta = false;
+
+  // ---- grafico dei cumulati: pioggia, ET0, ET coltura, bilancio (mm) e gradi giorno (asse destro)
+  function drawCumulative() {
+    const met = (current.meteo || []).filter((r) => !r.fc && r.t <= endDate(range).getTime());
+    if (met.length < 3) return;
+    const sm = smooth("ndvi");
+    const ndviAt = (t) => { if (!sm.length) return null; let j = 0; while (j < sm.length - 1 && sm[j + 1].x < t) j++; return sm[j].y; };
+    let cr = 0, ce = 0, cc = 0, gd = 0;
+    const R = [], E = [], C = [], B = [], G = [];
+    met.forEach((r) => {
+      cr += r.rain || 0; ce += r.et0 || 0; gd += Math.max(0, (r.tmean ?? 10) - 10);
+      const nd = ndviAt(r.t); cc += nd == null ? 0 : Math.min(1.25, Math.max(0.15, 1.457 * nd - 0.1725)) * (r.et0 || 0);
+      R.push({ x: r.t, y: cr }); E.push({ x: r.t, y: ce }); C.push({ x: r.t, y: cc }); B.push({ x: r.t, y: cr - cc }); G.push({ x: r.t, y: gd });
+    });
+    upsert("chCum", { type: "line", data: { datasets: [
+      { label: lt("c_rain_cum"), data: R, borderColor: "#2b6cb0", backgroundColor: "#2b6cb022", fill: true, pointRadius: 0, borderWidth: 2 },
+      { label: "ET0", data: E, borderColor: "#8a5b10", borderDash: [4, 3], pointRadius: 0, borderWidth: 1.5 },
+      { label: lt("c_etc_cum"), data: C, borderColor: "#d0572b", pointRadius: 0, borderWidth: 2 },
+      { label: lt("c_bal"), data: B, borderColor: "#333", pointRadius: 0, borderWidth: 1.5, borderDash: [2, 2] },
+      { label: lt("c_gdd"), data: G, borderColor: "#c9a227", pointRadius: 0, borderWidth: 1.5, yAxisID: "y2" },
+    ] }, options: baseOpts({ y: { title: { display: true, text: "mm" } }, y2: { position: "right", grid: { display: false }, title: { display: true, text: lt("c_gdd") } } }) });
+  }
+  // ---- grafico delle rese: ISTAT della coltura coltivata ogni anno (colore = coltura Copernicus), serie ISTAT della coltura
+  // principale, e la resa stimata del campo con i due modelli
+  function drawYieldChart(R, pv, ref) {
+    const el = document.getElementById("chYield");
+    if (!el || !R || !pv) return;
+    const anni = [...new Set(R.rows.map((r) => r[2]))].sort();
+    const per = Object.fromEntries((current.cty || []).filter((r) => !r.dubbio && r.cls > 0).map((r) => [r.year, r.cls]));
+    const col = (c) => (typeof CROP_COLORS !== "undefined" && CROP_COLORS[c]) || "#7a9";
+    const bars = anni.map((a) => { const c = per[a]; const y = c && resaClasse(R, pv.nuts, c, a); return y ? { y: y.resa, c } : null; });
+    const sets = [{ type: "bar", label: lt("yc_grown"), data: bars.map((b) => (b ? b.y : null)), backgroundColor: bars.map((b) => (b ? col(b.c) + "cc" : "#0000")),
+      nomi: bars.map((b) => (b ? CTY_NOMI[b.c][LANG === "it" ? 0 : 1] : "")) }];
+    if (ref) sets.push({ type: "line", label: lt("yc_ref").replace("{c}", CTY_NOMI[ref][LANG === "it" ? 0 : 1]), data: anni.map((a) => { const y = resaClasse(R, pv.nuts, ref, a); return y ? y.resa : null; }),
+      borderColor: "#555", borderDash: [5, 3], pointRadius: 2, spanGaps: true });
+    const fy = current.fieldYield;
+    if (fy) {
+      const ai = anni.indexOf(new Date(fy.t1).getUTCFullYear());
+      if (ai >= 0) {
+        sets.push({ type: "scatter", label: lt("yc_monteith"), data: anni.map((a, i) => (i === ai ? fy.resa : null)), backgroundColor: "#2f8f3a", pointRadius: 7, pointStyle: "rectRot" });
+        if (fy.acqua) sets.push({ type: "scatter", label: lt("yc_fao"), data: anni.map((a, i) => (i === ai ? fy.acqua : null)), backgroundColor: "#2b6cb0", pointRadius: 7, pointStyle: "triangle" });
+      }
+    }
+    if (charts.chYield) { charts.chYield.destroy(); delete charts.chYield; }
+    charts.chYield = new Chart(el, { data: { labels: anni, datasets: sets }, options: { responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } },
+        tooltip: { callbacks: { label: (c) => `${c.dataset.nomi ? c.dataset.nomi[c.dataIndex] : c.dataset.label}: ${c.parsed.y?.toFixed(1)} t/ha` } } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: "t/ha" } } } } });
+    const cap = document.getElementById("chYieldCap");
+    if (cap) cap.textContent = lt("ch_yield") + " — " + pv.prov_name;
+  }
 
   async function showYields(my) {
     const el = document.getElementById("fpYield");
@@ -835,7 +897,9 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
         }
       }
     }
-    el.innerHTML = `<b>${lt("y_title").replace("{p}", pv.prov_name)}</b> ${righe}${serie}${specie}<div class="hint small">${lt("y_note")}</div>`;
+    el.innerHTML = specie ? `${specie}` : "";
+    drawYieldChart(R, pv, ref);
+    current._yieldArgs = [R, pv, ref];
   }
 
   // ================================================================== serie temporali
@@ -1051,24 +1115,16 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       <div id="fpCrop" class="fp-crop"></div>
       <div id="fpFieldYield" class="fp-fieldyield"></div>
       <div id="fpSoil" class="fp-soil"></div>
+      <div id="fpAdvice" class="fp-advice"></div>
       <div id="fpYield" class="fp-yield"></div>
       <div id="fpSummary" class="fp-summary"></div>
-      <details class="fp-map" id="fpMapBox" open><summary>${lt("fm_title")}</summary>
-        <div class="fm-ctrl">
-          <select id="fmIdx" class="seg">${["ndvi", "ndre", "ndmi", "evi", "savi", "rgb", "zone"].map((k) => `<option value="${k}">${lt("fm_" + k)}</option>`).join("")}</select>
-          <select id="fmDate" class="seg"><option>…</option></select>
-          <label class="small"><input type="checkbox" id="fmAuto" checked> ${lt("fm_auto")}</label>
-          <button class="small-btn" id="fmOnMap">${lt("fm_onmap")}</button>
-        </div>
-        <div class="fm-wrap"><canvas id="fmCanvas"></canvas><div class="fm-tip" id="fmTip" hidden></div></div>
-        <div class="fm-legend" id="fmLegend"></div>
-        <div class="hint small" id="fmStats"></div>
-      </details>
       <div class="chips">${INDEX_DEF.map(([k, c]) => `<label class="chip"><input type="checkbox" data-k="${k}" ${shown.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("idx_" + k)}</label>`).join("")}</div>
       <div class="fp-charts">
         <figure><figcaption>${lt("ch_index")}</figcaption><div class="cbox"><canvas id="chIndex"></canvas></div></figure>
         <figure><figcaption>${lt("ch_meteo")}</figcaption><div class="cbox"><canvas id="chMeteo"></canvas></div></figure>
         <figure><figcaption>${lt("ch_et")}</figcaption><div class="cbox"><canvas id="chEt"></canvas></div></figure>
+        <figure><figcaption>${lt("ch_cum")}</figcaption><div class="cbox"><canvas id="chCum"></canvas></div></figure>
+        <figure><figcaption id="chYieldCap">${lt("ch_yield")}</figcaption><div class="cbox"><canvas id="chYield"></canvas></div></figure>
         <figure class="cmp-fig"><figcaption>${lt("ch_cmp")}
           <label class="norm"><input type="checkbox" id="cmpNorm" ${cmpNorm ? "checked" : ""}> ${lt("cmp_norm")}</label></figcaption>
           <div class="chips cmp-chips">${CMP.map(([k, c]) => `<label class="chip"><input type="checkbox" data-c="${k}" ${cmpSel.has(k) ? "checked" : ""}><i style="background:${c}"></i>${lt("c_" + k)}</label>`).join("")}</div>
@@ -1098,8 +1154,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     document.getElementById("fpRadar").onclick = () => { document.getElementById("radarFig").hidden = false; loadS1(); };
     Object.values(charts).forEach((c) => c.destroy());
     charts = {};
-    ["fmIdx", "fmDate", "fmAuto"].forEach((id) => (document.getElementById(id).onchange = () => drawFieldMap()));
-    document.getElementById("fmOnMap").onclick = () => fieldMapOnMap();
+    buildFieldLayerBox();
     fmDatesKey = "";
   }
 
@@ -1116,6 +1171,37 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   const mercY = (lat) => Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) * 6378137;
   const lonOf = (x) => (x / 20037508.34) * 180;
   const latOf = (y) => (360 / Math.PI) * Math.atan(Math.exp(y / 6378137)) - 90;
+  // riquadro "Campo selezionato" in cima alla scheda Layer: le mappe del campo si sovrappongono alla mappa grande
+  function buildFieldLayerBox() {
+    let box = document.getElementById("fieldLayerBox");
+    if (!box) {
+      box = document.createElement("section"); box.id = "fieldLayerBox"; box.className = "field-layer-box";
+      const tab = document.getElementById("tab-layers"); tab.insertBefore(box, tab.firstChild);
+    }
+    const prev = { idx: (document.getElementById("fmIdx") || {}).value || "ndvi", op: (document.getElementById("fmOp") || {}).value || 0.9 };
+    box.hidden = false;
+    box.innerHTML = `<h3>${lt("fl_title")}</h3>
+      <label class="fl-row">${lt("fl_map")} <select id="fmIdx">${["ndvi", "ndre", "ndmi", "evi", "savi", "rgb", "zone"].map((k) => `<option value="${k}" ${k === prev.idx ? "selected" : ""}>${lt("fm_" + k)}</option>`).join("")}</select></label>
+      <label class="fl-row">${lt("fl_date")} <select id="fmDate"><option>…</option></select></label>
+      <label class="fl-row small"><input type="checkbox" id="fmAuto" checked> ${lt("fm_auto")}</label>
+      <label class="fl-row small">${lt("fl_op")} <input type="range" id="fmOp" min="0" max="1" step="0.05" value="${prev.op}"></label>
+      <div class="fm-legend" id="fmLegend"></div>
+      <div class="hint small" id="fmStats"></div>
+      <div class="fl-soil"><b>${lt("fl_soil")}</b> ${["sg_clay", "sg_sand", "sg_soc", "sg_nitrogen", "sg_phh2o", "sg_cec"].map((id) =>
+        `<button class="seg fl-sg" data-id="${id}">${lt("fl_" + id)}</button>`).join("")}</div>
+      <div class="fl-soil"><b>${lt("fl_pheno")}</b> ${["hv_sosd", "hv_eosd", "hv_length", "hv_tprod"].map((id) =>
+        `<button class="seg fl-sg" data-id="${id}">${lt("fl_" + id)}</button>`).join("")}</div>
+      <button class="small-btn" id="fmHide">${lt("fl_hide")}</button>`;
+    ["fmIdx", "fmDate", "fmAuto"].forEach((id) => (document.getElementById(id).onchange = () => drawFieldMap()));
+    document.getElementById("fmOp").oninput = (e) => fmOverlay && fmOverlay.setOpacity(+e.target.value);
+    document.getElementById("fmHide").onclick = () => { if (fmOverlay) { map.removeLayer(fmOverlay); fmOverlay = null; } };
+    box.querySelectorAll(".fl-sg").forEach((b) => {
+      const on = () => document.querySelector(`.layer[data-id="${b.dataset.id}"] input[type=checkbox]`);
+      b.classList.toggle("active", !!(on() && on().checked));
+      b.onclick = () => { const c = on(); if (!c) return; c.checked = !c.checked; c.dispatchEvent(new Event("change", { bubbles: true })); b.classList.toggle("active", c.checked); };
+    });
+    if (typeof showTab === "function") showTab("layers");
+  }
   function fillFieldDates() {
     const sel = document.getElementById("fmDate");
     if (!sel) return;
@@ -1131,8 +1217,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
   }
   function ringsOf(g) { return g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : []; }
   async function drawFieldMap() {
-    const cv = document.getElementById("fmCanvas");
-    if (!cv || !current) return;
+    if (!document.getElementById("fmIdx") || !current) return;
     const idx = document.getElementById("fmIdx").value, date = document.getElementById("fmDate").value, auto = document.getElementById("fmAuto").checked;
     const row = clean().find((r) => r.date === date);
     if (!row) return;
@@ -1179,19 +1264,9 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       else { const v = arr.data[i]; if (!isFinite(v)) continue; c = idx === "zone" ? ZONE_COL[v < t1 ? 0 : v < t2 ? 1 : 2] : ramp((v - a) / (b - a)); }
       img.data.set([c[0], c[1], c[2], 255], i * 4);
     }
-    const zoom = Math.max(1, Math.floor(Math.min(520, cv.parentElement.clientWidth || 520) / W));
-    cv.width = W * zoom; cv.height = H * zoom;
     const tmp = document.createElement("canvas"); tmp.width = W; tmp.height = H; tmp.getContext("2d").putImageData(img, 0, 0);
-    const ctx = cv.getContext("2d"); ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, cv.width, cv.height);
-    ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
-    ctx.strokeStyle = "#222"; ctx.lineWidth = 1.5; ctx.beginPath();
-    polys.forEach((p) => p.forEach((ring) => ring.forEach(([x, y], i) => {
-      const px = ((mercX(x) - X0) / (X1 - X0)) * cv.width, py = ((Y1 - mercY(y)) / (Y1 - Y0)) * cv.height;
-      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-    })));
-    ctx.stroke();
-    fmLast = { tmp, bounds: [[latOf(Y0), lonOf(X0)], [latOf(Y1), lonOf(X1)]], idx, date };
-    if (fmOverlay) fieldMapOnMap(true);
+    fmLast = { tmp, bounds: [[latOf(Y0), lonOf(X0)], [latOf(Y1), lonOf(X1)]], idx, date, arr, inside, W, H, X0, X1, Y0, Y1 };
+    fieldMapOnMap(true);
     // legenda e statistiche
     const leg = document.getElementById("fmLegend");
     if (idx === "rgb") leg.innerHTML = "";
@@ -1202,21 +1277,26 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
       const m = vals.reduce((x, y) => x + y, 0) / vals.length, sd = Math.sqrt(vals.reduce((x, y) => x + (y - m) ** 2, 0) / vals.length);
       stats.textContent = lt("fm_stats", { n: vals.length, m: m.toFixed(3), sd: sd.toFixed(3), cv: Math.round((sd / Math.abs(m || 1)) * 100) });
     } else stats.textContent = "";
-    cv.onmousemove = (e) => {
-      const r = cv.getBoundingClientRect(), x = Math.floor(((e.clientX - r.left) / r.width) * W), y = Math.floor(((e.clientY - r.top) / r.height) * H);
-      const i = y * W + x, tip = document.getElementById("fmTip");
-      if (idx === "rgb" || x < 0 || y < 0 || x >= W || y >= H || inside[i * 4 + 3] <= 127 || !isFinite(arr.data[i])) { tip.hidden = true; return; }
-      tip.hidden = false; tip.textContent = `${lt("fm_" + (idx === "zone" ? "ndvi" : idx))}: ${arr.data[i].toFixed(3)}`;
-      tip.style.left = e.clientX - r.left + 12 + "px"; tip.style.top = e.clientY - r.top + 8 + "px";
-    };
-    cv.onmouseleave = () => (document.getElementById("fmTip").hidden = true);
   }
   function fieldMapOnMap(refresh) {
     if (fmOverlay && !refresh) { map.removeLayer(fmOverlay); fmOverlay = null; return; }
     if (!fmLast) return;
     if (fmOverlay) map.removeLayer(fmOverlay);
-    fmOverlay = L.imageOverlay(fmLast.tmp.toDataURL(), fmLast.bounds, { opacity: 0.9, className: "seg-overlay", interactive: false }).addTo(map);
+    if (!fmHoverOn) { map.on("mousemove", fmHover); fmHoverOn = true; }
+    const op = +((document.getElementById("fmOp") || {}).value || 0.9);
+    fmOverlay = L.imageOverlay(fmLast.tmp.toDataURL(), fmLast.bounds, { opacity: op, className: "seg-overlay", interactive: false, zIndex: 470 }).addTo(map);
   }
+  // valore del pixel sotto il mouse
+  let fmTipCtl = null, fmHoverOn = false;
+  const fmHover = (e) => {
+    const F = fmLast;
+    if (!fmOverlay || !F || F.idx === "rgb") { if (fmTipCtl) fmTipCtl.getContainer().hidden = true; return; }
+    const x = Math.floor(((mercX(e.latlng.lng) - F.X0) / (F.X1 - F.X0)) * F.W), y = Math.floor(((F.Y1 - mercY(e.latlng.lat)) / (F.Y1 - F.Y0)) * F.H);
+    const i = y * F.W + x, ok = x >= 0 && y >= 0 && x < F.W && y < F.H && F.inside[i * 4 + 3] > 127 && isFinite(F.arr.data[i]);
+    if (!fmTipCtl) { fmTipCtl = L.control({ position: "bottomright" }); fmTipCtl.onAdd = () => L.DomUtil.create("div", "user-hover"); fmTipCtl.addTo(map); }
+    fmTipCtl.getContainer().hidden = !ok;
+    if (ok) fmTipCtl.getContainer().innerHTML = `${lt("fm_" + (F.idx === "zone" ? "ndvi" : F.idx))}: <b>${F.arr.data[i].toFixed(3)}</b>`;
+  };
   function parseNpy(buf) {
     const u8 = new Uint8Array(buf), hl = u8[8] | (u8[9] << 8);
     const hdr = new TextDecoder().decode(u8.subarray(10, 10 + hl));
@@ -1460,16 +1540,8 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     const last = s2[s2.length - 1], max = s2.reduce((a, r) => (!a || r.ndvi > a.ndvi ? r : a), null);
     const mean = s2.length ? s2.reduce((a, r) => a + r.ndvi, 0) / s2.length : null;
     const d0 = startDate(range).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
-    el.innerHTML = [
-      wb ? `<span><em>${lt("sum_rain", { d: d0 })}</em><b>${wb.rain.toFixed(0)} mm</b></span>` : "",
-      wb ? `<span><em>${lt("et0")}</em><b>${wb.et0.toFixed(0)} mm</b></span>` : "",
-      wb && wb.etc != null ? `<span><em>${lt("etc")}</em><b>${wb.etc.toFixed(0)} mm</b></span>` : "",
-      wb && wb.etc != null ? `<span><em>${lt("balance")}</em><b>${(wb.rain - wb.etc).toFixed(0)} mm</b></span>` : "",
-      wb ? `<span><em>${lt("sum_gdd")}</em><b>${wb.gdd.toFixed(0)}</b></span>` : "",
-      mean != null ? `<span><em>${lt("ndvi_mean")}</em><b>${mean.toFixed(2)}</b></span>` : "",
-      last ? `<span><em>${lt("sum_last")}</em><b>${last.ndvi.toFixed(2)}</b> <small>${fmtDate(last.t)}</small></span>` : "",
-      max ? `<span><em>${lt("sum_max")}</em><b>${max.ndvi.toFixed(2)}</b> <small>${fmtDate(max.t)}</small></span>` : "",
-    ].join("");
+    el.innerHTML = "";
+    drawCumulative();
     drawFieldYield();
     fillFieldDates();
     const cb = document.getElementById("fpCrop");
@@ -1513,6 +1585,7 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     document.body.classList.remove("fp-open");
     if (highlight) { map.removeLayer(highlight); highlight = null; }
     if (fmOverlay) { map.removeLayer(fmOverlay); fmOverlay = null; }
+    const flb = document.getElementById("fieldLayerBox"); if (flb) flb.hidden = true;
     current = null;
     setTimeout(() => map.invalidateSize(), 50);
   }
@@ -1524,7 +1597,12 @@ const fid = (ft) => (ft.props && (ft.props.id ?? ft.props["metrics:area"])) ?? f
     setStatus(lt("loading_meteo"));
     loadMeteo(my).catch((e) => setStatus(lt("err", { e: e.message })));
     loadS2(my).catch((e) => setStatus(lt("err", { e: e.message })));
-    showCropHistory(my).then(() => showYields(my)).catch(() => {});
+    showCropHistory(my).then(() => {
+      showYields(my);
+      const el = document.getElementById("fpAdvice"), h = (current.cty || []).filter((r) => !r.dubbio);
+      if (el && typeof Advice !== "undefined" && my === runId)
+        Advice.render(el, current.ll.lat, current.ll.lng, current.feature.properties && current.feature.properties.coltura, current.ctyPerm || (h.length ? h[h.length - 1].cls : null));
+    }).catch(() => {});
     loadEta(my);
     loadSoil(my);
   }

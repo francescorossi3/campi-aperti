@@ -84,7 +84,7 @@ const CatastoTiles = L.TileLayer.extend({
 });
 
 const leafletLayers = {};
-let ctyYear = 2024;
+let ctyYear = 2024, hvYear = 2024;
 const state = { on: new Set() };
 
 function makeLayer(def) {
@@ -92,8 +92,10 @@ function makeLayer(def) {
   if (def.type === "cty") return new CropLayer.Layer(ctyYear, { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.85, zIndex: 30 });
   const common = { opacity: def.opacity ?? 0.7, zIndex: 10, crossOrigin: false };
   if (def.type === "wms") {
-    return L.tileLayer.wms(def.wmsUrl, { layers: def.wmsLayers, format: "image/png", transparent: true, version: "1.3.0", opacity: def.opacity ?? 0.7,
-      zIndex: 12, minZoom: def.minZoom || 0, maxZoom: 19, attribution: def.source });
+    const o = { layers: def.wmsLayers, format: "image/png", transparent: true, version: def.wmsVersion || "1.3.0", opacity: def.opacity ?? 0.7,
+      zIndex: 12, minZoom: def.minZoom || 0, maxZoom: 19, attribution: def.source, styles: "" };
+    if (def.wmsTime === "hrvpp") o.time = `${hvYear}-01-01`;
+    return L.tileLayer.wms(def.wmsUrl, o);
   }
   if (def.type === "catasto") {
     return new CatastoTiles(def, { ...common, pane: "catasto", minZoom: def.minZoom || 0, maxZoom: 19, tileSize: 256,
@@ -163,7 +165,7 @@ async function loadLegend(def, el) {
   const box = el.querySelector(".legend");
   if (box && def.type === "cty") { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${CropLayer.legendHtml()}`; return; }
   if (box && def.legendHtml) { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${def.legendHtml}`; return; }
-  if (box && def.type === "wms") {
+  if (box && def.type === "wms" && !def.legendHtml) {
     box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div><img alt="" style="max-width:100%" src="${def.wmsUrl}&service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=${def.wmsLayers}&sld_version=1.1.0">`;
     return;
   }
@@ -211,7 +213,7 @@ function renderLayerPanel() {
   list.innerHTML = LAYER_GROUPS.map((g, gi) => {
     const items = LAYERS.filter((l) => l.group === g.id);
     return `<details class="group" data-group="${g.id}" ${gi < 3 || items.some((l) => state.on.has(l.id)) ? "open" : ""}>
-      <summary>${g[LANG]}</summary>${g.id === "live" ? Live.windowControl() : ""}${g.id === "fields" ? Live.segControl() + `<div class="cty-year">${t("cty_year")} <select id="ctyYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === ctyYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}
+      <summary>${g[LANG]}</summary>${g.id === "live" ? Live.windowControl() : ""}${g.id === "hrvpp" ? `<div class="cty-year">${t("hv_year")} <select id="hvYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === hvYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}${g.id === "fields" ? Live.segControl() + `<div class="cty-year">${t("cty_year")} <select id="ctyYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === ctyYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}
       ${items.map((l) => `
         <div class="layer ${state.on.has(l.id) ? "on" : ""}" data-id="${l.id}">
           <div class="layer-head">
@@ -249,6 +251,8 @@ function renderLayerPanel() {
     if (state.on.has(id)) { el.classList.add("expanded"); loadLegend(def, el); }
   });
   Live.bindWindowControl();
+  const hy = document.getElementById("hvYear");
+  if (hy) hy.onchange = () => { hvYear = +hy.value; LAYERS.filter((l) => l.wmsTime === "hrvpp" && leafletLayers[l.id]).forEach((l) => leafletLayers[l.id].setParams({ time: `${hvYear}-01-01` })); };
   const cy = document.getElementById("ctyYear");
   if (cy) cy.onchange = () => { ctyYear = +cy.value; if (leafletLayers.cty) leafletLayers.cty.setYear(ctyYear); };
   updateZoomNotes();
@@ -323,7 +327,6 @@ function parcelUrl(ll) {
 async function queryPoint(ll) {
   if (clickMarker) map.removeLayer(clickMarker);
   clickMarker = L.marker(ll, { icon: L.divIcon({ className: "", html: '<div class="click-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map);
-  showTab("info");
   if (window.innerWidth > 760) document.getElementById("sidebar").classList.add("open");
 
   const lat = ll.lat.toFixed(6), lng = ll.lng.toFixed(6);
@@ -355,10 +358,10 @@ const sInput = document.getElementById("searchInput"), sList = document.getEleme
 let sTimer = null, sItems = [], sSel = -1, sAbort = null, sMarker = null;
 const sCache = {};
 const TIPI = {
-  it: { city: "città", town: "comune", village: "paese", hamlet: "frazione", locality: "località", suburb: "quartiere", street: "via",
+  it: { comune: "comune", city: "città", town: "comune", village: "paese", hamlet: "frazione", locality: "località", suburb: "quartiere", street: "via",
         house: "indirizzo", county: "provincia", state: "regione", district: "zona", farm: "azienda agricola", farmland: "terreno agricolo",
         vineyard: "vigneto", orchard: "frutteto", peak: "monte", water: "acqua", coords: "coordinate" },
-  en: { city: "city", town: "town", village: "village", hamlet: "hamlet", locality: "locality", suburb: "suburb", street: "street",
+  en: { comune: "municipality", city: "city", town: "town", village: "village", hamlet: "hamlet", locality: "locality", suburb: "suburb", street: "street",
         house: "address", county: "province", state: "region", district: "district", farm: "farm", farmland: "farmland",
         vineyard: "vineyard", orchard: "orchard", peak: "peak", water: "water", coords: "coordinates" },
 };
@@ -374,6 +377,47 @@ function parseCoords(q) {
   const lat = +m[1].replace(",", "."), lon = +m[2].replace(",", ".");
   return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : null;
 }
+// indice locale dei ~7900 comuni (caricato alla prima ricerca): risponde subito e tollera errori di battitura
+let COMUNI = null, comuniLoading = null;
+const norm = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[''`’]/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+function loadComuni() {
+  if (!comuniLoading) comuniLoading = fetch("data/comuni.json").then((r) => (r.ok ? r.json() : null))
+    .then((j) => { COMUNI = j ? j.comuni.map((c) => ({ c, n: norm(c[0]) })) : []; }).catch(() => { COMUNI = []; });
+  return comuniLoading;
+}
+function lev(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]; let best = i;
+    for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); best = Math.min(best, cur[j]); }
+    if (best > max) return max + 1;
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function searchComuni(q) {
+  if (!COMUNI || !COMUNI.length) return [];
+  // "Nome (RM)" o "Nome, provincia"
+  let pr = null; const m = q.match(/^(.*?)[\s,(]+([A-Za-z]{2})\)?\s*$/);
+  let qq = norm(q);
+  if (m && m[2]) { const sig = m[2].toUpperCase(); if (COMUNI.some((x) => x.c[1] === sig)) { pr = sig; qq = norm(m[1]); } }
+  if (qq.length < 2) return [];
+  const maxD = qq.length <= 4 ? 1 : qq.length <= 8 ? 2 : 3;
+  const sc = [];
+  for (const x of COMUNI) {
+    if (pr && x.c[1] !== pr) continue;
+    let s = 0;
+    if (x.n === qq) s = 100;
+    else if (x.n.startsWith(qq)) s = 85 - Math.min(20, x.n.length - qq.length);
+    else if (x.n.split(" ").some((w) => w.startsWith(qq))) s = 70;
+    else if (x.n.includes(qq)) s = 55;
+    else { const d = lev(qq, x.n.slice(0, qq.length + 2), maxD), d2 = lev(qq, x.n, maxD); const dd = Math.min(d, d2); if (dd <= maxD) s = 50 - dd * 10; }
+    if (s > 0) sc.push([s, x.c]);
+  }
+  return sc.sort((a, b) => b[0] - a[0]).slice(0, 6).map(([s, c]) => ({ nome: c[0], dove: `${c[1]} · ${c[2]}`, tipo: "comune", lat: c[3], lon: c[4], ext: [c[6], c[5], c[8], c[7]], score: s }));
+}
+
 async function photon(q) {
   const c = map.getCenter();
   const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=${LANG === "it" ? "default" : "en"}` +
@@ -402,12 +446,22 @@ async function doSearch(q) {
   if (q.length < 2) { sList.hidden = true; return; }
   const co = parseCoords(q);
   if (co) { sItems = [{ nome: `${co.lat.toFixed(5)}, ${co.lon.toFixed(5)}`, dove: "", tipo: "coords", lat: co.lat, lon: co.lon }]; renderResults(); return; }
+  if (!COMUNI) await loadComuni();
+  const loc = searchComuni(q);
+  // risposta immediata dai comuni, poi si aggiungono località, vie e indirizzi da Photon (e Nominatim se serve)
+  sItems = loc; if (loc.length) renderResults();
   if (sAbort) sAbort.abort();
   sAbort = new AbortController();
+  let web = [];
   try {
-    sItems = sCache[q] || (sCache[q] = await photon(q).catch(() => []));
-    if (!sItems.length) sItems = sCache[q] = await nominatim(q);
-  } catch (e) { if (e.name === "AbortError") return; sItems = []; }
+    web = sCache[q] || (sCache[q] = await photon(q).catch(() => []));
+    if (!web.length && !loc.length) web = sCache[q] = await nominatim(q);
+  } catch (e) { if (e.name === "AbortError") return; }
+  const seen = new Set(loc.map((r) => norm(r.nome)));
+  const extra = web.filter((r) => !(["city", "town", "village", "comune"].includes(r.tipo) && seen.has(norm(r.nome))));
+  // se il comune è una corrispondenza esatta resta primo; altrimenti si alternano
+  sItems = loc.length && loc[0].score >= 85 ? [...loc.slice(0, 3), ...extra.slice(0, 5), ...loc.slice(3)] : [...extra.slice(0, 4), ...loc, ...extra.slice(4)];
+  sItems = sItems.slice(0, 10);
   renderResults();
 }
 function renderResults() {
@@ -421,7 +475,7 @@ function renderResults() {
 function goTo(r) {
   sList.hidden = true;
   sInput.value = r.nome + (r.dove ? ", " + r.dove : "");
-  const zoomTipo = { house: 18, street: 17, farm: 16, farmland: 16, vineyard: 16, orchard: 16, hamlet: 15, locality: 15, village: 14, suburb: 14, town: 13, city: 12, district: 12, county: 10, state: 8, coords: 16 };
+  const zoomTipo = { comune: 13, house: 18, street: 17, farm: 16, farmland: 16, vineyard: 16, orchard: 16, hamlet: 15, locality: 15, village: 14, suburb: 14, town: 13, city: 12, district: 12, county: 10, state: 8, coords: 16 };
   if (r.ext && !["house", "street", "coords"].includes(r.tipo)) map.fitBounds([[r.ext[0], r.ext[1]], [r.ext[2], r.ext[3]]], { maxZoom: zoomTipo[r.tipo] || 16 });
   else map.setView([r.lat, r.lon], zoomTipo[r.tipo] || 16);
   if (sMarker) map.removeLayer(sMarker);
@@ -443,6 +497,7 @@ document.getElementById("searchForm").addEventListener("submit", async (e) => {
   if (!sItems.length || sList.hidden) await doSearch(sInput.value);
   if (sItems.length) goTo(sItems[Math.max(0, sSel)]);
 });
+sInput.addEventListener("focus", () => { loadComuni(); });
 sInput.addEventListener("focus", () => { if (sItems.length && sInput.value.trim().length >= 2) sList.hidden = false; });
 document.addEventListener("click", (e) => { if (!e.target.closest(".search")) sList.hidden = true; });
 

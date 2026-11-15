@@ -261,3 +261,17 @@ body.fp-open .tool-card { max-height: calc(58% - 20px); }
 .leaflet-control-zoom a, .tool-bar a { transition: background .15s; } .tool-bar a:hover { background: #f1efe6 !important; }
 .field-panel { box-shadow: 0 -6px 18px #0000000f; }
 .fp-head { position: sticky; top: -8px; background: var(--paper); z-index: 2; padding: 6px 0; }
+
+.field-layer-box { border: 2px solid var(--sun); border-radius: 12px; padding: 8px 10px; margin: 0 0 12px; background: #fffaf0; }
+.field-layer-box h3 { margin: 0 0 6px; font-size: 15px; }
+.fl-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; margin: 4px 0; }
+.fl-row select { flex: 1; max-width: 210px; }
+.fl-soil { margin: 6px 0; font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+.fp-advice { font-size: 12.5px; margin: 6px 0; padding: 6px 8px; background: #eef5ee; border-radius: 10px; }
+.adv-crop { margin-left: 8px; } .adv-list { margin-top: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.adv { display: flex; gap: 8px; align-items: flex-start; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.adv-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 3px; flex: none; background: #9aa; }
+.adv.lv0 .adv-dot { background: #3aa655; } .adv.lv1 .adv-dot { background: #e8b84a; } .adv.lv2 .adv-dot { background: #d0402b; }
+.adv-lv { font-size: 11px; color: var(--muted); }
+.adv-list .hint { grid-column: 1 / -1; }

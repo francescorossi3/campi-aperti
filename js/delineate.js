@@ -111,6 +111,98 @@ const Delineate = (() => {
     return { lab, n: keep.length };
   }
 
+  // ---- divisione dei campi che contengono colture diverse
+  // Il modello vede i confini su una sola immagine: due appezzamenti contigui di proprietari diversi possono sembrare uno.
+  // Per ogni campo si confrontano le curve NDVI di ~6 date serene dell'anno (10 m): se i pixel formano due gruppi
+  // ben distinti (es. grano e terreno lavorato), compatti nello spazio e ciascuno di almeno il 15% del campo, il campo
+  // viene diviso; il controllo si ripete sulle parti (fino a 4 colture per campo).
+  async function ndviStack(X0, Y0, X1, Y1, W2, H2, end) {
+    const start = new Date(end.getTime() - 365 * 86400000);
+    const bb = [lon(X0), lat(Y0), lon(X1), lat(Y1)];
+    const body = { collections: ["sentinel-2-l2a"], bbox: bb, datetime: `${start.toISOString().slice(0, 10)}T00:00:00Z/${end.toISOString().slice(0, 10)}T23:59:59Z`,
+      query: { "eo:cloud_cover": { lt: 25 } }, limit: 200 };
+    const j = await fetch(`${PC}/stac/v1/search`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+    const perMese = {};
+    (j.features || []).sort((a, b) => a.properties["eo:cloud_cover"] - b.properties["eo:cloud_cover"])
+      .forEach((it) => { const m = it.properties.datetime.slice(0, 7); (perMese[m] = perMese[m] || []).push(it); });
+    const mesi = Object.keys(perMese).sort();
+    const pick = []; const step = Math.max(1, mesi.length / 7);
+    for (let k = 0; k < mesi.length && pick.length < 7; k += step) pick.push(perMese[mesi[Math.floor(k)]][0]);
+    const expr = encodeURIComponent("(B08-B04)/(B08+B04-2000);((SCL==0)|(SCL==1)|(SCL==3)|(SCL==7)|(SCL==8)|(SCL==9)|(SCL==10)|(SCL==11))*1.0");
+    const arrs = await Promise.all(pick.map(async (it) => {
+      try {
+        const ab = await fetch(`${PC}/data/v1/item/bbox/${X0},${Y0},${X1},${Y1}.npy?collection=sentinel-2-l2a&item=${it.id}&expression=${expr}&asset_as_band=true` +
+          `&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${W2}&height=${H2}&resampling=average`).then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); });
+        const dv = new DataView(ab), hl = dv.getUint16(8, true), hdr = new TextDecoder().decode(new Uint8Array(ab, 10, hl));
+        const raw = hdr.includes("<f8") ? new Float64Array(ab.slice(10 + hl)) : new Float32Array(ab.slice(10 + hl));
+        const n = W2 * H2, out = new Float32Array(n);
+        let ok = 0;
+        for (let i = 0; i < n; i++) { const v = raw[i], c = raw[n + i]; if (isFinite(v) && Math.abs(v) <= 1 && c < 0.5) { out[i] = v; ok++; } else out[i] = NaN; }
+        return ok > 0.4 * n ? out : null;
+      } catch (e) { return null; }
+    }));
+    return arrs.filter(Boolean);
+  }
+  function splitByNdvi(labels, W, H, stack, f) {
+    const K = stack.length;
+    if (K < 3) return 0;
+    const W2 = Math.round(W / f);
+    const vec = (i) => { const x = Math.min(W2 - 1, Math.floor((i % W) / f)), y = Math.floor(Math.floor(i / W) / f), j = y * W2 + x; return stack.map((a) => a[j]); };
+    const dist = (a, b) => { let s = 0, n = 0; for (let k = 0; k < K; k++) if (isFinite(a[k]) && isFinite(b[k])) { s += (a[k] - b[k]) ** 2; n++; } return n >= 2 ? Math.sqrt(s / n) : 0; };
+    let nextId = 0; for (let i = 0; i < labels.length; i++) if (labels[i] > nextId) nextId = labels[i];
+    let nSplit = 0;
+    const queue = [...new Set(labels)].filter((l) => l > 0).map((l) => [l, 0]);
+    while (queue.length) {
+      const [lab, depth] = queue.shift();
+      const px = []; for (let i = 0; i < labels.length; i++) if (labels[i] === lab) px.push(i);
+      if (px.length < 160 || depth >= 3) continue;
+      const V = px.map(vec);
+      // k-medie con 2 gruppi: semi = pixel più lontano dalla media e il più lontano da quello
+      const mean = new Array(K).fill(0).map((_, k) => { let s = 0, n = 0; V.forEach((v) => { if (isFinite(v[k])) { s += v[k]; n++; } }); return n ? s / n : NaN; });
+      let a = V[0], d0 = -1; V.forEach((v) => { const d = dist(v, mean); if (d > d0) { d0 = d; a = v; } });
+      let b = V[0]; d0 = -1; V.forEach((v) => { const d = dist(v, a); if (d > d0) { d0 = d; b = v; } });
+      let c = [a.slice(), b.slice()], asg = new Uint8Array(V.length);
+      for (let it = 0; it < 12; it++) {
+        V.forEach((v, i) => (asg[i] = dist(v, c[0]) <= dist(v, c[1]) ? 0 : 1));
+        c = [0, 1].map((g) => new Array(K).fill(0).map((_, k) => { let s = 0, n = 0; V.forEach((v, i) => { if (asg[i] === g && isFinite(v[k])) { s += v[k]; n++; } }); return n ? s / n : NaN; }));
+      }
+      const sep = dist(c[0], c[1]);
+      let n1 = 0; asg.forEach((g) => (n1 += g));
+      const share = Math.min(n1, V.length - n1) / V.length;
+      if (sep < 0.12 || share < 0.15) continue;
+      // pulizia: maggioranza su 5×5 pixel (25 m) dentro il campo
+      const g = new Int8Array(labels.length).fill(-1);
+      px.forEach((i, k) => (g[i] = asg[k]));
+      const g2 = new Int8Array(g);
+      px.forEach((i) => {
+        const x = i % W, y = Math.floor(i / W); let s0 = 0, s1 = 0;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+          const q = g[yy * W + xx]; if (q === 0) s0++; else if (q === 1) s1++;
+        }
+        g2[i] = s1 > s0 ? 1 : 0;
+      });
+      // componenti connesse; i pezzi piccoli (< 15% del campo o < 60 pixel) restano al gruppo più grande
+      const comp = new Int32Array(labels.length).fill(-1), comps = [];
+      px.forEach((i0) => {
+        if (comp[i0] >= 0) return;
+        const id = comps.length, st = [i0], mem = []; comp[i0] = id;
+        while (st.length) { const i = st.pop(); mem.push(i); const x = i % W;
+          for (const j of [i - 1, i + 1, i - W, i + W]) { if (j < 0 || j >= labels.length || (Math.abs((j % W) - x) > 1)) continue;
+            if (comp[j] < 0 && labels[j] === lab && g2[j] === g2[i0]) { comp[j] = id; st.push(j); } } }
+        comps.push({ g: g2[i0], mem });
+      });
+      const big = comps.filter((q) => q.mem.length >= Math.max(60, 0.15 * px.length));
+      if (big.length < 2 || new Set(big.map((q) => q.g)).size < 2) continue;
+      big.sort((p, q) => q.mem.length - p.mem.length);
+      const keepId = big[0];
+      comps.forEach((q) => { if (q === keepId || !big.includes(q)) return; const id = ++nextId; q.mem.forEach((i) => (labels[i] = id)); queue.push([id, depth + 1]); });
+      queue.push([lab, depth + 1]);
+      nSplit++;
+    }
+    return nSplit;
+  }
+
   async function run(bounds, endDate, onProgress) {
     const [w, s, e, n] = bounds;
     const cosl = Math.cos((((s + n) / 2) * Math.PI) / 180), T = TILE_M / cosl;          // lato del tassello in metri Mercatore
@@ -135,8 +227,15 @@ const Delineate = (() => {
       off += k + 1;
     }
     if (!dates.size) throw new Error("immagini non disponibili");
+    // controllo con le curve NDVI dell'anno: divide i campi con colture diverse
+    try {
+      const f = 2, W2 = Math.round(W / f), H2 = Math.round(H / f);
+      const stack = await ndviStack(gx0, gy1 - ny * T, gx0 + nx * T, gy1, W2, H2, endDate || new Date());
+      const ns = splitByNdvi(labels, W, H, stack, f);
+      if (ns) console.info("Campi divisi per colture diverse:", ns);
+    } catch (e) { console.warn("controllo NDVI non riuscito", e); }
     const b = [lon(gx0), lat(gy1 - ny * T), lon(gx0 + nx * T), lat(gy1)];
     return Segment.useLabels(b, W, H, labels, { dates: [...dates].sort(), n: off, method: "ai" });
   }
-  return { run, warmup: () => getSession().catch(() => null) };
+  return { run, warmup: () => getSession().catch(() => null), _split: splitByNdvi };
 })();

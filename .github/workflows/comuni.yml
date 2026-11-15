@@ -1,0 +1,18 @@
+name: Indice dei comuni
+on:
+  workflow_dispatch:
+  push:
+    paths: ["pipeline/15_comuni.py"]
+permissions:
+  contents: write
+jobs:
+  comuni:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests geopandas
+      - run: mkdir -p data && cd pipeline && ln -s ../data data 2>/dev/null; python 15_comuni.py
+      - run: |
+          git config user.name "campi-aperti-bot"; git config user.email "actions@users.noreply.github.com"
+          git add -f data/comuni.json && git commit -m "Indice dei comuni" && git pull --rebase && git push || true

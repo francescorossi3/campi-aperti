@@ -14,8 +14,8 @@ async def main():
         await pg.add_init_script("try{localStorage.setItem('campiAperti.benvenuto','1')}catch(e){}")
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
-        pg.on("console", lambda m: m.type in ("error", "warning") and errs.append(m.text[:300]))
-        for nome, lat, lon in [("lodi", 45.25, 9.55), ("maccarese", 41.86, 12.23)]:
+        pg.on("console", lambda m: (m.type in ("error", "warning") or "divisi" in m.text) and errs.append(m.text[:300]))
+        for nome, lat, lon in [("lodi", 45.25, 9.55), ("maccarese", 41.86, 12.23), ("muccese", 43.0726, 13.1103)]:
             await pg.goto(f"http://127.0.0.1:8770/index.html?lang=it#15/{lat}/{lon}/sat")
             await pg.wait_for_timeout(3000)
             t = await pg.evaluate(f"""async () => {{
@@ -47,6 +47,11 @@ async def main():
           resa: document.querySelector('#fpFieldYield')?.innerText, stato: document.querySelector('#fpStatus')?.innerText, mappa: document.querySelector('#fmStats')?.innerText })""")
         print(json.dumps(rep["pannello"], ensure_ascii=False, indent=1))
         await pg.screenshot(path=os.path.join(OUT, "browser_pannello.png"), full_page=False)
+        # ricerca luoghi
+        for q in ["maceratta", "Località Strada", "41.86, 12.23", "Sant Angelo Lodigiano"]:
+            await pg.fill("#searchInput", q); await pg.wait_for_timeout(2500)
+            rep["ricerca " + q] = (await pg.locator("#searchResults").inner_text())[:300]
+            print(q, "->", rep["ricerca " + q].replace("\n", " | "))
         rep["errori"] = errs[:30]
         json.dump(rep, open(os.path.join(OUT, "browser.json"), "w"), ensure_ascii=False, indent=1)
         await b.close()

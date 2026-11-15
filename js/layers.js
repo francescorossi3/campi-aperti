@@ -11,12 +11,62 @@ const LAYER_GROUPS = [
   { id: "live", it: "Satellite in tempo reale (Sentinel-2)", en: "Real-time satellite (Sentinel-2)" },
   { id: "fields", it: "Campi e colture", en: "Fields and crops" },
   { id: "catasto", it: "Catasto (Agenzia delle Entrate)", en: "Cadastre (Italian Revenue Agency)" },
+  { id: "hrvpp", it: "Fenologia e produttività (Copernicus HR-VPP, 10 m)", en: "Phenology and productivity (Copernicus HR-VPP, 10 m)" },
   { id: "soil", it: "Suolo (SoilGrids, 250 m)", en: "Soil (SoilGrids, 250 m)" },
 ];
 // I layer statici CLMS (2012–2021) restano solo nel catalogo "Dati" come archivio.
 const ARCHIVE_GROUPS = ["landcover", "trees", "agri", "pheno", "water", "nature"];
 
 const LAYERS = [
+  // ---------------- FENOLOGIA / PHENOLOGY (HR-VPP) ----------------
+  {
+    id: "hv_sosd", group: "hrvpp", type: "wms", wmsVersion: "1.1.1", wmsTime: "hrvpp", minZoom: 8, opacity: 0.75,
+    wmsUrl: "https://phenology.vgt.vito.be/wms?", wmsLayers: "CLMS_HRVPP_VPP_SOSD_SEASON1_10M",
+    legendHtml: "<p class='hint small'>Scala colori ufficiale CLMS. Prima stagione dell'anno scelto.</p>",
+    it: { name: "Inizio della stagione vegetativa", desc: "Data in cui la vegetazione inizia a crescere nell'anno (dall'indice fenologico PPI di Sentinel-2). Copernicus HR-VPP, 10 m, una mappa all'anno (2017–2024)." },
+    en: { name: "Start of season", desc: "Date when vegetation starts growing in the year (from the Sentinel-2 Plant Phenology Index). Copernicus HR-VPP, 10 m, one map per year (2017–2024)." },
+    source: "Copernicus Land Monitoring Service — HR-VPP", link: "https://land.copernicus.eu/en/products/vegetation",
+  },
+  {
+    id: "hv_maxd", group: "hrvpp", type: "wms", wmsVersion: "1.1.1", wmsTime: "hrvpp", minZoom: 8, opacity: 0.75,
+    wmsUrl: "https://phenology.vgt.vito.be/wms?", wmsLayers: "CLMS_HRVPP_VPP_MAXD_SEASON1_10M",
+    legendHtml: "<p class='hint small'>Scala colori ufficiale CLMS. Prima stagione dell'anno scelto.</p>",
+    it: { name: "Picco della stagione", desc: "Data del massimo vigore della vegetazione. Copernicus HR-VPP, 10 m, una mappa all'anno (2017–2024)." },
+    en: { name: "Peak of season", desc: "Date of maximum vegetation vigour. Copernicus HR-VPP, 10 m, one map per year (2017–2024)." },
+    source: "Copernicus Land Monitoring Service — HR-VPP", link: "https://land.copernicus.eu/en/products/vegetation",
+  },
+  {
+    id: "hv_eosd", group: "hrvpp", type: "wms", wmsVersion: "1.1.1", wmsTime: "hrvpp", minZoom: 8, opacity: 0.75,
+    wmsUrl: "https://phenology.vgt.vito.be/wms?", wmsLayers: "CLMS_HRVPP_VPP_EOSD_SEASON1_10M",
+    legendHtml: "<p class='hint small'>Scala colori ufficiale CLMS. Prima stagione dell'anno scelto.</p>",
+    it: { name: "Fine della stagione vegetativa", desc: "Data in cui la stagione vegetativa finisce (raccolta, senescenza). Copernicus HR-VPP, 10 m, una mappa all'anno (2017–2024)." },
+    en: { name: "End of season", desc: "Date when the growing season ends (harvest, senescence). Copernicus HR-VPP, 10 m, one map per year (2017–2024)." },
+    source: "Copernicus Land Monitoring Service — HR-VPP", link: "https://land.copernicus.eu/en/products/vegetation",
+  },
+  {
+    id: "hv_length", group: "hrvpp", type: "wms", wmsVersion: "1.1.1", wmsTime: "hrvpp", minZoom: 8, opacity: 0.75,
+    wmsUrl: "https://phenology.vgt.vito.be/wms?", wmsLayers: "CLMS_HRVPP_VPP_LENGTH_SEASON1_10M",
+    legendHtml: "<p class='hint small'>Scala colori ufficiale CLMS. Prima stagione dell'anno scelto.</p>",
+    it: { name: "Durata della stagione", desc: "Giorni tra inizio e fine della stagione vegetativa. Copernicus HR-VPP, 10 m, una mappa all'anno (2017–2024)." },
+    en: { name: "Season length", desc: "Days between start and end of the growing season. Copernicus HR-VPP, 10 m, one map per year (2017–2024)." },
+    source: "Copernicus Land Monitoring Service — HR-VPP", link: "https://land.copernicus.eu/en/products/vegetation",
+  },
+  {
+    id: "hv_maxv", group: "hrvpp", type: "wms", wmsVersion: "1.1.1", wmsTime: "hrvpp", minZoom: 8, opacity: 0.75,
+    wmsUrl: "https://phenology.vgt.vito.be/wms?", wmsLayers: "CLMS_HRVPP_VPP_MAXV_SEASON1_10M",
+    legendHtml: "<p class='hint small'>Scala colori ufficiale CLMS. Prima stagione dell'anno scelto.</p>",
+    it: { name: "Vigore massimo (PPI)", desc: "Valore massimo dell'indice fenologico PPI nella stagione. Copernicus HR-VPP, 10 m, una mappa all'anno (2017–2024)." },
+    en: { name: "Maximum vigour (PPI)", desc: "Maximum Plant Phenology Index value in the season. Copernicus HR-VPP, 10 m, one map per year (2017–2024)." },
+    source: "Copernicus Land Monitoring Service — HR-VPP", link: "https://land.copernicus.eu/en/products/vegetation",
+  },
+  {
+    id: "hv_tprod", group: "hrvpp", type: "wms", wmsVersion: "1.1.1", wmsTime: "hrvpp", minZoom: 8, opacity: 0.75,
+    wmsUrl: "https://phenology.vgt.vito.be/wms?", wmsLayers: "CLMS_HRVPP_VPP_TPROD_SEASON1_10M",
+    legendHtml: "<p class='hint small'>Scala colori ufficiale CLMS. Prima stagione dell'anno scelto.</p>",
+    it: { name: "Produttività totale", desc: "Somma del PPI giornaliero tra inizio e fine stagione: indicatore della biomassa prodotta. Copernicus HR-VPP, 10 m, una mappa all'anno (2017–2024)." },
+    en: { name: "Total productivity", desc: "Sum of daily PPI between season start and end: proxy of biomass produced. Copernicus HR-VPP, 10 m, one map per year (2017–2024)." },
+    source: "Copernicus Land Monitoring Service — HR-VPP", link: "https://land.copernicus.eu/en/products/vegetation",
+  },
   // ---------------- SUOLO / SOIL ----------------
   {
     id: "sg_clay", group: "soil", type: "wms", minZoom: 5, opacity: 0.7,
