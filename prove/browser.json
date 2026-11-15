@@ -1,0 +1,33 @@
+{
+ "lodi": {
+  "ok": true,
+  "s": 2.3445,
+  "campi": 138,
+  "date": [
+   "2026-09-27"
+  ],
+  "W": 512,
+  "H": 512
+ },
+ "maccarese": {
+  "ok": true,
+  "s": 1.9670999999999985,
+  "campi": 52,
+  "date": [
+   "2026-07-05"
+  ],
+  "W": 512,
+  "H": 512
+ },
+ "pannello": {
+  "titolo": "Campo · Superficie 2.25 ha Confine: segmentazione Sentinel-2 di questa zona (valori = media su tutto il campo)",
+  "suolo": "Carico i dati del suolo…",
+  "resa": "",
+  "stato": "32 immagini serene su 68 date (36 scartate per nuvole).",
+  "mappa": "215 pixel da 10 m · media 0.824 · deviazione standard 0.037 · variabilità 4%"
+ },
+ "errori": [
+  "Failed to load resource: the server responded with a status of 404 ()",
+  "Failed to load resource: the server responded with a status of 404 (File not found)"
+ ]
+}
