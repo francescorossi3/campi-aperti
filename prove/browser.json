@@ -1,7 +1,7 @@
 {
  "lodi": {
   "ok": true,
-  "s": 5.147,
+  "s": 6.7295,
   "campi": 178,
   "date": [
    "2026-09-27"
@@ -11,7 +11,7 @@
  },
  "maccarese": {
   "ok": true,
-  "s": 6.565299999999988,
+  "s": 6.306,
   "campi": 73,
   "date": [
    "2026-07-05"
@@ -21,7 +21,7 @@
  },
  "muccese": {
   "ok": true,
-  "s": 5.537200000000012,
+  "s": 4.852800000000017,
   "campi": 162,
   "date": [
    "2026-08-27"
@@ -31,22 +31,20 @@
  },
  "pannello": {
   "titolo": "Campo · Superficie 28.49 ha Confine: modello Delineate Anything (YOLO) su Sentinel-2 (valori = media su tutto il campo)",
-  "suolo": "Suolo (0–30 cm) franco\nSabbia 39%\nLimo 39%\nArgilla 22%\nCarbonio organico 24.5 g/kg\nAzoto totale 2.33 g/kg\nC/N 10.5\npH 6.9\nCSC 19 cmol/kg\nAcqua disponibile 149 mm/m\nISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
+  "suolo": "Il servizio SoilGrids è lento, riprovo…",
   "resa": "",
   "stato": "30 immagini serene su 68 date (38 scartate per nuvole).",
   "mappa": "2853 pixel da 10 m · media 0.830 · deviazione standard 0.086 · variabilità 10%"
  },
- "ricerca maceratta": "Macerata provincia\nMarche\nMacerata città\nMacerata, Marche\nMaceratola zona\nFoligno, Perugia, Umbria\nMacerata indirizzo\nMacerata, Marche\nMacerato zona\nColi, Piacenza, Emilia-Romagna\nMacerata località\nRiolo Terme, Ravenna, Emilia-Romagna\nMaceratoi località\nCampertogno, Vercelli, Piemonte\nMacerato zona\n",
- "ricerca Località Strada": "Strada statale Località Draghetto via\nLandriano, Pavia, Lombardia\nStrada statale località Draghetto via\nCarpiano, Milano, Lombardia\nStrada Località Chignoli via\nBorgonovo Val Tidone, Piacenza, Emilia-Romagna\nStrada Località Tassara via\nAlta Val Tidone, Piacenza, Emilia-Romagna\nStrada Località Tassar",
+ "ricerca maceratta": "Macerata località\nRiolo Terme, Ravenna, Emilia-Romagna\nMaceratoi località\nCampertogno, Vercelli, Piemonte\nMaratta località\nTerni, Terni, Umbria\nMaceratola zona\nFoligno, Perugia, Umbria\nMacerata comune\nMC · Marche\nMacerata Campania comune\nCE · Campania\nMaratea comune\nPZ · Basilicata\nMaierato comune\nV",
+ "ricerca Località Strada": "Strada Vicinale Cascina Ferietta via\nSan Martino in Strada, Lodi, Lombardia\nStrada provinciale 107 Lodi-Ospedaletto Lodigiano via\nSan Martino in Strada, Lodi, Lombardia\nStrada provinciale 107 Lodi-Ospedaletto Lodigiano via\nOssago Lodigiano, Lodi, Lombardia\nStrada Comunale della Corsa via\nSan Martino",
  "ricerca 41.86, 12.23": "41.86000, 12.23000 coordinate",
- "ricerca Sant Angelo Lodigiano": "Sant'Angelo Lodigiano città\nLodi, Lombardia\nCastello di Sant'Angelo Lodigiano indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - Via Don Carlo Dolcini indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - Fraz. Maiano indirizzo\nSant'Angelo Lodigiano, Lodi, Lo",
+ "ricerca Sant Angelo Lodigiano": "Sant'Angelo Lodigiano comune\nLO · Lombardia\nSant'Angelo Lodigiano indirizzo\nLodi, Lombardia\nSant’Angelo Lodigiano - Fraz. Maiano indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - Via Don Carlo Dolcini indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - via",
  "errori": [
   "Campi divisi per colture diverse: 40",
   "Campi divisi per colture diverse: 20",
   "Campi divisi per colture diverse: 83",
   "Campi divisi per colture diverse: 40",
-  "Failed to load resource: the server responded with a status of 404 (File not found)",
-  "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
   "Failed to load resource: the server responded with a status of 404 (File not found)"
  ]
 }
