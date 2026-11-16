@@ -14,6 +14,27 @@ const CROP_NAMES = { 1: ["Frumento", "Wheat"], 2: ["Orzo", "Barley"], 3: ["Mais"
   11: ["Soia", "Soybeans"], 12: ["Colza", "Rapeseed"], 13: ["Lino/cotone/canapa", "Flax/cotton/hemp"], 14: ["Vite", "Grapes"], 15: ["Olivo", "Olives"],
   16: ["Frutta", "Fruits"], 17: ["Frutta a guscio", "Nuts"], 18: ["Seminativo n.c.", "Unclassified annual"], 19: ["Permanente n.c.", "Unclassified permanent"] };
 const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+// scale colori comuni a tutte le mappe (nomi = colormap di titiler/matplotlib, così valgono anche per i tasselli Sentinel-2)
+const COLORMAPS = {
+  rdylgn: ["#a50026", "#d73027", "#f46d43", "#fdae61", "#fee08b", "#d9ef8b", "#a6d96a", "#66bd63", "#1a9850", "#006837"],
+  viridis: ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"],
+  magma: ["#000004", "#180f3d", "#440f76", "#721f81", "#9e2f7f", "#cd4071", "#f1605d", "#fd9668", "#feca8d", "#fcfdbf"],
+  spectral: ["#9e0142", "#d53e4f", "#f46d43", "#fdae61", "#fee08b", "#e6f598", "#abdda4", "#66c2a5", "#3288bd", "#5e4fa2"],
+  ylgn: ["#ffffe5", "#f7fcb9", "#d9f0a3", "#addd8e", "#78c679", "#41ab5d", "#238443", "#006837", "#004529", "#00301c"],
+  ylorbr: ["#ffffe5", "#fff7bc", "#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02", "#993404", "#662506", "#3d1503"],
+  blues: ["#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#08519c", "#08306b", "#041c3f"],
+  rdbu: ["#67001f", "#b2182b", "#d6604d", "#f4a582", "#fddbc7", "#d1e5f0", "#92c5de", "#4393c3", "#2166ac", "#053061"],
+  brbg: ["#543005", "#8c510a", "#bf812d", "#dfc27d", "#f6e8c3", "#c7eae5", "#80cdc1", "#35978f", "#01665e", "#003c30"],
+  purples: ["#fcfbfd", "#efedf5", "#dadaeb", "#bcbddc", "#9e9ac8", "#807dba", "#6a51a3", "#54278f", "#3f007d", "#2a0054"],
+  greys: ["#ffffff", "#f0f0f0", "#d9d9d9", "#bdbdbd", "#969696", "#737373", "#525252", "#3b3b3b", "#252525", "#000000"],
+};
+const cmapCols = (st) => (st.rev ? COLORMAPS[st.cmap].slice().reverse() : COLORMAPS[st.cmap]);
+function rampFn(st) {          // st = { cmap, min, max, rev }
+  const rr = cmapCols(st).map(hexRgb), a = +st.min, b = +st.max;
+  return (v) => { if (!isFinite(v) || v <= -9000) return null; const u = Math.max(0, Math.min(1, (v - a) / (b - a || 1))) * (rr.length - 1);
+    const i = Math.min(rr.length - 2, Math.floor(u)), f = u - i; return rr[i].map((c, k) => c + f * (rr[i + 1][k] - c)); };
+}
+const rampBar = (st) => `<div class="fm-legend"><span>${st.min}</span><b class="fm-bar" style="background:linear-gradient(90deg,${cmapCols(st).join(",")})"></b><span>${st.max}${st.unit ? " " + st.unit : ""}</span></div>`;
 
 // ---------------------------------------------------------------- livello COG generico
 const cogCache = {};
@@ -30,6 +51,7 @@ const CogLayer = L.GridLayer.extend({
   // opts: url, crs ("EPSG:3035" | "EPSG:4326"), color(v) -> [r,g,b] | null
   initialize(opts) { L.GridLayer.prototype.initialize.call(this, opts); },
   setUrl(url) { this.options.url = url; this.redraw(); },
+  setColor(fn) { this.options.color = fn; this.redraw(); },
   createTile(coords, done) {
     const tile = document.createElement("canvas"), size = this.getTileSize();
     tile.width = size.x; tile.height = size.y;
@@ -73,6 +95,57 @@ const CogLayer = L.GridLayer.extend({
   },
 });
 
+// media di un COG geografico (EPSG:4326) sul poligono: pixel col centro dentro il campo, altrimenti quello del centro
+async function fieldMean(url, feature, categorical = false) {
+  const polys = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+  const all = polys.flat(2), lo0 = Math.min(...all.map((q) => q[0])), lo1 = Math.max(...all.map((q) => q[0])), la0 = Math.min(...all.map((q) => q[1])), la1 = Math.max(...all.map((q) => q[1]));
+  const inRing = (x, y, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > y) !== (r[j][1] > y) && x < ((r[j][0] - r[i][0]) * (y - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) c = !c; return c; };
+  const inside = (x, y) => polys.some((pl) => inRing(x, y, pl[0]) && !pl.slice(1).some((h) => inRing(x, y, h)));
+  const [lev] = await cogImages(url);
+  const c0 = Math.floor((lo0 - lev.ox) / lev.rx), c1 = Math.floor((lo1 - lev.ox) / lev.rx) + 1;
+  const r0 = Math.floor((lev.oy - la1) / lev.ry), r1 = Math.floor((lev.oy - la0) / lev.ry) + 1;
+  const [b] = await lev.im.readRasters({ window: [c0, r0, c1, r1], samples: [0] });
+  const W = c1 - c0, nd = lev.im.getGDALNoData(), vals = [];
+  const ok = (v) => isFinite(v) && v !== nd && v > -9000 && !(categorical && v === 0);
+  for (let r = 0; r < r1 - r0; r++) for (let c = 0; c < W; c++) {
+    const v = b[r * W + c];
+    if (ok(v) && inside(lev.ox + (c0 + c + 0.5) * lev.rx, lev.oy - (r0 + r + 0.5) * lev.ry)) vals.push(v);
+  }
+  if (!vals.length) { const v = b[Math.floor((r1 - r0) / 2) * W + Math.floor(W / 2)]; if (ok(v)) vals.push(v); }
+  if (!vals.length) return null;
+  if (categorical) { const cnt = {}; vals.forEach((v) => (cnt[v] = (cnt[v] || 0) + 1)); const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0]; return { mean: +top, n: vals.length }; }
+  return { mean: vals.reduce((a, v) => a + v, 0) / vals.length, n: vals.length };
+}
+
+// ---------------------------------------------------------------- suolo (SoilGrids 0–30 cm, COG Italia)
+const Suolo = (() => {
+  const URL = (n) => `${HF_RAW}suolo/${n}.tif`;
+  // [min, max, unità, it, en, scala colori]
+  const P = {
+    tessitura: [1, 12, "", "Classe tessiturale (USDA)", "Texture class (USDA)"],
+    sabbia: [5, 80, "%", "Sabbia", "Sand", "ylorbr"], limo: [10, 65, "%", "Limo", "Silt", "ylgn"], argilla: [5, 55, "%", "Argilla", "Clay", "purples"],
+    soc: [5, 40, "g/kg", "Carbonio organico", "Organic carbon", "ylorbr"], stock_soc: [20, 120, "t C/ha", "Stock di carbonio 0–30 cm", "Carbon stock 0–30 cm", "ylorbr"],
+    azoto: [0.5, 3, "g/kg", "Azoto totale", "Total nitrogen", "blues"], ph: [5, 8.5, "", "pH", "pH", "rdbu"],
+  };
+  const style0 = (n) => ({ cmap: P[n][5], min: P[n][0], max: P[n][1], rev: false, unit: P[n][2] });
+  const TEX = { 1: ["#f4e04d", "sabbioso", "sand"], 2: ["#e8c547", "sabbioso-franco", "loamy sand"], 3: ["#d9a441", "franco-sabbioso", "sandy loam"],
+    4: ["#a3b86c", "franco", "loam"], 5: ["#7fbf7b", "franco-limoso", "silt loam"], 6: ["#4aa564", "limoso", "silt"],
+    7: ["#c97b42", "franco-sabbioso-argilloso", "sandy clay loam"], 8: ["#a6611a", "franco-argilloso", "clay loam"], 9: ["#6a8f9c", "franco-limoso-argilloso", "silty clay loam"],
+    10: ["#b2453b", "argilloso-sabbioso", "sandy clay"], 11: ["#5e6fa3", "argilloso-limoso", "silty clay"], 12: ["#6b3a7d", "argilloso", "clay"] };
+  const texRgb = Object.fromEntries(Object.entries(TEX).map(([k, v]) => [k, hexRgb(v[0])]));
+  const layer = (n, opts, st) => new CogLayer({ ...opts, url: URL(n), crs: "EPSG:4326", color: n === "tessitura" ? (v) => texRgb[v] || null : rampFn(st || style0(n)) });
+  const texLegend = () => `<div class="crop-legend">${Object.values(TEX).map((t) => `<span><i style="background:${t[0]}"></i>${t[LANG === "it" ? 1 : 2]}</span>`).join("")}</div>`;
+  // tutti i valori del campo
+  async function field(feature) {
+    const names = ["sabbia", "limo", "argilla", "soc", "azoto", "ph", "densita", "stock_soc", "tessitura"];
+    const res = await Promise.all(names.map((n) => fieldMean(URL(n), feature, n === "tessitura").catch(() => null)));
+    const o = {}; names.forEach((n, i) => (o[n] = res[i] ? res[i].mean : null));
+    o.texName = o.tessitura && TEX[o.tessitura] ? TEX[o.tessitura][LANG === "it" ? 1 : 2] : null;
+    return o;
+  }
+  return { P, layer, texLegend, style0, field, TEX };
+})();
+
 // ---------------------------------------------------------------- colture Copernicus
 const CropLayer = (() => {
   const URL = (y) => `${HF_RAW}crop_types/cty_${y}_italia_3035.tif`;
@@ -89,59 +162,35 @@ const CropLayer = (() => {
 
 // ---------------------------------------------------------------- variabili biogeofisiche Copernicus
 const Clms = (() => {
-  const RAMP = ["#a50026", "#d73027", "#f46d43", "#fdae61", "#fee08b", "#d9ef8b", "#a6d96a", "#66bd63", "#1a9850", "#006837"].map(hexRgb);
-  const BLUE = ["#fff7ec", "#fee8c8", "#d9f0a3", "#addd8e", "#7fcdbb", "#41b6c4", "#1d91c0", "#225ea8", "#253494", "#081d58"].map(hexRgb);
   // prodotto: [min, max, unità, scala, etichetta it, etichetta en, percorso]
   const P = {
-    LAI: [0, 5, "m²/m²", RAMP, "LAI — area fogliare", "LAI — leaf area index"],
-    FAPAR: [0, 0.9, "", RAMP, "FAPAR — radiazione assorbita", "FAPAR — absorbed radiation"],
-    FCOVER: [0, 1, "", RAMP, "FCOVER — copertura verde", "FCOVER — green cover"],
-    NDVI: [0, 0.9, "", RAMP, "NDVI 300 m", "NDVI 300 m"],
-    GDMP: [0, 150, "kg/ha/giorno", RAMP, "GDMP — produttività (sostanza secca)", "GDMP — productivity (dry matter)"],
-    SWI: [0, 100, "%", BLUE, "SWI — umidità del suolo (radici)", "SWI — soil water index"],
-    SSM: [0, 100, "%", BLUE, "SSM — umidità superficiale del suolo (1 km)", "SSM — surface soil moisture (1 km)"],
-    ETA: [0, 6, "mm/giorno", BLUE, "ET reale (evapotraspirazione)", "Actual evapotranspiration"],
+    LAI: [0, 5, "m²/m²", "rdylgn", "LAI — area fogliare", "LAI — leaf area index"],
+    FAPAR: [0, 0.9, "", "rdylgn", "FAPAR — radiazione assorbita", "FAPAR — absorbed radiation"],
+    FCOVER: [0, 1, "", "rdylgn", "FCOVER — copertura verde", "FCOVER — green cover"],
+    NDVI: [0, 0.9, "", "rdylgn", "NDVI 300 m", "NDVI 300 m"],
+    GDMP: [0, 150, "kg/ha/giorno", "ylgn", "GDMP — produttività (sostanza secca)", "GDMP — productivity (dry matter)"],
+    SWI: [0, 100, "%", "blues", "SWI — umidità del suolo (radici)", "SWI — soil water index"],
+    SSM: [0, 100, "%", "blues", "SSM — umidità superficiale del suolo (1 km)", "SSM — surface soil moisture (1 km)"],
+    ETA: [0, 6, "mm/giorno", "blues", "ET reale (evapotraspirazione)", "Actual evapotranspiration"],
   };
   const url = (p, d) => (p === "ETA" ? `${HF_RAW}eta/italia/ETA300_${d}_ET-ENSEMBLE.tif` : `${HF_RAW}clms/${p}/${d}.tif`);
   let index = null;
   const loadIndex = () => (index ||= fetch("data/clms_indice.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
-  const colorFn = (p) => { const [a, b, , ramp] = P[p]; return (v) => {
-    if (!(v > -9000) || !isFinite(v)) return null;
-    let u = Math.max(0, Math.min(1, (v - a) / (b - a))) * (ramp.length - 1); const i = Math.min(ramp.length - 2, Math.floor(u)), f = u - i;
-    return ramp[i].map((c, k) => c + f * (ramp[i + 1][k] - c)); }; };
-  const layer = (p, d, opts) => new CogLayer({ ...opts, url: url(p, d), crs: "EPSG:4326", color: colorFn(p) });
+  const style0 = (p) => ({ cmap: P[p][3], min: P[p][0], max: P[p][1], rev: false, unit: P[p][2] });
+  const layer = (p, d, opts, st) => new CogLayer({ ...opts, url: url(p, d), crs: "EPSG:4326", color: rampFn(st || style0(p)) });
   const label = (p) => P[p][LANG === "it" ? 4 : 5];
-  const legendHtml = (p) => { const [a, b, u, ramp] = P[p];
-    return `<div class="fm-legend"><span>${a}</span><b class="fm-bar" style="background:linear-gradient(90deg,${ramp.map((c) => `rgb(${c})`).join(",")})"></b><span>${b} ${u}</span></div>`; };
-  // media sul campo per ogni data (pixel il cui centro cade nel poligono; se nessuno, il pixel che contiene il centro)
   async function series(p, feature, dates, onStep) {
-    const polys = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
-    const all = polys.flat(2), lo0 = Math.min(...all.map((q) => q[0])), lo1 = Math.max(...all.map((q) => q[0])), la0 = Math.min(...all.map((q) => q[1])), la1 = Math.max(...all.map((q) => q[1]));
-    const inRing = (x, y, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > y) !== (r[j][1] > y) && x < ((r[j][0] - r[i][0]) * (y - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) c = !c; return c; };
-    const inside = (x, y) => polys.some((pl) => inRing(x, y, pl[0]) && !pl.slice(1).some((h) => inRing(x, y, h)));
-    const out = [];
-    let k = 0;
+    const out = []; let k = 0;
     const queue = dates.slice();
     await Promise.all(Array.from({ length: 4 }, async () => {
       while (queue.length) {
         const d = queue.shift();
-        try {
-          const [lev] = await cogImages(url(p, d));
-          const c0 = Math.floor((lo0 - lev.ox) / lev.rx), c1 = Math.floor((lo1 - lev.ox) / lev.rx) + 1;
-          const r0 = Math.floor((lev.oy - la1) / lev.ry), r1 = Math.floor((lev.oy - la0) / lev.ry) + 1;
-          const [b] = await lev.im.readRasters({ window: [c0, r0, c1, r1], samples: [0] });
-          const W = c1 - c0; let s = 0, n = 0;
-          for (let r = 0; r < r1 - r0; r++) for (let c = 0; c < W; c++) {
-            const v = b[r * W + c];
-            if (v > -9000 && isFinite(v) && inside(lev.ox + (c0 + c + 0.5) * lev.rx, lev.oy - (r0 + r + 0.5) * lev.ry)) { s += v; n++; }
-          }
-          if (!n) { const v = b[Math.floor((r1 - r0) / 2) * W + Math.floor(W / 2)]; if (v > -9000 && isFinite(v)) { s = v; n = 1; } }
-          if (n) out.push({ x: Date.parse(d), y: s / n, n });
-        } catch (e) { /* data non leggibile */ }
+        const m = await fieldMean(url(p, d), feature).catch(() => null);
+        if (m) out.push({ x: Date.parse(d), y: m.mean, n: m.n });
         onStep && onStep(++k, dates.length);
       }
     }));
     return out.sort((a, b) => a.x - b.x);
   }
-  return { P, loadIndex, layer, label, legendHtml, series, url };
+  return { P, loadIndex, layer, label, style0, series, url };
 })();

@@ -85,6 +85,45 @@ const CatastoTiles = L.TileLayer.extend({
 
 const leafletLayers = {};
 let ctyYear = 2024, hvYear = 2024, clmsDate = null, clmsIdx = {};
+// ---- stile (scala colori, min, max) di ogni mappa a valori continui, scelto dall'utente
+const STYLE = {};
+function styleOf(def) {
+  if (STYLE[def.id]) return STYLE[def.id];
+  if (def.type === "clms") return (STYLE[def.id] = Clms.style0(def.product));
+  if (def.type === "soil" && def.soil !== "tessitura") return (STYLE[def.id] = Suolo.style0(def.soil));
+  if (def.type === "s2live" && def.expr) { const [a, b] = def.rescale.split(",").map(Number); return (STYLE[def.id] = { cmap: def.colormap, min: a, max: b, rev: false, unit: "" }); }
+  return null;
+}
+function styleHtml(def) {
+  const st = styleOf(def);
+  if (!st) return "";
+  return `${rampBar(st)}<div class="style-ctl" data-id="${def.id}">
+    <select class="st-cmap">${Object.keys(COLORMAPS).map((k) => `<option ${k === st.cmap ? "selected" : ""}>${k}</option>`).join("")}</select>
+    <label><input type="checkbox" class="st-rev" ${st.rev ? "checked" : ""}> ${t("st_rev")}</label>
+    <label>min <input type="number" step="any" class="st-min" value="${st.min}"></label>
+    <label>max <input type="number" step="any" class="st-max" value="${st.max}"></label>
+    <button class="small-btn st-reset">${t("st_reset")}</button></div>`;
+}
+function applyStyle(def) {
+  const L_ = leafletLayers[def.id], st = STYLE[def.id];
+  if (!L_ || !st) return;
+  if (def.type === "s2live") { def.rescale = `${st.min},${st.max}`; def.colormap = st.cmap + (st.rev ? "_r" : ""); Live.refreshLayer(def); }
+  else L_.setColor(rampFn(st));
+}
+function bindStyle(def, el) {
+  const box = el.querySelector(".style-ctl");
+  if (!box) return;
+  const q = (c) => box.querySelector(c);
+  const upd = () => {
+    const st = STYLE[def.id];
+    st.cmap = q(".st-cmap").value; st.rev = q(".st-rev").checked; st.min = +q(".st-min").value; st.max = +q(".st-max").value;
+    applyStyle(def);
+    el.querySelector(".fm-legend").outerHTML = rampBar(st);
+  };
+  box.querySelectorAll("select,input").forEach((i) => (i.onchange = upd));
+  q(".st-reset").onclick = () => { delete STYLE[def.id]; if (def.type === "s2live") { def.rescale = def._rescale0 || def.rescale; def.colormap = def._cmap0 || def.colormap; }
+    styleOf(def); applyStyle(def); const b = el.querySelector(".legend"); b.innerHTML = ""; delete b.dataset.loaded; loadLegend(def, el); };
+}
 // data Copernicus più vicina (non successiva) a quella scelta, per ogni prodotto
 const clmsPick = (p) => { const ds = clmsIdx[p] || []; if (!ds.length) return null; if (!clmsDate) return ds[ds.length - 1];
   return ds.filter((d) => d <= clmsDate).pop() || ds[0]; };
@@ -92,7 +131,8 @@ const state = { on: new Set() };
 
 function makeLayer(def) {
   if (def.type === "s2live") return Live.makeS2Layer(def);
-  if (def.type === "clms") return Clms.layer(def.product, clmsPick(def.product), { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.8, zIndex: 25 });
+  if (def.type === "clms") return Clms.layer(def.product, clmsPick(def.product), { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.8, zIndex: 25 }, styleOf(def));
+  if (def.type === "soil") return Suolo.layer(def.soil, { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.85, zIndex: 24 }, styleOf(def));
   if (def.type === "cty") return new CropLayer.Layer(ctyYear, { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.85, zIndex: 30 });
   const common = { opacity: def.opacity ?? 0.7, zIndex: 10, crossOrigin: false };
   if (def.type === "wms") {
@@ -167,7 +207,12 @@ function readHash() {
 const legendCache = {};
 async function loadLegend(def, el) {
   const box = el.querySelector(".legend");
-  if (box && def.type === "clms") { box.innerHTML = `${Clms.legendHtml(def.product)}<div class="hint small">${t("hv_date")} ${clmsPick(def.product) || "—"}</div>`; return; }
+  if (box && styleOf(def)) {
+    if (def.type === "s2live") { def._rescale0 = def._rescale0 || def.rescale; def._cmap0 = def._cmap0 || def.colormap; }
+    box.innerHTML = styleHtml(def) + (def.type === "clms" ? `<div class="hint small">${t("hv_date")} ${clmsPick(def.product) || "—"}</div>` : "");
+    bindStyle(def, el); return;
+  }
+  if (box && def.type === "soil") { box.innerHTML = Suolo.texLegend(); return; }
   if (box && def.type === "cty") { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${CropLayer.legendHtml()}`; return; }
   if (box && def.legendHtml) { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${def.legendHtml}`; return; }
   if (box && def.type === "wms" && !def.legendHtml) {

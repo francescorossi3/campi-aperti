@@ -348,14 +348,7 @@ const Tools = (() => {
   }
 
   // ================================================================== 📂 mappe dell'utente
-  const CMAPS = {
-    viridis: ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"],
-    rdylgn: ["#a50026", "#d73027", "#f46d43", "#fdae61", "#fee08b", "#d9ef8b", "#a6d96a", "#66bd63", "#1a9850", "#006837"],
-    magma: ["#000004", "#180f3d", "#440f76", "#721f81", "#9e2f7f", "#cd4071", "#f1605d", "#fd9668", "#feca8d", "#fcfdbf"],
-    blues: ["#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5", "#08519c", "#08306b", "#041c3f"],
-    brbg: ["#543005", "#8c510a", "#bf812d", "#dfc27d", "#f6e8c3", "#c7eae5", "#80cdc1", "#35978f", "#01665e", "#003c30"],
-    gray: ["#000000", "#1c1c1c", "#383838", "#555555", "#717171", "#8e8e8e", "#aaaaaa", "#c6c6c6", "#e2e2e2", "#ffffff"],
-  };
+  const CMAPS = COLORMAPS;      // scale colori comuni (croplayer.js)
   const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const userMaps = [];
   let legendCtl = null, hoverCtl = null;
@@ -534,7 +527,7 @@ const Tools = (() => {
               ${[0, 1, 2].map((j) => `<input type="number" class="um-rgb" data-j="${j}" min="1" max="${m.nb}" value="${m.cfg.rgb[j] + 1}">`).join("")}</label>
               <label><input type="radio" name="md${i}" value="single" ${m.cfg.mode === "single" ? "checked" : ""}> ${tt("u_band")}</label>` : ""}
             <label>${tt("u_band")} <input type="number" class="um-band" min="1" max="${m.nb}" value="${m.cfg.band + 1}"></label>
-            <label>${tt("u_cmap")} <select class="um-cmap">${Object.keys(tt("cm")).map((k) => `<option value="${k}" ${k === m.cfg.cmap ? "selected" : ""}>${tt("cm")[k]}</option>`).join("")}</select></label>
+            <label>${tt("u_cmap")} <select class="um-cmap">${[...Object.keys(COLORMAPS), "classes"].map((k) => `<option value="${k}" ${k === m.cfg.cmap ? "selected" : ""}>${tt("cm")[k] || k}</option>`).join("")}</select></label>
             <label><input type="checkbox" class="um-auto" ${m.cfg.auto ? "checked" : ""}> ${tt("u_auto")}</label>
             <label>${tt("u_min")} <input type="number" step="any" class="um-min" value="${+m.cfg.min.toPrecision(4)}"></label>
             <label>${tt("u_max")} <input type="number" step="any" class="um-max" value="${+m.cfg.max.toPrecision(4)}"></label>

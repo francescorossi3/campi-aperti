@@ -54,6 +54,12 @@ const LT = {
     fw_title: "Modello idrico FAO-33", fw_det: "(acqua disponibile nelle radici {taw} mm; consumo reale {r}% del potenziale; {s} giorni di stress; resa raggiungibile in provincia {ym} t/ha)",
     fw_irr: "Campo irrigato: nessuno stress idrico.",
     fm_title: "Mappa del campo a 10 m",
+    cb_title: "Crediti di carbonio nel suolo (stima preliminare)", cb_now: "Gestione attuale", cb_new: "Gestione futura",
+    cb_seminativo: "seminativo", cb_riposo: "riposo / set-aside", cb_prato: "prato permanente", cb_arata: "aratura", cb_minima: "lavorazione minima", cb_sodo: "semina su sodo",
+    cb_basso: "apporti bassi (residui asportati)", cb_medio: "apporti medi (residui interrati)", cb_alto: "apporti alti (cover crop, residui)", cb_letame: "apporti alti + letame/compost",
+    cb_stock: "Carbonio nel suolo oggi (0–30 cm, SoilGrids): {s} t C/ha · clima {c} (pioggia {p} mm, ET0 {e} mm all'anno)", cb_umido: "umido", cb_secco: "secco",
+    cb_anno: "anno", cb_campo: "{t} t CO₂e all'anno su {h} ha", cb_netto: "Al netto di una trattenuta prudenziale del", cb_crediti: "crediti all'anno (1 credito = 1 t CO₂e)",
+    cb_prezzo: "prezzo", cb_note: "Metodo IPCC Tier 1 (2019 Refinement, fattori di uso del suolo, lavorazione e apporti; nuovo equilibrio in 20 anni). È una stima: per vendere crediti servono un progetto certificato con misure del suolo, monitoraggio e verifica di terzi (regolamento UE 2024/3012 CRCF, metodologie per i suoli agricoli minerali adottate a luglio 2026; in Italia registro nazionale presso il CREA). Valori negativi = perdita di carbonio.",
     cm_title: "Coltura riconosciuta dal modello (annata {y})", cm_run: "Riconosco la coltura dell'annata {y} (Sentinel-2, radar Sentinel-1, quota)…",
     cm_err: "Modello di riconoscimento non disponibile.", cm_short: "Troppi pochi mesi sereni nell'annata per riconoscere la coltura.",
     cm_note: "Modello Campi Aperti v2 (3 reti neurali addestrate su etichette Copernicus 2019–2024; accuratezza su zone mai viste circa 74%): {m} mesi Sentinel-2, {s1} immagini radar.",
@@ -63,7 +69,7 @@ const LT = {
     dl_title: "Scarica:", dl_one: "mappa della data (GeoTIFF)", dl_all: "tutte le date (GeoTIFF multibanda)", dl_csv: "serie temporale media (CSV)",
     dl_prog: "Scarico {n}/{t} date…", dl_done: "File pronto: {n} date, valori a 10 m, EPSG:3857, nullo = −9999.", dl_noidx: "Scegli un indice (non colori reali o zone).",
     fl_title: "Campo selezionato: mappe a 10 m", fl_map: "Mappa", fl_date: "Data", fl_op: "Trasparenza", fl_hide: "Togli la mappa del campo",
-    fl_soil: "Suolo:", fl_sg_clay: "argilla", fl_sg_sand: "sabbia", fl_sg_soc: "carbonio", fl_sg_nitrogen: "azoto", fl_sg_phh2o: "pH", fl_sg_cec: "CSC",
+    fl_soil: "Suolo:", fl_so_tessitura: "tessitura", fl_so_argilla: "argilla", fl_so_sabbia: "sabbia", fl_so_soc: "carbonio", fl_so_stock_soc: "stock C", fl_so_azoto: "azoto", fl_so_ph: "pH",
     fl_pheno: "Fenologia Copernicus:", fl_hv_sosd: "inizio stagione", fl_hv_eosd: "fine stagione", fl_hv_length: "durata", fl_hv_tprod: "produttività", fm_ndvi: "NDVI (vigore)", fm_ndre: "NDRE (clorofilla)", fm_ndmi: "NDMI (acqua nelle foglie)", fm_evi: "EVI",
     fm_savi: "SAVI", fm_rgb: "Colori reali", fm_zone: "Zone di vigore (bassa / media / alta)", fm_auto: "scala adattata al campo",
     fm_onmap: "Mostra / togli sulla mappa", fm_nodate: "nessuna data serena", fm_loading: "Carico la mappa…", fm_err: "Mappa non disponibile per questa data.",
@@ -158,6 +164,12 @@ const LT = {
     fw_title: "FAO-33 water model", fw_det: "(available water in the root zone {taw} mm; actual use {r}% of potential; {s} stress days; attainable yield in the province {ym} t/ha)",
     fw_irr: "Irrigated field: no water stress.",
     fm_title: "Field map at 10 m",
+    cb_title: "Soil carbon credits (preliminary estimate)", cb_now: "Current management", cb_new: "Future management",
+    cb_seminativo: "cropland", cb_riposo: "fallow / set-aside", cb_prato: "permanent grassland", cb_arata: "ploughing", cb_minima: "reduced tillage", cb_sodo: "no-till",
+    cb_basso: "low inputs (residues removed)", cb_medio: "medium inputs (residues incorporated)", cb_alto: "high inputs (cover crops, residues)", cb_letame: "high inputs + manure/compost",
+    cb_stock: "Soil carbon today (0–30 cm, SoilGrids): {s} t C/ha · {c} climate (rain {p} mm, ET0 {e} mm per year)", cb_umido: "moist", cb_secco: "dry",
+    cb_anno: "year", cb_campo: "{t} t CO₂e per year over {h} ha", cb_netto: "After a prudential deduction of", cb_crediti: "credits per year (1 credit = 1 t CO₂e)",
+    cb_prezzo: "price", cb_note: "IPCC Tier 1 method (2019 Refinement, land-use, tillage and input factors; new equilibrium in 20 years). An estimate: selling credits requires a certified project with soil measurements, monitoring and third-party verification (EU Regulation 2024/3012 CRCF, methodologies for agricultural mineral soils adopted July 2026; in Italy the national registry at CREA). Negative values = carbon loss.",
     cm_title: "Crop recognised by the model ({y} season)", cm_run: "Recognising the {y} crop (Sentinel-2, Sentinel-1 radar, elevation)…",
     cm_err: "Recognition model not available.", cm_short: "Too few clear months in the season to recognise the crop.",
     cm_note: "Campi Aperti v2 model (3 neural networks trained on Copernicus labels 2019–2024; accuracy on unseen areas about 74%): {m} Sentinel-2 months, {s1} radar images.",
@@ -167,7 +179,7 @@ const LT = {
     dl_title: "Download:", dl_one: "map of the date (GeoTIFF)", dl_all: "all dates (multi-band GeoTIFF)", dl_csv: "mean time series (CSV)",
     dl_prog: "Downloading {n}/{t} dates…", dl_done: "File ready: {n} dates, 10 m values, EPSG:3857, no-data = −9999.", dl_noidx: "Choose an index (not true colour or zones).",
     fl_title: "Selected field: 10 m maps", fl_map: "Map", fl_date: "Date", fl_op: "Opacity", fl_hide: "Remove the field map",
-    fl_soil: "Soil:", fl_sg_clay: "clay", fl_sg_sand: "sand", fl_sg_soc: "carbon", fl_sg_nitrogen: "nitrogen", fl_sg_phh2o: "pH", fl_sg_cec: "CEC",
+    fl_soil: "Soil:", fl_so_tessitura: "texture", fl_so_argilla: "clay", fl_so_sabbia: "sand", fl_so_soc: "carbon", fl_so_stock_soc: "C stock", fl_so_azoto: "nitrogen", fl_so_ph: "pH",
     fl_pheno: "Copernicus phenology:", fl_hv_sosd: "season start", fl_hv_eosd: "season end", fl_hv_length: "length", fl_hv_tprod: "productivity", fm_ndvi: "NDVI (vigour)", fm_ndre: "NDRE (chlorophyll)", fm_ndmi: "NDMI (leaf water)", fm_evi: "EVI",
     fm_savi: "SAVI", fm_rgb: "True colour", fm_zone: "Vigour zones (low / medium / high)", fm_auto: "scale fitted to the field",
     fm_onmap: "Show / hide on the map", fm_nodate: "no clear date", fm_loading: "Loading the map…", fm_err: "Map not available for this date.",
@@ -612,25 +624,28 @@ const Live = (() => {
     const el = document.getElementById("fpSoil");
     if (!el) return;
     el.innerHTML = `<span class="hint small">${lt("soil_loading")}</span>`;
-    const ll = current.ll, props = ["clay", "sand", "silt", "soc", "nitrogen", "phh2o", "cec", "bdod"];
-    const url = `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${ll.lng.toFixed(5)}&lat=${ll.lat.toFixed(5)}&` +
-      props.map((p) => "property=" + p).join("&") + "&depth=0-5cm&depth=5-15cm&depth=15-30cm&value=mean";
-    let j;
-    for (let k = 0; k < 2 && !j; k++) {
-      try { j = await fetch(url, { signal: AbortSignal.timeout(45000) }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
-      catch (e) { if (my !== runId) return; if (k === 0) { el.innerHTML = `<span class="hint small">${lt("soil_slow")}</span>`; await new Promise((ok) => setTimeout(ok, 4000)); } }
-    }
-    if (!j) { if (my === runId) el.innerHTML = `<span class="hint small">${lt("soil_err")}</span>`; return; }
+    // prima le mappe SoilGrids già ritagliate sull'Italia (veloci, media sul campo); se mancano, il servizio ISRIC sul centro
+    let v = null;
+    const so = await Suolo.field(current.feature).catch(() => null);
     if (my !== runId) return;
-    const W = { "0-5cm": 5, "5-15cm": 10, "15-30cm": 15 }, v = {};
-    (j.properties.layers || []).forEach((L_) => {
-      let sw = 0, sv = 0;
-      L_.depths.forEach((d) => { const x = d.values.mean; if (x != null) { sw += W[d.label] || 0; sv += (W[d.label] || 0) * x; } });
-      if (sw) v[L_.name] = sv / sw / (L_.unit_measure.d_factor || 1);
-    });
+    if (so && so.argilla != null) v = { sand: so.sabbia, clay: so.argilla, silt: so.limo, soc: so.soc, nitrogen: so.azoto, phh2o: so.ph, bdod: so.densita, cec: null, stock: so.stock_soc };
+    else {
+      const ll = current.ll, props = ["clay", "sand", "silt", "soc", "nitrogen", "phh2o", "cec", "bdod"];
+      const url = `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${ll.lng.toFixed(5)}&lat=${ll.lat.toFixed(5)}&` +
+        props.map((p) => "property=" + p).join("&") + "&depth=0-5cm&depth=5-15cm&depth=15-30cm&value=mean";
+      const j = await fetch(url, { signal: AbortSignal.timeout(45000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (my !== runId) return;
+      if (!j) { el.innerHTML = `<span class="hint small">${lt("soil_err")}</span>`; return; }
+      const W = { "0-5cm": 5, "5-15cm": 10, "15-30cm": 15 }; v = {};
+      (j.properties.layers || []).forEach((L_) => {
+        let sw = 0, sv = 0;
+        L_.depths.forEach((d) => { const x = d.values.mean; if (x != null) { sw += W[d.label] || 0; sv += (W[d.label] || 0) * x; } });
+        if (sw) v[L_.name] = sv / sw / (L_.unit_measure.d_factor || 1);
+      });
+    }
     if (v.clay == null || v.sand == null) { el.innerHTML = `<span class="hint small">${lt("soil_na")}</span>`; return; }
-    // unità dopo d_factor: clay/sand/silt %, soc g/kg, nitrogen g/kg, ph, cec cmol/kg, bdod kg/dm³
-    const S = v.sand, C = v.clay, Si = v.silt != null ? v.silt : 100 - S - C;   // già in % dopo il d_factor
+    // unità: clay/sand/silt %, soc g/kg, nitrogen g/kg, ph, cec cmol/kg, bdod kg/dm³
+    const S = v.sand, C = v.clay, Si = v.silt != null ? v.silt : 100 - S - C;
     const OM = (v.soc / 10) * 1.724;                         // sostanza organica % (Van Bemmelen)
     const s_ = S / 100, c_ = C / 100;
     const t15t = -0.024 * s_ + 0.487 * c_ + 0.006 * OM + 0.005 * s_ * OM - 0.013 * c_ * OM + 0.068 * s_ * c_ + 0.031;
@@ -638,7 +653,8 @@ const Live = (() => {
     const t33t = -0.251 * s_ + 0.195 * c_ + 0.011 * OM + 0.006 * s_ * OM - 0.027 * c_ * OM + 0.452 * s_ * c_ + 0.299;
     const t33 = t33t + (1.283 * t33t * t33t - 0.374 * t33t - 0.015);
     const paw = Math.max(0.03, t33 - t15);                   // m³/m³
-    current.soil = { sand: S, clay: C, silt: Si, soc: v.soc, n: v.nitrogen, ph: v.phh2o, cec: v.cec, bd: v.bdod, om: OM, fc: t33, wp: t15, paw, tex: usdaTexture(S, Si, C) };
+    current.soil = { sand: S, clay: C, silt: Si, soc: v.soc, n: v.nitrogen, ph: v.phh2o, cec: v.cec, bd: v.bdod, om: OM, fc: t33, wp: t15, paw, tex: usdaTexture(S, Si, C),
+      stock: v.stock ?? (v.soc && v.bdod ? v.soc * v.bdod * 0.3 * 10 : null) };
     const cn = v.soc && v.nitrogen ? v.soc / v.nitrogen : null;
     el.innerHTML = `<b>${lt("soil_title")}</b> <span class="soil-tex">${current.soil.tex}</span>
       <div class="soil-grid">
@@ -650,6 +666,43 @@ const Live = (() => {
       </div>
       <div class="hint small">${lt("soil_note")}</div>`;
     drawFieldYield();
+    drawCarbon();
+  }
+  // ---- crediti di carbonio: stima preliminare con il metodo IPCC Tier 1 (2019 Refinement, vol. 4 cap. 5, tab. 5.5)
+  // stock attuale 0–30 cm (SoilGrids) = SOCref × FLU × FMG × FI della gestione attuale; con la gestione nuova lo stock tende
+  // a SOCref × F' in 20 anni. Δ annuo × 44/12 = t CO2e/ha/anno. Clima: umido se pioggia > ET0 nell'anno.
+  const IPCC = {
+    flu: { seminativo: [0.77, 0.69], riposo: [0.93, 0.82], prato: [1, 1] },
+    fmg: { arata: [1, 1], minima: [0.98, 1.04], sodo: [1.03, 1.1], prato_norm: [1, 1], prato_migl: [1.14, 1.14] },
+    fi: { basso: [0.95, 0.92], medio: [1, 1], alto: [1.04, 1.11], letame: [1.37, 1.44] },
+  };
+  const CARB_DEF = { uso0: "seminativo", lav0: "arata", inp0: "medio", uso1: "seminativo", lav1: "sodo", inp1: "alto" };
+  let carb = { ...CARB_DEF, prezzo: "", tratt: 20 };
+  function drawCarbon() {
+    const el = document.getElementById("fpCarbon");
+    if (!el || !current || !current.soil || !current.soil.stock) return;
+    const met = (current.meteo || []).filter((r) => !r.fc), days = met.length || 1;
+    const P = met.reduce((a, r) => a + (r.rain || 0), 0) * 365 / days, E = met.reduce((a, r) => a + (r.et0 || 0), 0) * 365 / days;
+    const umido = P > E ? 1 : 0;
+    const F = (u, l, i) => IPCC.flu[u][umido] * (u === "prato" ? IPCC.fmg[l === "sodo" || l === "minima" ? "prato_migl" : "prato_norm"][umido] : IPCC.fmg[l][umido]) * IPCC.fi[i][umido];
+    const S0 = current.soil.stock, ref = S0 / F(carb.uso0, carb.lav0, carb.inp0), S1 = ref * F(carb.uso1, carb.lav1, carb.inp1);
+    const ha = areaHa(current.feature.geometry), dC = (S1 - S0) / 20, co2 = (dC * 44) / 12, netto = co2 * (1 - carb.tratt / 100);
+    const opt = (grp, sel) => Object.keys(grp).map((k) => `<option value="${k}" ${k === sel ? "selected" : ""}>${lt("cb_" + k)}</option>`).join("");
+    const row = (s) => `<select data-k="uso${s}">${opt(IPCC.flu, carb["uso" + s])}</select>
+      <select data-k="lav${s}">${opt({ arata: 1, minima: 1, sodo: 1 }, carb["lav" + s])}</select>
+      <select data-k="inp${s}">${opt(IPCC.fi, carb["inp" + s])}</select>`;
+    const f1 = (x) => x.toLocaleString(LANG === "it" ? "it-IT" : "en-GB", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+    el.innerHTML = `<b>${lt("cb_title")}</b>
+      <div class="cb-grid"><span>${lt("cb_now")}</span><div>${row(0)}</div><span>${lt("cb_new")}</span><div>${row(1)}</div></div>
+      <div class="cb-res">${lt("cb_stock", { s: f1(S0), c: lt(umido ? "cb_umido" : "cb_secco"), p: Math.round(P), e: Math.round(E) })}<br>
+        <span class="big">${f1(co2)} t CO₂e/ha/${lt("cb_anno")}</span> · ${lt("cb_campo", { t: f1(co2 * ha), h: f1(ha) })}<br>
+        ${lt("cb_netto")} <input type="number" min="0" max="60" id="cbTr" value="${carb.tratt}" style="width:52px">%: <b>${f1(netto * ha)} ${lt("cb_crediti")}</b>
+        · ${lt("cb_prezzo")} <input type="number" min="0" step="1" id="cbPr" value="${carb.prezzo}" placeholder="€/t" style="width:64px"> €/t
+        ${carb.prezzo ? `→ <b>${Math.round(netto * ha * carb.prezzo).toLocaleString()} €/${lt("cb_anno")}</b>` : ""}</div>
+      <p class="hint small">${lt("cb_note")}</p>`;
+    el.querySelectorAll("select").forEach((s_) => (s_.onchange = () => { carb[s_.dataset.k] = s_.value; drawCarbon(); }));
+    el.querySelector("#cbTr").onchange = (e) => { carb.tratt = Math.max(0, Math.min(60, +e.target.value || 0)); drawCarbon(); };
+    el.querySelector("#cbPr").onchange = (e) => { carb.prezzo = e.target.value; drawCarbon(); };
   }
   function usdaTexture(S, Si, C) {
     const it = LANG === "it";
@@ -1016,6 +1069,7 @@ const Live = (() => {
       <div id="fpCrop" class="fp-crop"></div>
       <div id="fpFieldYield" class="fp-fieldyield"></div>
       <div id="fpSoil" class="fp-soil"></div>
+      <div id="fpCarbon" class="fp-carbon"></div>
       <div id="fpAdvice" class="fp-advice"></div>
       <div id="fpYield" class="fp-yield"></div>
       <p class="hint small fp-foot">${lt("s2_src")} ${lt("meteo_src")} ${lt("et_note")}</p>`;
@@ -1053,9 +1107,6 @@ const Live = (() => {
   // NDVI & co. pixel per pixel (10 m) dentro il confine del campo, per una data serena a scelta, con valori al passaggio del mouse
   // e "zone di vigore" (terzili dell'NDVI) utili per concimazioni o irrigazioni a rateo variabile.
   let fmDatesKey = "", fmLast = null, fmOverlay = null;
-  const RAMP = [[165, 0, 38], [215, 48, 39], [244, 109, 67], [253, 174, 97], [254, 224, 139], [217, 239, 139], [166, 217, 106], [102, 189, 99], [26, 152, 80], [0, 104, 55]];
-  const ramp = (u) => { u = Math.min(1, Math.max(0, u)) * (RAMP.length - 1); const i = Math.min(RAMP.length - 2, Math.floor(u)), f = u - i;
-    return RAMP[i].map((c, k) => Math.round(c + f * (RAMP[i + 1][k] - c))); };
   const FIX = { lai: [0, 6], ndvi: [0, 0.9], ndre: [0, 0.6], ndmi: [-0.3, 0.5], evi: [0, 0.8], savi: [0, 0.7] };
   const ZONE_COL = [[214, 64, 50], [240, 200, 60], [40, 150, 70]];
   const mercX = (lon) => (lon * 20037508.34) / 180;
@@ -1074,18 +1125,22 @@ const Live = (() => {
     box.innerHTML = `<h3>${lt("fl_title")}</h3>
       <label class="fl-row">${lt("fl_map")} <select id="fmIdx">${["ndvi", "lai", "ndre", "ndmi", "evi", "savi", "rgb", "zone"].map((k) => `<option value="${k}" ${k === prev.idx ? "selected" : ""}>${lt("fm_" + k)}</option>`).join("")}</select></label>
       <label class="fl-row">${lt("fl_date")} <select id="fmDate"><option>…</option></select></label>
-      <label class="fl-row small"><input type="checkbox" id="fmAuto" checked> ${lt("fm_auto")}</label>
+      <div class="style-ctl"><select id="fmCmap">${Object.keys(COLORMAPS).map((k) => `<option>${k}</option>`).join("")}</select>
+        <label><input type="checkbox" id="fmRev"> ${t("st_rev")}</label>
+        <label><input type="checkbox" id="fmAuto" checked> ${lt("fm_auto")}</label>
+        <label>min <input type="number" step="any" id="fmMin"></label><label>max <input type="number" step="any" id="fmMax"></label></div>
       <label class="fl-row small">${lt("fl_op")} <input type="range" id="fmOp" min="0" max="1" step="0.05" value="${prev.op}"></label>
       <div class="fm-legend" id="fmLegend"></div>
       <div class="hint small" id="fmStats"></div>
       <div class="fl-dl"><b>${lt("dl_title")}</b> <button class="small-btn" id="dlOne">${lt("dl_one")}</button>
         <button class="small-btn" id="dlAll">${lt("dl_all")}</button> <button class="small-btn" id="dlCsv">${lt("dl_csv")}</button></div>
-      <div class="fl-soil"><b>${lt("fl_soil")}</b> ${["sg_clay", "sg_sand", "sg_soc", "sg_nitrogen", "sg_phh2o", "sg_cec"].map((id) =>
+      <div class="fl-soil"><b>${lt("fl_soil")}</b> ${["so_tessitura", "so_argilla", "so_sabbia", "so_soc", "so_stock_soc", "so_azoto", "so_ph"].map((id) =>
         `<button class="seg fl-sg" data-id="${id}">${lt("fl_" + id)}</button>`).join("")}</div>
       <div class="fl-soil"><b>${lt("fl_pheno")}</b> ${["hv_sosd", "hv_eosd", "hv_length", "hv_tprod"].map((id) =>
         `<button class="seg fl-sg" data-id="${id}">${lt("fl_" + id)}</button>`).join("")}</div>
       <button class="small-btn" id="fmHide">${lt("fl_hide")}</button>`;
-    ["fmIdx", "fmDate", "fmAuto"].forEach((id) => (document.getElementById(id).onchange = () => drawFieldMap()));
+    ["fmIdx", "fmDate", "fmAuto", "fmCmap", "fmRev"].forEach((id) => (document.getElementById(id).onchange = () => drawFieldMap()));
+    ["fmMin", "fmMax"].forEach((id) => (document.getElementById(id).onchange = () => { document.getElementById("fmAuto").checked = false; drawFieldMap(); }));
     document.getElementById("fmOp").oninput = (e) => fmOverlay && fmOverlay.setOpacity(+e.target.value);
     document.getElementById("dlOne").onclick = () => downloadMaps(false);
     document.getElementById("dlAll").onclick = () => downloadMaps(true);
@@ -1213,14 +1268,16 @@ const Live = (() => {
     let a, b;
     if (idx === "rgb") { a = 300; b = 2600; }
     else if (auto || idx === "zone") { a = q(0.02); b = q(0.98); if (b - a < 0.02) { a -= 0.01; b += 0.01; } }
-    else [a, b] = FIX[idx];
+    else { a = +document.getElementById("fmMin").value; b = +document.getElementById("fmMax").value; if (!(b > a)) [a, b] = FIX[idx]; }
+    if (idx !== "rgb") { document.getElementById("fmMin").value = +a.toFixed(3); document.getElementById("fmMax").value = +b.toFixed(3); }
+    const st = { cmap: document.getElementById("fmCmap").value, rev: document.getElementById("fmRev").checked, min: a, max: b }, ramp = rampFn(st);
     const t1 = q(1 / 3), t2 = q(2 / 3);
     const img = new ImageData(W, H);
     for (let i = 0; i < n; i++) {
       if (inside[i * 4 + 3] <= 127) continue;
       let c;
       if (idx === "rgb") c = [0, 1, 2].map((bb) => Math.max(0, Math.min(255, ((band(bb)[i] - 1000 - a) / (b - a)) * 255)));
-      else { const v = arr.data[i]; if (!isFinite(v)) continue; c = idx === "zone" ? ZONE_COL[v < t1 ? 0 : v < t2 ? 1 : 2] : ramp((v - a) / (b - a)); }
+      else { const v = arr.data[i]; if (!isFinite(v)) continue; c = idx === "zone" ? ZONE_COL[v < t1 ? 0 : v < t2 ? 1 : 2] : ramp(v); }
       img.data.set([c[0], c[1], c[2], 255], i * 4);
     }
     const tmp = document.createElement("canvas"); tmp.width = W; tmp.height = H; tmp.getContext("2d").putImageData(img, 0, 0);
@@ -1231,7 +1288,7 @@ const Live = (() => {
     if (idx === "rgb") leg.innerHTML = "";
     else if (idx === "zone") leg.innerHTML = ["fm_z1", "fm_z2", "fm_z3"].map((z, i) => `<span><i style="background:rgb(${ZONE_COL[i]})"></i>${lt(z)}</span>`).join("") +
       ` <small>(NDVI &lt; ${t1.toFixed(2)} · ${t1.toFixed(2)}–${t2.toFixed(2)} · &gt; ${t2.toFixed(2)})</small>`;
-    else leg.innerHTML = `<span>${a.toFixed(2)}</span><b class="fm-bar" style="background:linear-gradient(90deg,${RAMP.map((c) => `rgb(${c})`).join(",")})"></b><span>${b.toFixed(2)}</span>`;
+    else leg.innerHTML = `<span>${a.toFixed(2)}</span><b class="fm-bar" style="background:linear-gradient(90deg,${cmapCols(st).join(",")})"></b><span>${b.toFixed(2)}</span>`;
     if (idx !== "rgb" && vals.length) {
       const m = vals.reduce((x, y) => x + y, 0) / vals.length, sd = Math.sqrt(vals.reduce((x, y) => x + (y - m) ** 2, 0) / vals.length);
       stats.textContent = lt("fm_stats", { n: vals.length, m: m.toFixed(3), sd: sd.toFixed(3), cv: Math.round((sd / Math.abs(m || 1)) * 100) });
@@ -1607,5 +1664,6 @@ const Live = (() => {
     return feature;
   }
 
-  return { analyze, cropOfField, CTY_NOMI: () => CTY_NOMI, current: () => current, cropHistory, makeS2Layer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, refreshLang: () => current && run(), _debug: () => current };
+  function refreshLayer(def) { liveLayers.forEach((x) => { if (x.def === def) x.layer.setUrl(s2Url(def)); }); }
+  return { refreshLayer, analyze, cropOfField, CTY_NOMI: () => CTY_NOMI, current: () => current, cropHistory, makeS2Layer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, refreshLang: () => current && run(), _debug: () => current };
 })();
