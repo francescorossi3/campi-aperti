@@ -19,7 +19,7 @@ Le password non passano mai dal codice di Campi Aperti verso altri servizi: Supa
 1. **Authentication → Sign In / Providers → Email**: attivo, con **Confirm email** acceso.
 2. **Authentication → Sign In / Providers → Email → Password**: lunghezza minima **10**, con lettere e numeri.
 3. **Authentication → URL Configuration**:
-   - Site URL: `https://francescorossi3.github.io/campi-aperti/`
+   - Site URL: `https://francescorossi3.github.io/columella/`
    - Redirect URLs: aggiungi lo stesso indirizzo.
 4. (Consigliato quando gli utenti diventano molti) **Authentication → Emails → SMTP Settings**: collega un servizio
    di invio email (es. Brevo, gratuito fino a 300 email al giorno). Il mittente predefinito di Supabase

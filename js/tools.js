@@ -6,7 +6,7 @@
 //  ⭐ i miei campi (salvati nel browser)
 
 const Tools = (() => {
-  const REPO = "francescorossi3/campi-aperti";
+  const REPO = "francescorossi3/columella";
   const TT = {
     it: {
       draw: "Disegna un campo", rect: "Scarica i campi di un'area", upload: "Carica una tua mappa", lawn: "Il mio prato", mine: "I miei campi",

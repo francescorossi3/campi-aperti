@@ -64,10 +64,10 @@ In `js/layers.js` aggiungi un oggetto con `id`, `group`, `type` (`arcgis-map`, `
 
 ## Pubblicare su GitHub Pages
 
-1. Crea un repository vuoto, es. `github.com/francescorossi3/campi-aperti`.
+1. Crea un repository vuoto, es. `github.com/francescorossi3/columella`.
 2. Carica il contenuto di questa cartella (oppure `git init && git add . && git commit -m "v1" && git push`).
 3. *Settings → Pages → Build and deployment → Deploy from a branch → `main` / `(root)`*.
-4. Dopo un minuto il sito è su `https://francescorossi3.github.io/campi-aperti/`.
+4. Dopo un minuto il sito è su `https://francescorossi3.github.io/columella/`.
 
 Per provarlo in locale: `python -m http.server` nella cartella, poi apri `http://localhost:8000`.
 
