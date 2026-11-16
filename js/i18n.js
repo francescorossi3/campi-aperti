@@ -1,7 +1,7 @@
 // Testi dell'interfaccia / Interface strings
 const I18N = {
   it: {
-    title: "Campi Aperti",
+    title: "Columella",
     tagline: "Dati aperti per l'agricoltura italiana, gratis per agricoltori e ricercatori",
     tab_layers: "Layer",
     tab_info: "Punto",
@@ -42,9 +42,12 @@ const I18N = {
     archive: "archivio, non sulla mappa",
     info_field: "Le misure del campo (medie su tutto il campo, non sul singolo punto) sono nel pannello sotto la mappa.",
     about_html: `
-      <p><b>Campi Aperti</b> raccoglie in un'unica mappa i dati aperti utili a chi coltiva e a chi fa ricerca: catasto, prodotti del <i>Copernicus Land Monitoring Service</i>, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.</p>
+      <p><b>Il nome.</b> Lucio Giunio Moderato <b>Columella</b> (I secolo d.C.) scrisse il <i>De re rustica</i>, il trattato di agricoltura più completo
+      dell'antichità romana: terreni, colture, vite, olivo, alberi da frutto e allevamento. Fa parte di una famiglia di progetti con <b>Prognostica</b>
+      (previsione meteo) e <b>Torricelli</b> (atmosfera e correzione atmosferica).</p>
+      <p><b>Columella</b> raccoglie in un'unica mappa i dati aperti utili a chi coltiva e a chi fa ricerca: catasto, prodotti del <i>Copernicus Land Monitoring Service</i>, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.</p>
       <p><b>Cosa puoi fare:</b> vedere le immagini Sentinel-2 più recenti (colori, NDVI, NDRE, NDMI), i confini reali dei campi e il catasto; cliccando un campo ottieni le serie temporali da San Martino, dal 1° gennaio o degli ultimi 12 mesi, con pioggia, temperatura, previsione a 7 giorni e radar Sentinel-1, e puoi scaricarle in CSV.</p>
-      <p>Il sito è gratuito, senza registrazione e open source. Tutti i dati vengono letti direttamente dai servizi ufficiali che li pubblicano: nulla passa da server privati.</p>
+      <p>Il sito è gratuito e senza registrazione (© 2026 Francesco Rossi: codice con tutti i diritti riservati, dati CC BY-NC 4.0). Tutti i dati vengono letti direttamente dai servizi ufficiali che li pubblicano: nulla passa da server privati.</p>
       <h4>Prossime versioni</h4>
       <ul>
         <li>Prodotti CLMS HR-VPP ufficiali (LAI, FAPAR, PPI a 10 m) e prodotti globali 300 m.</li>
@@ -57,7 +60,7 @@ const I18N = {
     credits: "Dati: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Agenzia delle Entrate (CC BY 4.0), ISTAT, ISRIC SoilGrids (CC BY 4.0), OpenStreetMap, EOX, Esri. Confini dei campi: modello Delineate Anything S (Lavreniuk et al. 2025, AGPL-3.0).",
   },
   en: {
-    title: "Open Fields Italy",
+    title: "Columella",
     tagline: "Open data for Italian agriculture, free for farmers and researchers",
     tab_layers: "Layers",
     tab_info: "Point",
@@ -98,9 +101,12 @@ const I18N = {
     archive: "archive, not on the map",
     info_field: "Field measurements (averaged over the whole field, not a single point) are in the panel below the map.",
     about_html: `
-      <p><b>Open Fields Italy</b> brings together on one map the open data useful to farmers and researchers: cadastre, <i>Copernicus Land Monitoring Service</i> products, weather and, in coming versions, crop yields and services for farmers.</p>
+      <p><b>The name.</b> Lucius Junius Moderatus <b>Columella</b> (1st century AD) wrote the <i>De re rustica</i>, the most complete treatise on
+      agriculture of Roman antiquity: soils, crops, vines, olives, fruit trees and livestock. It belongs to a family of projects with <b>Prognostica</b>
+      (weather forecast) and <b>Torricelli</b> (atmosphere and atmospheric correction).</p>
+      <p><b>Columella</b> brings together on one map the open data useful to farmers and researchers: cadastre, <i>Copernicus Land Monitoring Service</i> products, weather and, in coming versions, crop yields and services for farmers.</p>
       <p><b>What you can do:</b> view the latest Sentinel-2 images (colour, NDVI, NDRE, NDMI), real field boundaries and the cadastre; clicking a field gives its time series since St Martin's Day, since 1 January or over the last 12 months, with rainfall, temperature, a 7-day forecast and Sentinel-1 radar, downloadable as CSV.</p>
-      <p>The site is free, needs no sign-up and is open source. All data are read directly from the official services that publish them: nothing goes through private servers.</p>
+      <p>The site is free and needs no sign-up (© 2026 Francesco Rossi: code all rights reserved, data CC BY-NC 4.0). All data are read directly from the official services that publish them: nothing goes through private servers.</p>
       <h4>Coming next</h4>
       <ul>
         <li>Official CLMS HR-VPP products (10 m LAI, FAPAR, PPI) and 300 m global products.</li>

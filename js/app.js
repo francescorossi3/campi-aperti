@@ -6,7 +6,7 @@ let LANG = (() => {
   const q = new URLSearchParams(location.search).get("lang");
   if (q === "it" || q === "en") return q;
   try { const s = localStorage.getItem("campi_lang"); if (s) return s; } catch (e) {}
-  return (navigator.language || "it").startsWith("it") ? "it" : "en";
+  return "en";                                   // lingua principale: inglese (italiano con il pulsante IT)
 })();
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.it[k] || k;
 

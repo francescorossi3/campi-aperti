@@ -27,7 +27,7 @@ const Tools = (() => {
       mine_empty: "Nessun campo salvato. Usa «Disegna un campo».", del: "Elimina", open: "Apri", export_all: "Scarica tutti (GeoJSON)",
       r_big: "Area troppo grande: al massimo 6 × 6 km.", r_seg: "Divido l'area in campi… {n}/{t} immagini", r_crop: "Coltura dei campi… {n}/{t}",
       r_done: "{n} campi trovati nell'area ({a} ha).", r_title: "Campi dell'area", r_fail: "Divisione in campi non riuscita (poche immagini serene?).",
-      r_note: "Confini stimati automaticamente da Sentinel-2 (10 m): NDVI medio per data, coltura Copernicus 2024. Licenza dei dati: CC BY 4.0, citare Campi Aperti, Copernicus, ESA.",
+      r_note: "Confini stimati automaticamente da Sentinel-2 (10 m): NDVI medio per data, coltura Copernicus 2024. Licenza dei dati: CC BY-NC 4.0, citare Columella, Copernicus, ESA.",
       kml: "Scarica KML", csv: "Scarica tabella CSV",
       u_title: "Le mie mappe", u_hint: "GeoTIFF (anche PRISMA, EnMAP, droni, mappe di prescrizione), GeoJSON o KML. Il file resta sul tuo computer: non viene caricato su nessun server.",
       u_band: "Banda", u_rgb: "Composizione RGB (R, G, B)", u_cmap: "Scala colori", u_min: "Min", u_max: "Max", u_auto: "Automatico (2–98%)",
@@ -46,7 +46,7 @@ const Tools = (() => {
       l_heat: "Caldo: tieni l'erba più alta (7–8 cm) e irriga presto al mattino.", l_frost: "Gelate previste: non calpestare il prato gelato.",
       l_feed: "Concimazione consigliata in questo periodo: {f}", l_sat: "Vedi il prato dal satellite (NDVI 10 m, solo prati grandi)",
       feed: ["no (riposo invernale)", "no", "leggera, a fine mese", "sì: azoto a lenta cessione", "sì, leggera", "solo macroterme", "solo macroterme", "no (caldo)", "sì: concimazione autunnale", "sì: concime autunnale ricco di potassio", "leggera, prima del freddo", "no (riposo invernale)"],
-      w_title: "Benvenuto in Campi Aperti", w_go: "Inizia",
+      w_title: "Benvenuto in Columella", w_go: "Inizia",
       w_steps: ["🔎 <b>Cerca</b> il tuo comune, un indirizzo o incolla le coordinate.", "🖱️ <b>Clicca su un campo</b>: il sito ne trova i confini e mostra coltura, indici satellitari, meteo, acqua, suolo e resa stimata.",
         "✏️ Se il confine non è giusto, <b>disegnalo</b> tu e aggiungi coltura, filari, piante, resa.", "📂 <b>Carica le tue mappe</b> (PRISMA, droni…) o <b>scarica i campi</b> di un'area come file vettoriale.",
         "🏡 Per il giardino: <b>Il mio prato</b> ti dice quanta acqua dare e quando tagliare."],
@@ -72,7 +72,7 @@ const Tools = (() => {
       mine_empty: "No saved fields. Use “Draw a field”.", del: "Delete", open: "Open", export_all: "Download all (GeoJSON)",
       r_big: "Area too large: max 6 × 6 km.", r_seg: "Splitting the area into fields… {n}/{t} images", r_crop: "Crop of the fields… {n}/{t}",
       r_done: "{n} fields found in the area ({a} ha).", r_title: "Fields of the area", r_fail: "Field splitting failed (too few clear images?).",
-      r_note: "Boundaries estimated automatically from Sentinel-2 (10 m): mean NDVI per date, Copernicus crop 2024. Data licence: CC BY 4.0, credit Campi Aperti, Copernicus, ESA.",
+      r_note: "Boundaries estimated automatically from Sentinel-2 (10 m): mean NDVI per date, Copernicus crop 2024. Data licence: CC BY-NC 4.0, credit Columella, Copernicus, ESA.",
       kml: "Download KML", csv: "Download CSV table",
       u_title: "My maps", u_hint: "GeoTIFF (including PRISMA, EnMAP, drones, prescription maps), GeoJSON or KML. The file stays on your computer: it is not uploaded to any server.",
       u_band: "Band", u_rgb: "RGB composite (R, G, B)", u_cmap: "Colour scale", u_min: "Min", u_max: "Max", u_auto: "Automatic (2–98%)",
@@ -91,7 +91,7 @@ const Tools = (() => {
       l_heat: "Hot weather: keep the grass taller (7–8 cm) and water early in the morning.", l_frost: "Frost forecast: do not walk on frozen grass.",
       l_feed: "Fertilising in this period: {f}", l_sat: "See the lawn from the satellite (NDVI 10 m, large lawns only)",
       feed: ["no (winter rest)", "no", "light, at month end", "yes: slow-release nitrogen", "yes, light", "warm-season only", "warm-season only", "no (heat)", "yes: autumn feed", "yes: potassium-rich autumn feed", "light, before the cold", "no (winter rest)"],
-      w_title: "Welcome to Open Fields Italy", w_go: "Start",
+      w_title: "Welcome to Columella", w_go: "Start",
       w_steps: ["🔎 <b>Search</b> your town, an address or paste coordinates.", "🖱️ <b>Click a field</b>: the site finds its boundary and shows crop, satellite indices, weather, water, soil and estimated yield.",
         "✏️ If the boundary is wrong, <b>draw it</b> yourself and add crop, rows, plants, yield.", "📂 <b>Upload your own maps</b> (PRISMA, drones…) or <b>download the fields</b> of an area as a vector file.",
         "🏡 For the garden: <b>My lawn</b> tells you how much to water and when to mow."],
@@ -276,7 +276,7 @@ const Tools = (() => {
   function share(f) {
     const g = JSON.parse(JSON.stringify(f));
     delete g.properties.nome;                         // niente dati personali nel dataset pubblico
-    const body = "Contributo inviato dal sito Campi Aperti. Licenza: CC BY 4.0.\n\n```json\n" + JSON.stringify(g) + "\n```\n";
+    const body = "Contributo inviato dal sito Columella. Licenza: CC BY 4.0.\n\n```json\n" + JSON.stringify(g) + "\n```\n";
     const title = `[contributo] ${g.properties.coltura || "campo"} ${g.properties.superficie_ha || ""} ha`;
     const url = `https://github.com/${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
     if (url.length > 7500) { download("contributo_campo.geojson", JSON.stringify(g)); alert(tt("too_long")); window.open(`https://github.com/${REPO}/issues/new?title=${encodeURIComponent(title)}`, "_blank", "noopener"); return; }
@@ -331,7 +331,7 @@ const Tools = (() => {
       }
     }));
     const tot = fc.features.reduce((a, f) => a + f.properties.superficie_ha, 0);
-    const out = { type: "FeatureCollection", features: fc.features, metadata: { fonte: "Campi Aperti — https://francescorossi3.github.io/campi-aperti/", licenza: "CC BY 4.0", date_ndvi: fc.dates } };
+    const out = { type: "FeatureCollection", features: fc.features, metadata: { fonte: "Columella — https://francescorossi3.github.io/columella/", licenza: "CC BY-NC 4.0", date_ndvi: fc.dates } };
     el.querySelector(".tc-body").innerHTML = `<p>${tt("r_done", { n: fc.features.length, a: tot.toFixed(1) })}</p>
       <div class="tc-actions"><button class="btn-primary" id="raGeo">${tt("geojson")}</button><button class="small-btn" id="raKml">${tt("kml")}</button>
       <button class="small-btn" id="raCsv">${tt("csv")}</button></div><p class="hint small">${tt("r_note")}</p>`;
@@ -348,7 +348,7 @@ const Tools = (() => {
       return `<Placemark><name>${esc(f.properties.id)}</name><ExtendedData>${data}</ExtendedData><Polygon><outerBoundaryIs>${ring(g[0])}</outerBoundaryIs>` +
         g.slice(1).map((h) => `<innerBoundaryIs>${ring(h)}</innerBoundaryIs>`).join("") + `</Polygon></Placemark>`;
     }).join("");
-    return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Campi Aperti</name>${pm}</Document></kml>`;
+    return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Columella</name>${pm}</Document></kml>`;
   }
   function toCsv(fc) {
     const keys = [...new Set(fc.features.flatMap((f) => Object.keys(f.properties)))];

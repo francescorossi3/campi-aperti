@@ -1,8 +1,21 @@
-# Campi Aperti / Open Fields Italy
+# Columella
 
-🇮🇹 Mappa gratuita e open source che raccoglie i **dati aperti per l'agricoltura italiana**: catasto, prodotti del Copernicus Land Monitoring Service, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.
+🇬🇧 **The name.** Lucius Junius Moderatus **Columella** (1st century AD) wrote the *De re rustica*, the most complete treatise on agriculture of
+Roman antiquity. Columella is the agriculture **front end** of a family of projects: **Prognostica** (weather forecast, front end) ·
+**Columella** · **Torricelli** (atmosphere and atmospheric correction, back end) · **Census** (usage monitoring, private).
+Site: https://francescorossi3.github.io/columella/ (English, with Italian translation) · formerly *Campi Aperti / Open Fields Italy*.
 
-🇬🇧 Free, open-source map gathering **open data for Italian agriculture**: cadastre, Copernicus Land Monitoring Service products, weather and, in coming versions, crop yields and farmer services.
+🇮🇹 **Il nome.** Lucio Giunio Moderato **Columella** (I secolo d.C.) scrisse il *De re rustica*, il trattato di agricoltura più completo
+dell'antichità romana. Columella è il **front end** agricolo di una famiglia di progetti: **Prognostica** (previsione meteo) · **Columella** ·
+**Torricelli** (atmosfera e correzione atmosferica, back end) · **Census** (monitoraggio d'uso, privato). Prima si chiamava *Campi Aperti*.
+
+**Licence / Licenza:** © 2026 Francesco Rossi — code all rights reserved / codice tutti i diritti riservati; data / dati CC BY-NC 4.0 ([LICENSE](LICENSE)).
+
+---
+
+🇮🇹 Mappa gratuita che raccoglie i **dati aperti per l'agricoltura italiana**: catasto, prodotti del Copernicus Land Monitoring Service, meteo e, nelle prossime versioni, rese agricole e servizi per gli agricoltori.
+
+🇬🇧 Free map gathering **open data for Italian agriculture**: cadastre, Copernicus Land Monitoring Service products, weather and, in coming versions, crop yields and farmer services.
 
 ---
 
