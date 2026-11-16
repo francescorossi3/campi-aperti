@@ -620,6 +620,7 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&a
     LAYERS.filter((l) => l.on).forEach((l) => state.on.add(l.id));
   }
   Tools.init();
+  Account.init().catch((e) => console.warn("account non disponibile", e));
   Clms.loadIndex().then((j) => { clmsIdx = j || {}; renderLayerPanel(); });
   applyLang();
   setBase(currentBase);

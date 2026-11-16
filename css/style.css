@@ -291,3 +291,7 @@ body.fp-open .tool-card { max-height: calc(58% - 20px); }
 .cb-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; margin: 4px 0; }
 .cb-grid select { margin-right: 4px; max-width: 220px; }
 .cb-res .big { font-size: 15px; font-weight: 700; color: var(--green); }
+
+.account-btn { border: 1px solid #ffffff55; background: #ffffff22; color: inherit; border-radius: 8px; padding: 4px 10px; font: inherit; cursor: pointer; margin-right: 8px; }
+.tool-card.tc-account { width: min(360px, calc(100% - 40px)); }
+.small-btn.danger { color: #b3261e; border-color: #b3261e66; }

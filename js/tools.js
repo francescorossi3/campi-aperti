@@ -203,7 +203,10 @@ const Tools = (() => {
 
   // ================================================================== ✏️ campo disegnato dall'utente
   const STORE = "campiAperti.mieiCampi";
-  const loadMine = () => { try { return JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { return []; } };
+  // senza account i campi stanno nel browser; con l'account nel database (cache in memoria per la mappa)
+  let cloud = null;
+  const loggedIn = () => typeof Account !== "undefined" && Account.utente();
+  const loadMine = () => { if (loggedIn() && cloud) return cloud; try { return JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { return []; } };
   const saveMine = (a) => { try { localStorage.setItem(STORE, JSON.stringify(a)); return true; } catch (e) { return false; } };
 
   function fieldForm(feature) {
@@ -230,6 +233,7 @@ const Tools = (() => {
         <label>${tt("f_n")}<input name="azoto_kg_ha" type="number" min="0" value="${esc(p.azoto_kg_ha)}"></label>
         <label>${tt("f_water")}<input name="irrigazione_mm" type="number" min="0" value="${esc(p.irrigazione_mm)}"></label>
         <label class="chk"><input name="biologico" type="checkbox" ${p.biologico ? "checked" : ""}> ${tt("f_bio")}</label>
+        ${loggedIn() ? `<label class="chk wide"><input name="condividi" type="checkbox" ${p.condividi ? "checked" : ""}> ${Account.at("share")}</label>` : ""}
         <label class="wide">${tt("f_note")}<textarea name="note" rows="2">${esc(p.note)}</textarea></label>
       </form>
       <p class="hint small" id="tfDensity"></p>
@@ -245,6 +249,7 @@ const Tools = (() => {
       const o = { ...feature.properties };
       new FormData(form).forEach((v, k) => { if (v !== "") o[k] = isNaN(+v) || /semina|raccolta|nome|varieta|note|coltura|irrigazione/.test(k) ? v : +v; else delete o[k]; });
       o.biologico = form.biologico.checked;
+      if (form.condividi) o.condividi = form.condividi.checked;
       o.superficie_ha = +ha.toFixed(4);
       if (o.dist_filari_m && o.dist_fila_m) o.densita_piante_ha = Math.round(10000 / (o.dist_filari_m * o.dist_fila_m));
       else if (o.piante) o.densita_piante_ha = Math.round(o.piante / ha);
@@ -256,6 +261,11 @@ const Tools = (() => {
     el.querySelector("#tfAnalyze").onclick = () => Live.analyze(feat(), { userField: true });
     el.querySelector("#tfSave").onclick = () => {
       const f = feat(); f.properties.id = f.properties.id || "c" + Date.now(); feature.properties.id = f.properties.id;
+      if (loggedIn()) {
+        Account.save(f).then((id) => { f.properties.id = feature.properties.id = id; cloud = (cloud || []).filter((x) => x.properties.id !== id).concat([f]);
+          el.querySelector("#tfMsg").textContent = Account.at("sync"); refreshMine(); }).catch((e) => (el.querySelector("#tfMsg").textContent = e.message));
+        return;
+      }
       const all = loadMine().filter((x) => x.properties.id !== f.properties.id); all.push(f); saveMine(all);
       el.querySelector("#tfMsg").textContent = tt("saved"); refreshMine();
     };
@@ -289,7 +299,10 @@ const Tools = (() => {
         <button class="small-btn" data-o="${i}">${tt("open")}</button><button class="small-btn" data-d="${i}">${tt("del")}</button></li>`).join("")}</ul>
         <button class="small-btn" id="mineAll">${tt("export_all")}</button>` : `<p class="hint">${tt("mine_empty")}</p>`);
     el.querySelectorAll("[data-o]").forEach((b) => (b.onclick = () => { const f = all[+b.dataset.o]; map.fitBounds(L.geoJSON(f).getBounds(), { maxZoom: 17 }); fieldForm(f); }));
-    el.querySelectorAll("[data-d]").forEach((b) => (b.onclick = () => { all.splice(+b.dataset.d, 1); saveMine(all); refreshMine(); showMine(); }));
+    el.querySelectorAll("[data-d]").forEach((b) => (b.onclick = async () => {
+      const [f] = all.splice(+b.dataset.d, 1);
+      if (loggedIn()) await Account.remove(f.properties.id); else saveMine(all);
+      refreshMine(); showMine(); }));
     const ea = el.querySelector("#mineAll");
     if (ea) ea.onclick = () => download("miei_campi.geojson", JSON.stringify({ type: "FeatureCollection", features: all }));
   }
@@ -656,6 +669,17 @@ const Tools = (() => {
     map.on("mousemove", onHover);
     welcome();
     refreshMine();
+    if (typeof Account !== "undefined") Account.onChange(async (u) => {
+      cloud = null;
+      if (u) {
+        cloud = await Account.list().catch(() => []);
+        // i campi salvati prima nel browser passano nell'account
+        const loc = JSON.parse(localStorage.getItem(STORE) || "[]");
+        for (const f of loc) { try { f.properties.id = await Account.save({ ...f, properties: { ...f.properties, id: null } }); cloud.push(f); } catch (e) { /* resta nel browser */ } }
+        if (loc.length) localStorage.removeItem(STORE);
+      }
+      refreshMine();
+    });
     // trascina un file sulla mappa
     const mc = map.getContainer();
     mc.addEventListener("dragover", (e) => { e.preventDefault(); mc.classList.add("drop"); });
