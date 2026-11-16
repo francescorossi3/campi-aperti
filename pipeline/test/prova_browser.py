@@ -62,6 +62,16 @@ async def main():
           resa: document.querySelector('#fpFieldYield')?.innerText, stato: document.querySelector('#fpStatus')?.innerText, mappa: document.querySelector('#fmStats')?.innerText })""")
         print(json.dumps(rep["pannello"], ensure_ascii=False, indent=1))
         await pg.screenshot(path=os.path.join(OUT, "browser_pannello.png"), full_page=False)
+        rep["suolo"] = await pg.locator("#fpSoil").inner_text()
+        rep["carbonio"] = await pg.locator("#fpCarbon").inner_text()
+        print("suolo:", rep["suolo"][:300].replace("\n", " | "))
+        print("carbonio:", rep["carbonio"][-500:].replace("\n", " | "))
+        # mappe del suolo
+        for lay in ["so_tessitura", "so_stock_soc"]:
+            await pg.evaluate(f"document.getElementById('chk_{lay}').click()"); await pg.wait_for_timeout(500)
+            await pg.evaluate("map.setView([42.0, 12.6], 9)"); await pg.wait_for_timeout(12000)
+            await pg.screenshot(path=os.path.join(OUT, f"browser_{lay}.png"))
+            await pg.evaluate(f"document.getElementById('chk_{lay}').click()"); await pg.wait_for_timeout(500)
         # layer Copernicus LAI sulla mappa
         await pg.evaluate("document.getElementById('chk_cl_lai').click()"); await pg.wait_for_timeout(1000)
         await pg.evaluate("map.setView([43.5, 12.5], 8)"); await pg.wait_for_timeout(12000)
