@@ -1,0 +1,17 @@
+name: Mappe del suolo (SoilGrids, Italia)
+on:
+  workflow_dispatch:
+  push:
+    paths: ["pipeline/19_suolo_italia.py"]
+jobs:
+  suolo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q numpy rasterio huggingface_hub
+      - run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python -u 19_suolo_italia.py
+      - run: cd pipeline && MODO=su CARTELLE=suolo python hf_sync.py
