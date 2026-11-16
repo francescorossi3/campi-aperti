@@ -681,7 +681,8 @@ const Live = (() => {
   function drawCarbon() {
     const el = document.getElementById("fpCarbon");
     if (!el || !current || !current.soil || !current.soil.stock) return;
-    const met = (current.meteo || []).filter((r) => !r.fc), days = met.length || 1;
+    const met = (current.meteo || []).filter((r) => !r.fc && r.et0 != null), days = met.length || 1;
+    if (met.length < 60) { el.innerHTML = `<b>${lt("cb_title")}</b> <span class="hint small">${lt("loading_meteo")}</span>`; return; }
     const P = met.reduce((a, r) => a + (r.rain || 0), 0) * 365 / days, E = met.reduce((a, r) => a + (r.et0 || 0), 0) * 365 / days;
     const umido = P > E ? 1 : 0;
     const F = (u, l, i) => IPCC.flu[u][umido] * (u === "prato" ? IPCC.fmg[l === "sodo" || l === "minima" ? "prato_migl" : "prato_norm"][umido] : IPCC.fmg[l][umido]) * IPCC.fi[i][umido];
@@ -1026,7 +1027,7 @@ const Live = (() => {
     const today = iso(new Date());
     Object.values(out).forEach((r) => (r.fc = r.date > today));
     current.meteo = Object.values(out).filter((r) => r.date >= iso(start) && (r.fc || r.date <= iso(end)) && r.tmean != null).sort((x, y) => x.t - y.t);
-    drawMeteo(); drawSummary(); drawEt(); drawCompare();
+    drawMeteo(); drawSummary(); drawEt(); drawCompare(); drawCarbon();
   }
 
   // ================================================================== pannello e grafici
