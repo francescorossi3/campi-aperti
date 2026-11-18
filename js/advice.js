@@ -1,4 +1,9 @@
-// Campi Aperti — modelli agronomici per coltura (avvisi per piccoli agricoltori)
+// Columella – advice.js
+// IT: avvisi agronomici per coltura (per piccoli agricoltori). Espone il globale Advice { render, cropKey }
+//     (usato da live.js). Dipendenze: LANG (app.js), API Open-Meteo (forecast + archive ERA5).
+// EN: weather-based crop alerts (disease risk, degree days, chill hours, frost). Exposes Advice { render, cropKey };
+//     needs LANG and the Open-Meteo API. Risk indications only, not diagnoses.
+//
 // Meteo orario del punto (Open-Meteo: ultimi 92 giorni + previsioni a 7 giorni). Modelli semplici e pubblicati:
 //  vite: peronospora (regola dei tre dieci), oidio (indice di Gubler-Thomas), indice di Winkler
 //  olivo: mosca dell'olivo (condizioni favorevoli), occhio di pavone (bagnatura e temperatura), gelo
@@ -45,8 +50,19 @@ const Advice = (() => {
       gdd: "Season degree days (1 April – 31 October, base 10 °C)", gdd_d: "{g} °C·days: a FAO 500–600 maize needs about 1500–1700 from sowing to maturity.",
     },
   };
-  const at = (k, v) => { let s = (AT[LANG] || AT.it)[k] ?? AT.it[k]; if (v && typeof s === "string") Object.entries(v).forEach(([a, b]) => (s = s.replace("{" + a + "}", b))); return s; };
-  const cache = {};
+  // testo tradotto con sostituzione dei segnaposto {nome}
+  const at = (k, v) => {
+    let s = (AT[LANG] || AT.it)[k] ?? AT.it[k];
+    if (v && typeof s === "string") Object.entries(v).forEach(([a, b]) => (s = s.replace("{" + a + "}", b)));
+    return s;
+  };
+  // livello di rischio: 2 alto, 1 medio, 0 basso (-1 = solo informativo, senza livello)
+  function level(high, medium) {
+    if (high) return 2;
+    if (medium) return 1;
+    return 0;
+  }
+  const cache = {};   // promesse del meteo per punto (2 decimali)
 
   // coltura dell'utente o classe Copernicus -> chiave del modello
   function cropKey(userCrop, cls) {
@@ -80,16 +96,20 @@ const Advice = (() => {
   }
 
   function models(key, j) {
-    const H = j.hourly, D = j.daily, now = new Date(), today = now.toISOString().slice(0, 10);
+    const H = j.hourly, D = j.daily, now = new Date(), today = now.toISOString().slice(0, 10), nowHour = now.toISOString().slice(0, 13);
     const hIdx = H.time.map((t, i) => i), dIdx = D.time.map((t, i) => i);
+    // indici dei giorni passati / prossimi, delle ore passate, delle ore di un giorno
+
     const past = (days) => dIdx.filter((i) => D.time[i] < today && (Date.parse(today) - Date.parse(D.time[i])) / 864e5 <= days);
     const next = (days) => dIdx.filter((i) => D.time[i] >= today && (Date.parse(D.time[i]) - Date.parse(today)) / 864e5 < days);
-    const hPast = (days) => hIdx.filter((i) => H.time[i] < now.toISOString().slice(0, 13) && (now - Date.parse(H.time[i])) / 36e5 <= days * 24);
+    const hPast = (days) => hIdx.filter((i) => H.time[i] < nowHour && (now - Date.parse(H.time[i])) / 36e5 <= days * 24);
+    const hoursOf = (d) => hIdx.filter((i) => H.time[i].slice(0, 10) === D.time[d]);
     const sum = (ix, a) => ix.reduce((s, i) => s + (a[i] || 0), 0);
     const mean = (ix, a) => (ix.length ? sum(ix, a) / ix.length : NaN);
     const fmtD = (i) => new Date(D.time[i]).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { weekday: "short", day: "numeric" });
     const m = now.getMonth() + 1, out = [];
     const add = (name, lv, desc) => out.push({ name, lv, desc });
+    // foglia bagnata: probabilità di bagnatura se c'è, altrimenti umidità ≥ 90% o pioggia
     const wet = (i) => (H.leaf_wetness_probability && H.leaf_wetness_probability[i] != null ? H.leaf_wetness_probability[i] > 50 : H.relative_humidity_2m[i] >= 90 || H.precipitation[i] > 0.1);
     // gradi giorno dal 1° aprile (solo se siamo in stagione)
     const gddSince = () => {
@@ -102,15 +122,16 @@ const Advice = (() => {
     if (key === "vite") {
       const p48 = past(2), r = sum(p48, D.precipitation_sum), t = mean(p48, D.temperature_2m_mean), f = sum(next(3), D.precipitation_sum);
       const stag = m >= 4 && m <= 8;
-      add(at("pero"), !stag ? 0 : r >= 10 && t >= 10 ? 2 : f >= 10 && t >= 10 ? 1 : 0, at("pero_d", { r: r.toFixed(0), t: t.toFixed(1), f: f.toFixed(0) }));
+      add(at("pero"), stag ? level(r >= 10 && t >= 10, f >= 10 && t >= 10) : 0, at("pero_d", { r: r.toFixed(0), t: t.toFixed(1), f: f.toFixed(0) }));
       // Gubler-Thomas sugli ultimi 15 giorni
       let gi = 0;
       past(15).forEach((d) => {
-        const hs = hIdx.filter((i) => H.time[i].slice(0, 10) === D.time[d]);
+        const hs = hoursOf(d);
+        // ore consecutive più lunghe a 21–30 °C: ≥ 6 h +20, altrimenti −10; −10 se si superano 35 °C
         let run = 0, best = 0; hs.forEach((i) => { const T = H.temperature_2m[i]; run = T >= 21 && T <= 30 ? run + 1 : 0; best = Math.max(best, run); });
         gi = Math.max(0, Math.min(100, gi + (best >= 6 ? 20 : -10) - (hs.some((i) => H.temperature_2m[i] > 35) ? 10 : 0)));
       });
-      add(at("oidio"), !stag ? 0 : gi > 60 ? 2 : gi > 30 ? 1 : 0, at("oidio_d", { i: gi }));
+      add(at("oidio"), stag ? level(gi > 60, gi > 30) : 0, at("oidio_d", { i: gi }));
       const g = gddSince(); if (g != null) add(at("winkler"), -1, at("winkler_d", { g }));
     }
     if (key === "olivo") {
@@ -118,30 +139,28 @@ const Advice = (() => {
       const fav = ix.filter((i) => D.temperature_2m_max[i] <= 32 && D.temperature_2m_mean[i] >= 20 && D.temperature_2m_mean[i] <= 30).length;
       const hot = ix.filter((i) => D.temperature_2m_max[i] > 33).length;
       const stag = m >= 6 && m <= 11;
-      add(at("mosca"), !stag ? 0 : fav >= 8 && hot < 3 ? 2 : fav >= 4 ? 1 : 0, at("mosca_d", { n: fav, c: hot }));
+      add(at("mosca"), stag ? level(fav >= 8 && hot < 3, fav >= 4) : 0, at("mosca_d", { n: fav, c: hot }));
       const hw = hPast(10).filter((i) => wet(i) && H.temperature_2m[i] >= 10 && H.temperature_2m[i] <= 20).length;
-      add(at("pavone"), hw > 60 ? 2 : hw > 25 ? 1 : 0, at("pavone_d", { h: hw }));
+      add(at("pavone"), level(hw > 60, hw > 25), at("pavone_d", { h: hw }));
     }
     if (key === "cereali") {
       const n14 = past(14).filter((i) => D.precipitation_sum[i] >= 2 && D.temperature_2m_mean[i] >= 10 && D.temperature_2m_mean[i] <= 25).length;
-      add(at("septoria"), m < 3 || m > 6 ? 0 : n14 >= 5 ? 2 : n14 >= 3 ? 1 : 0, at("septoria_d", { n: n14 }));
+      add(at("septoria"), m >= 3 && m <= 6 ? level(n14 >= 5, n14 >= 3) : 0, at("septoria_d", { n: n14 }));
       const n7 = past(7).filter((d) => {
-        const hs = hIdx.filter((i) => H.time[i].slice(0, 10) === D.time[d]);
-        return D.precipitation_sum[d] >= 1 && mean(hs, H.relative_humidity_2m) > 85 && D.temperature_2m_mean[d] >= 15 && D.temperature_2m_mean[d] <= 30;
+        return D.precipitation_sum[d] >= 1 && mean(hoursOf(d), H.relative_humidity_2m) > 85 && D.temperature_2m_mean[d] >= 15 && D.temperature_2m_mean[d] <= 30;
       }).length;
-      add(at("fusario"), m < 5 || m > 6 ? 0 : n7 >= 3 ? 2 : n7 >= 1 ? 1 : 0, at("fusario_d", { n: n7 }));
+      add(at("fusario"), m >= 5 && m <= 6 ? level(n7 >= 3, n7 >= 1) : 0, at("fusario_d", { n: n7 }));
     }
     if (key === "pomodoro" || key === "patata") {
+      // periodo di Smith: 2 giorni consecutivi con minima ≥ 10 °C e ≥ 11 ore con umidità ≥ 90%
+      const smithDay = (d) => D.temperature_2m_min[d] >= 10 && hoursOf(d).filter((i) => H.relative_humidity_2m[i] >= 90).length >= 11;
       let n = 0; const p = past(8);
-      for (let k = 1; k < p.length; k++) {
-        const ok = [p[k - 1], p[k]].every((d) => D.temperature_2m_min[d] >= 10 && hIdx.filter((i) => H.time[i].slice(0, 10) === D.time[d] && H.relative_humidity_2m[i] >= 90).length >= 11);
-        if (ok) n++;
-      }
-      add(at("smith"), m < 4 || m > 10 ? 0 : n >= 2 ? 2 : n >= 1 ? 1 : 0, at("smith_d", { n }));
+      for (let k = 1; k < p.length; k++) if (smithDay(p[k - 1]) && smithDay(p[k])) n++;
+      add(at("smith"), m >= 4 && m <= 10 ? level(n >= 2, n >= 1) : 0, at("smith_d", { n }));
     }
     if (key === "frutteto" || key === "guscio") {
       const y = m >= 11 ? now.getFullYear() : now.getFullYear() - 1;
-      const ch = hIdx.filter((i) => H.time[i] >= `${y}-11-01` && H.time[i] < now.toISOString().slice(0, 13) && H.temperature_2m[i] < 7.2 && H.temperature_2m[i] > 0).length;
+      const ch = hIdx.filter((i) => H.time[i] >= `${y}-11-01` && H.time[i] < nowHour && H.temperature_2m[i] < 7.2 && H.temperature_2m[i] > 0).length;
       if (m >= 11 || m <= 3) add(at("chill"), -1, at("chill_d", { h: ch }));
     }
     if (key === "mais") { const g = gddSince(); if (g != null) add(at("gdd"), -1, at("gdd_d", { g })); }
