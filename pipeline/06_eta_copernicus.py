@@ -1,4 +1,4 @@
-# 06 — Evapotraspirazione reale Copernicus (CLMS ETA 300 m, Sentinel-3, decadale) per regione e coltura
+# Columella — 06: evapotraspirazione reale Copernicus (CLMS ETA 300 m, Sentinel-3, decadale) per regione e coltura
 #
 # Prodotto: "Evapotranspiration 2025-present (raster 300 m), global, 10-daily" (CLMS), dal 1/11/2025.
 # Variabili (mm/giorno, modello ENSEMBLE di TSEB-PT ed ETLook): ET reale, E evaporazione dal suolo,
@@ -9,6 +9,9 @@
 #
 # Uscite: data/eta/eta_decadi.parquet  (decade, giorni, regione, classe, et, e, t  in mm/giorno)
 #         data/eta/italia/ETA300_<decade>_<var>.tif  (finestra Italia, per la scheda campo del sito)
+# Ingressi: data/blocchi/blocchi_*.parquet (03); env CDSE_USERNAME, CDSE_PASSWORD, MAX_DECADI (def. 40)
+# Esecuzione: workflow riepiloghi.yml (poi hf_sync.py carica "eta") oppure Spyder
+# EN: Copernicus actual ET (300 m, 10-daily) averaged over crop hectares per region and crop.
 
 import os
 import glob
@@ -74,7 +77,10 @@ for p in da_fare:
                 ds = rasterio.open("/vsicurl/" + href)
                 win = from_bounds(*ITALIA, ds.transform).round_offsets().round_lengths()
                 a = ds.read(1, window=win, masked=True).astype("float32")
-                prof = ds.profile.copy(); scala, offs = ds.scales[0], ds.offsets[0]; tr = ds.window_transform(win); ds.close()
+                prof = ds.profile.copy()
+                scala, offs = ds.scales[0], ds.offsets[0]
+                tr = ds.window_transform(win)
+                ds.close()
         except Exception as e:
             print("  lettura parziale non riuscita, scarico il file intero:", str(e)[:120])
             loc = os.path.join(CART, "tmp.tif")
@@ -86,7 +92,9 @@ for p in da_fare:
             with rasterio.open(loc) as ds:
                 win = from_bounds(*ITALIA, ds.transform).round_offsets().round_lengths()
                 a = ds.read(1, window=win, masked=True).astype("float32")
-                prof = ds.profile.copy(); scala, offs = ds.scales[0], ds.offsets[0]; tr = ds.window_transform(win)
+                prof = ds.profile.copy()
+                scala, offs = ds.scales[0], ds.offsets[0]
+                tr = ds.window_transform(win)
             os.remove(loc)
         a = a * scala + offs                          # mm/giorno
         prof.update(width=a.shape[1], height=a.shape[0], transform=tr, dtype="float32", nodata=-9999, compress="deflate",
