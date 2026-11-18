@@ -1,14 +1,18 @@
-# 14 — Classificatore delle colture v2: LightGBM + reti neurali che votano, su variabili Sentinel-2, Sentinel-1, DEM
+# Columella — 14: classificatore delle colture v2: LightGBM + reti neurali che votano, su variabili Sentinel-2, Sentinel-1, DEM
 #
 # Valutazione onesta in due modi:
 #   - spaziale: 5 gruppi di zone; ogni zona è valutata da un modello che non l'ha mai vista
 #   - temporale: addestramento su tutte le annate tranne l'ultima, verifica sull'ultima
 # Confronto con il classificatore v1 (solo NDVI/NDMI/NDRE mensili) sugli stessi pixel.
+# Ingressi: data/dataset_v2/ds_*.parquet (13); env CAP (def. 2500)
 # Uscite: data/modelli_v2/ (modelli, privati) e data/report_classificatore_v2.json (pubblico, solo metriche)
+# Esecuzione: workflow classificatore-v2.yml (che poi carica i modelli nel repo HF privato) oppure Spyder
+# EN: trains and validates (spatial + temporal) the v2 crop classifier, LightGBM + MLP ensemble.
 
 import os
 import glob
 import json
+import joblib
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -48,9 +52,12 @@ def prob(modelli, X, classi):
     P = np.zeros((len(X), len(classi)))
     for kind, m in modelli:
         if kind == "lgb":
-            p = m.predict_proba(X); cl = m.classes_
+            p = m.predict_proba(X)
+            cl = m.classes_
         else:
-            mm, mu, sd = m; p = mm.predict_proba(np.nan_to_num((X - mu) / sd)); cl = mm.classes_
+            mm, mu, sd = m
+            p = mm.predict_proba(np.nan_to_num((X - mu) / sd))
+            cl = mm.classes_
         for j, c in enumerate(cl):
             P[:, classi.index(c)] += p[:, j]
     return P
@@ -94,7 +101,6 @@ print(json.dumps(rep, indent=1))
 # ---- modello finale su tutto
 fin = addestra(ds, feat)
 fin[0][1].booster_.save_model(os.path.join("data", "modelli_v2", "lgbm.txt"))
-import joblib
 joblib.dump({"modelli": fin, "classi": classi, "variabili": feat}, os.path.join("data", "modelli_v2", "colture_v2.joblib"))
 imp = pd.Series(fin[0][1].booster_.feature_importance("gain"), index=feat)
 gruppi = imp.groupby(lambda c: "Sentinel-1" if c[:2] in ("vv", "vh") else "DEM e latitudine" if c in ("quota", "pendenza", "lat")
