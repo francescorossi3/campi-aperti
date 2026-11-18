@@ -1,7 +1,7 @@
 {
  "lodi": {
   "ok": true,
-  "s": 13.440299999999988,
+  "s": 3.8949000000000233,
   "campi": 178,
   "date": [
    "2026-09-27"
@@ -11,7 +11,7 @@
  },
  "maccarese": {
   "ok": true,
-  "s": 6.016600000000006,
+  "s": 4.8560999999999765,
   "campi": 73,
   "date": [
    "2026-07-05"
@@ -21,7 +21,7 @@
  },
  "muccese": {
   "ok": true,
-  "s": 5.0535,
+  "s": 4.103400000000024,
   "campi": 157,
   "date": [
    "2026-08-27"
@@ -30,7 +30,7 @@
   "H": 512
  },
  "copernicus_campo": "35 date, media di circa 4 pixel Copernicus sul campo.",
- "avvisi": "Avvisi per la coltura: Mais\nCalcolo gli avvisi dal meteo…",
+ "avvisi": "Avvisi per la coltura: Mais\nGradi giorno della stagione (1° aprile – 31 ottobre, base 10 °C)\n2517 °C·giorno: un mais classe 500–600 FAO ne chiede circa 1500–1700 dalla semina alla maturazione.\n\nRischi stimati solo dal meteo (Open-Meteo, ERA5 e previsioni) con modelli pubblicati: non sono diagnosi. Verifica in campo e segui i bollettini fitosanitari della tua regione.",
  "modello_annata_corrente": "Coltura riconosciuta dal modello (annata 2025/26): Mais \nMais 100%\nRiso 0%\nSoia 0%\nModello Campi Aperti v2 (3 reti neurali addestrate su etichette Copernicus 2019–2024; accuratezza su zone mai viste circa 74%): 10 mesi Sentinel-2, 181 immagini radar.",
  "modello_2024": "Coltura riconosciuta dal modello (annata 2023/24): Mais \nMais 98%\nFrutta 1%\nSoia 1%\nModello Campi Aperti v2 (3 reti neurali addestrate su etichette Copernicus 2019–2024; accuratezza su zone mai viste circa 74%): 10 mesi Sentinel-2, 88 immagini radar.",
  "copernicus": "Coltura ufficiale Copernicus (HRL Crop Types):\n2024 Mais 99%\n2023 Mais 100%\n2022 Mais 99%\n2021 Mais 100%\n2020 Mais 100%\n2019 Mais 99%\n2018 Non agricolo 88%\n2017 Mais 99%",
@@ -42,7 +42,7 @@
   "mappa": "2853 pixel da 10 m · media 0.573 · deviazione standard 0.043 · variabilità 8%"
  },
  "suolo": "Suolo (0–30 cm) franco\nSabbia 40%\nLimo 38%\nArgilla 22%\nCarbonio organico 22.1 g/kg\nAzoto totale 2.28 g/kg\nC/N 9.7\npH 6.9\nCSC —\nAcqua disponibile 146 mm/m\nISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
- "carbonio": "Crediti di carbonio nel suolo (stima preliminare)\nGestione attuale\nseminativo\nriposo / set-aside\nprato permanente\n \naratura\nlavorazione minima\nsemina su sodo\n \napporti bassi (residui asportati)\napporti medi (residui interrati)\napporti alti (cover crop, residui)\napporti alti + letame/compost\nGestione futura\nseminativo\nriposo / set-aside\nprato permanente\n \naratura\nlavorazione minima\nsemina su sodo\n \napporti bassi (residui asportati)\napporti medi (residui interrati)\napporti alti (cover crop, residui)\napporti alti + letame/compost\nCarbonio nel suolo oggi (0–30 cm, SoilGrids): 86,2 t C/ha · clima secco (pioggia 0 mm, ET0 0 mm all'anno)\n1,1 t CO₂e/ha/anno · 32,0 t CO₂e all'anno su 28,5 ha\nAl netto di una trattenuta prudenziale del %: 25,6 crediti all'anno (1 credito = 1 t CO₂e) · prezzo  €/t\n\nMetodo IPCC Tier 1 (2019 Refinement, fattori di uso del suolo, lavorazione e apporti; nuovo equilibrio in 20 anni). È una stima: per vendere crediti servono un progetto certificato con misure del suolo, monitoraggio e verifica di terzi (regolamento UE 2024/3012 CRCF, metodologie per i suoli agricoli minerali adottate a luglio 2026; in Italia registro nazionale presso il CREA). Valori negativi = perdita di carbonio.",
+ "carbonio": "Crediti di carbonio nel suolo (stima preliminare)\nGestione attuale\nseminativo\nriposo / set-aside\nprato permanente\n \naratura\nlavorazione minima\nsemina su sodo\n \napporti bassi (residui asportati)\napporti medi (residui interrati)\napporti alti (cover crop, residui)\napporti alti + letame/compost\nGestione futura\nseminativo\nriposo / set-aside\nprato permanente\n \naratura\nlavorazione minima\nsemina su sodo\n \napporti bassi (residui asportati)\napporti medi (residui interrati)\napporti alti (cover crop, residui)\napporti alti + letame/compost\nCarbonio nel suolo oggi (0–30 cm, SoilGrids): 86,2 t C/ha · clima umido (pioggia 1620 mm, ET0 898 mm all'anno)\n3,5 t CO₂e/ha/anno · 99,5 t CO₂e all'anno su 28,5 ha\nAl netto di una trattenuta prudenziale del %: 79,6 crediti all'anno (1 credito = 1 t CO₂e) · prezzo  €/t\n\nMetodo IPCC Tier 1 (2019 Refinement, fattori di uso del suolo, lavorazione e apporti; nuovo equilibrio in 20 anni). È una stima: per vendere crediti servono un progetto certificato con misure del suolo, monitoraggio e verifica di terzi (regolamento UE 2024/3012 CRCF, metodologie per i suoli agricoli minerali adottate a luglio 2026; in Italia registro nazionale presso il CREA). Valori negativi = perdita di carbonio.",
  "strada": [
   [
    "Strada",
@@ -76,10 +76,13 @@
  "ricerca 41.86, 12.23": "41.86000, 12.23000 coordinate",
  "ricerca Sant Angelo Lodigiano": "Sant'Angelo Lodigiano comune\nLO · Lombardia\nSant'Angelo Lodigiano indirizzo\nLodi, Lombardia\nSant’Angelo Lodigiano - Ospedale indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - viale Trieste indirizzo\nSant'Angelo Lodigiano, Lodi, Lombardia\nSant’Angelo Lodigiano - Via Don Carlo D",
  "errori": [
+  "goatcounter: not counting because of: localhost",
   "Campi divisi per colture diverse: 40",
+  "goatcounter: not counting because of: localhost",
   "Campi divisi per colture diverse: 20",
+  "goatcounter: not counting because of: localhost",
   "Campi divisi per colture diverse: 60",
-  "Campi divisi per colture diverse: 40",
-  "Failed to load resource: net::ERR_TIMED_OUT"
+  "goatcounter: not counting because of: localhost",
+  "Campi divisi per colture diverse: 40"
  ]
 }
