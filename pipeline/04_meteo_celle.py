@@ -1,9 +1,12 @@
-# 04 — Pioggia ed ET0 giornaliere per le celle meteo di 0,5° che contengono colture
+# Columella — 04: pioggia ed ET0 (somme mensili da dati giornalieri) per le celle meteo di 0,5° con colture
 #
 # Fonte: Open-Meteo Historical Weather API (ERA5 / ERA5-Land, Copernicus C3S), gratuita, senza chiave.
-# Il piano gratuito ha un limite giornaliero di chiamate: lo script salva ogni cella appena scaricata e,
+# Il piano gratuito ha un limite giornaliero di chiamate: lo script salva ogni 10 celle scaricate e,
 # se riceve "429 troppe richieste", si ferma. La Action lo rilancia ogni giorno finché non ha tutto.
-# Uscita: data/meteo/celle_mensili.parquet  (cella, anno, mese, pioggia_mm, et0_mm)
+# Ingressi: data/blocchi/blocchi_*.parquet (da 03); env METEO_INIZIO, MAX_MINUTI
+# Uscita: data/meteo/celle_mensili.parquet  (cella, anno, mese, pioggia_mm, et0_mm, fine)
+# Esecuzione: workflow riepiloghi.yml (poi hf_sync.py carica "meteo") oppure Spyder
+# EN: monthly rain and ET0 from Open-Meteo for every 0.5° weather cell with crops.
 
 import os
 import glob
@@ -73,7 +76,8 @@ for k, c in enumerate(da_fare):
     nuove.append(m)
     if (k + 1) % 10 == 0:
         print(f"  {k + 1}/{len(da_fare)}")
-        salva(); nuove = []
+        salva()
+        nuove = []
     time.sleep(1)
 
 salva()
