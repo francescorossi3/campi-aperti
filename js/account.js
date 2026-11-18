@@ -1,4 +1,11 @@
-// Campi Aperti — account utenti (Supabase Auth: email e password, conferma via email, reimpostazione password)
+// Columella – account.js
+// IT: account utenti opzionali (Supabase Auth: email e password, conferma via email, reimpostazione password)
+//     e salvataggio dei campi dell'utente. Espone il globale Account { init, attivo, utente, onChange, list,
+//     save, remove, at } (usato da app.js e tools.js). Dipendenze: window.CAMPI_APERTI (config.js), LANG
+//     (app.js), supabase-js v2 caricato da CDN in init(), elementi .topbar e .map-wrap, privacy.html.
+// EN: optional user accounts (Supabase Auth) and per-user saved fields. Exposes Account; needs config.js,
+//     LANG and supabase-js (loaded from CDN). Disabled when config.js is empty.
+//
 // Le password non passano mai dal nostro codice verso altri servizi: le gestisce Supabase (hash bcrypt, HTTPS).
 // I campi salvati stanno nella tabella "campi" protetta da Row Level Security (ognuno vede solo i propri).
 // Se config.js non è compilato, gli account sono semplicemente disattivati e i campi restano nel browser.
@@ -7,7 +14,8 @@ const Account = (() => {
   const C = window.CAMPI_APERTI || {};
   const attivo = !!(C.supabaseUrl && C.supabaseAnonKey);
   let sb = null, user = null;
-  const listeners = [];
+  const listeners = [];   // funzioni chiamate a ogni cambio di utente (onChange)
+  const UUID_RE = /^[0-9a-f-]{36}$/;   // id dei campi salvati nel database (gli altri sono solo locali)
   const AT = {
     it: {
       login: "Accedi", logout: "Esci", signup: "Registrati", reset: "Password dimenticata?", email: "Email", pwd: "Password", pwd2: "Ripeti la password",
@@ -30,22 +38,35 @@ const Account = (() => {
       share: "I allow fields I mark as shared to be used anonymously to improve the models",
     },
   };
-  const at = (k, v) => { let s = (AT[LANG] || AT.it)[k] ?? k; if (v) Object.entries(v).forEach(([a, b]) => (s = s.replace("{" + a + "}", b))); return s; };
+  // testo tradotto con sostituzione dei segnaposto {nome}
+  const at = (k, v) => {
+    let s = (AT[LANG] || AT.it)[k] ?? k;
+    if (v) Object.entries(v).forEach(([a, b]) => (s = s.replace("{" + a + "}", b)));
+    return s;
+  };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   async function init() {
     if (!attivo) return;
-    await new Promise((ok, ko) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
+    // carica supabase-js solo se gli account sono attivi
+    await new Promise((ok, ko) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+      s.onload = ok; s.onerror = ko;
+      document.head.appendChild(s);
+    });
     sb = supabase.createClient(C.supabaseUrl, C.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" } });
     const { data } = await sb.auth.getSession();
     user = data.session ? data.session.user : null;
     sb.auth.onAuthStateChange((ev, session) => {
       user = session ? session.user : null;
-      if (ev === "PASSWORD_RECOVERY") panel("newpwd");
-      button(); listeners.forEach((f) => f(user));
+      if (ev === "PASSWORD_RECOVERY") panel("newpwd");   // arrivo dal link "password dimenticata"
+      notify();
     });
-    button(); listeners.forEach((f) => f(user));
+    notify();
   }
+  function notify() { button(); listeners.forEach((f) => f(user)); }
+  // pulsante 👤 nella barra in alto (creato al primo uso)
   function button() {
     let b = document.getElementById("accountBtn");
     if (!b) {
@@ -56,7 +77,9 @@ const Account = (() => {
     }
     b.textContent = user ? "👤 " + user.email.split("@")[0] : "👤 " + at("login");
   }
+  // stessa regola mostrata all'utente in pwd_short
   const strong = (p) => p.length >= 10 && /[a-z]/i.test(p) && /\d/.test(p);
+  // scheda account sulla mappa; mode: login | signup | reset | newpwd | me
   function panel(mode) {
     let el = document.getElementById("accountCard");
     if (!el) { el = document.createElement("section"); el.id = "accountCard"; el.className = "tool-card tc-account"; document.querySelector(".map-wrap").appendChild(el); }
@@ -116,17 +139,18 @@ const Account = (() => {
     if (error) throw error;
     return data.map((r) => ({ type: "Feature", properties: { ...r.proprieta, nome: r.nome, id: r.id, condividi: r.condividi }, geometry: r.geometria }));
   }
+  // inserisce o aggiorna (se l'id è già un UUID del database); restituisce l'id
   async function save(f) {
     if (!sb || !user) return null;
     const p = { ...f.properties }, nome = p.nome || null, condividi = !!p.condividi;
     ["id", "nome", "condividi"].forEach((k) => delete p[k]);
     const row = { nome, proprieta: p, geometria: f.geometry, condividi };
-    const isUuid = /^[0-9a-f-]{36}$/.test(f.properties.id || "");
+    const isUuid = UUID_RE.test(f.properties.id || "");
     const q = isUuid ? sb.from("campi").update(row).eq("id", f.properties.id).select("id") : sb.from("campi").insert(row).select("id");
     const { data, error } = await q;
     if (error) throw error;
     return data[0].id;
   }
-  async function remove(id) { if (sb && user && /^[0-9a-f-]{36}$/.test(id)) await sb.from("campi").delete().eq("id", id); }
+  async function remove(id) { if (sb && user && UUID_RE.test(id)) await sb.from("campi").delete().eq("id", id); }
   return { init, attivo: () => attivo, utente: () => user, onChange: (f) => listeners.push(f), list, save, remove, at };
 })();
