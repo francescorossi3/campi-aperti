@@ -10,3 +10,6 @@ window.CAMPI_APERTI = {
   supabaseUrl: "",        // es. https://abcdefghijk.supabase.co
   supabaseAnonKey: "",    // Project Settings -> API Keys -> anon / publishable
 };
+
+// GoatCounter (statistiche anonime): prefisso del percorso. Qui e non inline in index.html, per la Content-Security-Policy.
+window.goatcounter = { path: (p) => "columella" + p };

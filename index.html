@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://gc.zgo.at 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' blob: data: https://*.supabase.co wss://*.supabase.co https://huggingface.co https://*.huggingface.co https://*.hf.co https://planetarycomputer.microsoft.com https://*.blob.core.windows.net https://image.discomap.eea.europa.eu https://api.open-meteo.com https://archive-api.open-meteo.com https://rest.isric.org https://nominatim.openstreetmap.org https://photon.komoot.io https://epsg.io https://cdn.jsdelivr.net https://bradipored3.goatcounter.com https://phenology.vgt.vito.be https://wms.cartografia.agenziaentrate.gov.it; worker-src 'self' blob: https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Columella — open data for agriculture</title>
   <meta name="description" content="Mappa gratuita di dati aperti per l'agricoltura italiana: catasto, Copernicus Land Monitoring Service, meteo. Free open-data map for Italian agriculture.">
@@ -89,7 +90,6 @@
   <script src="js/tools.js?v=25"></script>
   <script src="js/app.js?v=25"></script>
 <!-- statistiche d'uso anonime, senza cookie (GoatCounter) -> repository privato Census -->
-<script>window.goatcounter = { path: p => "columella" + p };</script>
 <script data-goatcounter="https://bradipored3.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
