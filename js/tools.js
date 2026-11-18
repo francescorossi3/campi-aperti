@@ -1,11 +1,11 @@
 // Columella — js/tools.js
-// IT: barra degli strumenti sulla mappa (testi IT/EN propri, tabella TT):
+// IT: strumenti della sezione "Ricerca e campi" della barra laterale (testi IT/EN propri, tabella TT):
 //  ✏️ disegna un campo (coltura, filari, alberi, resa…) e, se l'utente vuole, lo condivide su GitHub per i modelli
 //  ▭  scarica i campi di un'area (GeoJSON / KML / CSV), divisi automaticamente da Sentinel-2
 //  📂 carica una propria mappa (GeoTIFF, GeoJSON, KML) e sceglie la legenda — il file non lascia il computer
 //  🏡 il mio prato: quanta acqua dare, quando tagliare (meteo Open-Meteo)
 //  ⭐ i miei campi (nel browser, oppure nell'account Supabase se l'utente ha fatto l'accesso)
-// EN: map toolbar: draw a field, download the fields of an area, load your own maps, lawn advice, saved fields.
+// EN: field tools in the sidebar: draw a field, download the fields of an area, load your own maps, lawn advice, saved fields.
 //
 // Globale esposto / exposed global: Tools { init, busy, refreshLang, startDraw, welcome }
 //   (app.js usa init, busy, refreshLang).
@@ -149,8 +149,8 @@ const Tools = (() => {
   let drawing = null;
   const busy = () => !!drawing;
   function hint(text) {
-    let el = document.getElementById("drawHint");
-    if (!el) { el = document.createElement("div"); el.id = "drawHint"; el.className = "draw-hint"; document.querySelector(".map-wrap").appendChild(el); }
+    const el = document.getElementById("drawHint");          // riga nella sezione "Ricerca e campi"
+    document.body.classList.toggle("drawing", !!text);           // su telefono il foglio si abbassa e lascia la mappa
     el.innerHTML = text ? `${text} <button class="small-btn" id="drawCancel">${tt("cancel")}</button>` : "";
     el.hidden = !text;
     if (text) document.getElementById("drawCancel").onclick = stopDraw;
@@ -230,10 +230,11 @@ const Tools = (() => {
     hint(tt(hintKey));
   }
 
-  // ================================================================== finestre (card) sulla mappa
+  // ================================================================== schede degli strumenti (sezione "Ricerca e campi")
   function card(id, title, html, cls = "") {
     let el = document.getElementById(id);
-    if (!el) { el = document.createElement("section"); el.id = id; document.querySelector(".map-wrap").appendChild(el); }
+    if (!el) { el = document.createElement("section"); el.id = id; document.getElementById("toolCards").prepend(el); }
+    if (typeof openSection === "function") openSection("fields");
     el.className = "tool-card " + cls;
     el.innerHTML = `<div class="tc-head"><b>${title}</b><button class="icon-x" title="×">×</button></div><div class="tc-body">${html}</div>`;
     el.querySelector(".icon-x").onclick = () => el.remove();
@@ -771,25 +772,19 @@ const Tools = (() => {
 
   // ================================================================== barra degli strumenti
   function init() {
-    const ctl = L.control({ position: "topleft" });
-    ctl.onAdd = () => {
-      const d = L.DomUtil.create("div", "tool-bar leaflet-bar");
-      d.innerHTML = [["draw", "✏️"], ["rect", "⬚"], ["upload", "📂"], ["lawn", "🏡"], ["mine", "⭐"]]
-        .map(([k, ic]) => `<a href="#" role="button" data-t="${k}" title="${tt(k)}"><span>${ic}</span><em>${tt(k)}</em></a>`).join("");
-      L.DomEvent.disableClickPropagation(d);
-      d.querySelectorAll("a").forEach((a) => (a.onclick = (e) => {
-        e.preventDefault();
-        switch (a.dataset.t) {
-          case "draw": startDraw("poly", (f) => fieldForm(f), "h_poly"); break;
-          case "rect": startDraw("rect", (b) => areaFields(b), "h_rect"); break;
-          case "lawn": startDraw("poly", (f) => lawn(f), "h_lawn"); break;
-          case "upload": renderMaps(); break;
-          case "mine": showMine(); break;
-        }
-      }));
-      return d;
-    };
-    ctl.addTo(map);
+    // pulsanti degli strumenti nella sezione "Ricerca e campi" della barra laterale
+    const d = document.getElementById("toolBar");
+    d.innerHTML = [["draw", "✏️"], ["rect", "⬚"], ["upload", "📂"], ["lawn", "🏡"], ["mine", "⭐"]]
+      .map(([k, ic]) => `<button type="button" class="tool-btn" data-t="${k}"><span aria-hidden="true">${ic}</span><em>${tt(k)}</em></button>`).join("");
+    d.querySelectorAll("button").forEach((a) => (a.onclick = () => {
+      switch (a.dataset.t) {
+        case "draw": startDraw("poly", (f) => fieldForm(f), "h_poly"); break;
+        case "rect": startDraw("rect", (b) => areaFields(b), "h_rect"); break;
+        case "lawn": startDraw("poly", (f) => lawn(f), "h_lawn"); break;
+        case "upload": renderMaps(); break;
+        case "mine": showMine(); break;
+      }
+    }));
     map.on("mousemove", onHover);
     welcome();
     refreshMine();
@@ -830,10 +825,7 @@ const Tools = (() => {
     el.querySelector(".icon-x").onclick = done;
   }
   function refreshLang() {
-    document.querySelectorAll(".tool-bar a").forEach((a) => {
-      a.title = tt(a.dataset.t);
-      a.querySelector("em").textContent = tt(a.dataset.t);
-    });
+    document.querySelectorAll("#toolBar .tool-btn").forEach((a) => (a.querySelector("em").textContent = tt(a.dataset.t)));
   }
   return { init, busy, refreshLang, startDraw, welcome };
 })();
