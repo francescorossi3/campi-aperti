@@ -1,10 +1,11 @@
-# 01 — Scarica i tasselli Copernicus HRL Croplands "Crop Types" (CTY) che coprono l'Italia
+# Columella — 01: scarica i tasselli Copernicus HRL Croplands "Crop Types" (CTY) che coprono l'Italia
 #
 # Fonte: Copernicus Data Space Ecosystem (CDSE), catalogo OData (pubblico) + download (serve token).
-# Credenziali: variabili d'ambiente CDSE_USERNAME e CDSE_PASSWORD (su GitHub sono "secrets").
+# Ingressi: env ANNO (def. 2024), CDSE_USERNAME e CDSE_PASSWORD (su GitHub sono "secrets").
 # In Spyder: impostale prima con  os.environ["CDSE_USERNAME"] = "..."  oppure nel file .env
-#
 # Uscita: data/cty/<anno>/*.tif  (COG originali, EPSG:3035, uint16, 10 m)
+# Esecuzione: workflow crop-types.yml (saltato se 00 trova il COG) oppure Spyder
+# EN: downloads the Copernicus Crop Types tiles covering Italy from CDSE.
 
 import os
 import io
