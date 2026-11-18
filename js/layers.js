@@ -17,7 +17,8 @@ const CATASTO_WMS = "https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/o
 // Testi ripetuti nelle definizioni / Strings shared by several layers
 const CLMS_SRC = "Copernicus Land Monitoring Service";
 const CLMS_LINK = "https://land.copernicus.eu/en/products?tab=bio_geophysical_variables";
-const HRVPP_LEGEND = "<p class='hint small'>Scala colori ufficiale CLMS. Prima stagione dell'anno scelto.</p>";
+const HRVPP_LEGEND = { it: "<p class='hint small'>Scala colori ufficiale CLMS. Prima stagione dell'anno scelto.</p>",
+  en: "<p class='hint small'>Official CLMS colour scale. First season of the chosen year.</p>" };
 const SOILGRIDS_SRC = "ISRIC SoilGrids 2.0 — CC BY 4.0";
 const SOILGRIDS_LINK = "https://soilgrids.org";
 const S2_SRC = "Copernicus Sentinel-2 L2A · Microsoft Planetary Computer";
