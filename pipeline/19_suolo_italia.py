@@ -1,9 +1,12 @@
-# 19 — Mappe del suolo per l'Italia da ISRIC SoilGrids 2.0 (CC BY 4.0), strato 0–30 cm, in COG EPSG:4326 (~250 m)
+# Columella — 19: mappe del suolo per l'Italia da ISRIC SoilGrids 2.0 (CC BY 4.0), strato 0–30 cm, in COG EPSG:4326 (~250 m)
 #
 # Si leggono via HTTP solo le finestre sull'Italia dei VRT pubblici di SoilGrids (proiezione Homolosine), si
 # riproiettano su una griglia geografica e si fa la media pesata degli strati 0–5, 5–15, 15–30 cm (pesi 5, 10, 15).
 # Uscite (data/suolo/): argilla, sabbia, limo (%), soc (g/kg), azoto (g/kg), ph, densita (kg/dm³),
 #   tessitura (classi USDA 1..12), stock_soc (t C/ha nei primi 30 cm, al netto dello scheletro)
+# Ingressi: VRT pubblici ISRIC via HTTP (nessuna credenziale)
+# Esecuzione: workflow suolo.yml (poi hf_sync.py carica "suolo") oppure Spyder
+# EN: SoilGrids 2.0 soil maps for Italy (0–30 cm weighted mean) as EPSG:4326 COGs, plus USDA texture and SOC stock.
 import os
 import numpy as np
 import rasterio
@@ -28,8 +31,9 @@ def leggi(prop):
                 with WarpedVRT(src, crs="EPSG:4326", transform=TR, width=W, height=H, resampling=Resampling.average) as v:
                     a = v.read(1).astype("float64")
                     nd = src.nodata
-        ok = (a != nd) & (a > 0) if prop not in ("phh2o",) else (a != nd) & (a > 0)
-        tot[ok] += a[ok] * p; pesi[ok] += p
+        ok = (a != nd) & (a > 0)
+        tot[ok] += a[ok] * p
+        pesi[ok] += p
         print(prop, s, "letto", flush=True)
     out = np.where(pesi > 0, tot / np.maximum(pesi, 1) / FATT[prop], np.nan)
     return out.astype("float32")
