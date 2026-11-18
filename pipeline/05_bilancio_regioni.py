@@ -1,9 +1,13 @@
-# 05 — Riepiloghi per regione × coltura × anno × mese: superficie, pioggia, ET0, ET coltura, bilancio
+# Columella — 05: riepiloghi per regione × coltura × anno × mese: superficie, pioggia, ET0, ET coltura, ET reale
 #
 # - superficie: Copernicus HRL Crop Types (pixel 10 m)
 # - pioggia ed ET0: media delle celle meteo pesata con gli ettari di quella coltura in ogni cella
 # - ET coltura = Kc mensile (FAO-56, tabella in classi.py) × ET0
+# - ET reale (se presente): data/eta/eta_decadi.parquet da 06
+# Ingressi: data/meteo/celle_mensili.parquet (04), data/blocchi/blocchi_*.parquet (03)
 # Uscita: data/riepiloghi.json  (letto dalla tab "Regioni" del sito)
+# Esecuzione: workflow riepiloghi.yml (solo se il meteo esiste) oppure Spyder
+# EN: builds the region × crop × month summary JSON used by the website.
 
 import os
 import glob
