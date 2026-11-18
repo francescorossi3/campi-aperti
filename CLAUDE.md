@@ -12,6 +12,13 @@ Privacy: `privacy.html` va aggiornata a ogni nuovo trattamento di dati.
 - **Aggiornare `docs/`** (`HOW_IT_WORKS.md` in inglese e `COME_FUNZIONA.md` in italiano, diagrammi Mermaid e tabella "file → cosa fa")
   a ogni nuovo file, fonte di dati, livello, script della pipeline o modifica a Supabase, nello stesso commit o subito dopo.
 
+## Interfaccia
+- Barra laterale a sezioni a scomparsa (Ricerca e campi · Livelli · Indici e serie temporali · Servizi · Account · Dati · Progetto);
+  su telefono diventa un foglio dal basso. **Nessun pannello sopra la mappa**: nuove schede e strumenti vanno in una sezione.
+- Ogni nuovo raster usa il riquadro `Clip.pane()` (così è ritagliato sul campo selezionato) e, se ha valori continui, lo stile di `mapstyle.js`
+  (statistiche sempre sull'intero campo). Ogni testo nuovo va in IT e EN.
+- Un nuovo servizio esterno va aggiunto alla Content-Security-Policy in `index.html`; librerie in copia locale in `js/vendor/` (o CDN con SRI).
+
 ## Regole comuni (famiglia Prognostica · Columella · Torricelli · Census)
 - Proprietario: Francesco Rossi (CNR-IMIOT). Rispondere in italiano.
 - Python (back end): script **lineari stile Spyder**, poche funzioni, **niente `main()` / `if __name__`**; file numerati `NN_nome.py`.
