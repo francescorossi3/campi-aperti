@@ -28,6 +28,7 @@ const map = L.map("map", {
   maxBounds: ITALY_BOUNDS.pad(0.4),
 }).fitBounds(ITALY_BOUNDS);
 L.control.scale({ imperial: false }).addTo(map);
+Clip.init(map);                                   // riquadro "rasters" ritagliato sul campo selezionato (clip.js)
 // riquadro dedicato al catasto: il riempimento giallo delle particelle viene reso trasparente
 // con un filtro + fusione "multiply", così restano solo i contorni sopra la mappa
 map.createPane("labels");
@@ -98,66 +99,86 @@ const CatastoTiles = DefTileLayer.extend({
 
 const leafletLayers = {};
 let ctyYear = 2024, hvYear = 2024, clmsDate = null, clmsIdx = {};
-// ---- stile (scala colori, min, max) di ogni mappa a valori continui, scelto dall'utente
-const STYLE = {};
-function styleOf(def) {
-  if (STYLE[def.id]) return STYLE[def.id];
-  if (def.type === "clms") return (STYLE[def.id] = Clms.style0(def.product));
-  if (def.type === "soil" && def.soil !== "tessitura") return (STYLE[def.id] = Suolo.style0(def.soil));
+// ---- stile dei livelli a valori continui (Copernicus, suolo, indici Sentinel-2): simbologia di mapstyle.js,
+//      salvata nel browser per ogni livello; con un campo selezionato i limiti automatici usano i suoi valori
+const fieldStats = {};             // id del livello -> statistiche dei valori dentro il campo selezionato
+function styleBase(def) {
+  if (def.type === "clms") { const st = Clms.style0(def.product); return MapStyle.create(st.cmap, st.min, st.max, st.unit); }
+  if (def.type === "soil" && def.soil !== "tessitura") { const st = Suolo.style0(def.soil); return MapStyle.create(st.cmap, st.min, st.max, st.unit); }
   if (def.type === "s2live" && def.expr) {
-    const [min, max] = def.rescale.split(",").map(Number);
-    return (STYLE[def.id] = { cmap: def.colormap, min, max, rev: false, unit: "" });
+    def._rescale0 = def._rescale0 || def.rescale; def._cmap0 = def._cmap0 || def.colormap;
+    const [min, max] = def._rescale0.split(",").map(Number);
+    return { ...MapStyle.create(def._cmap0.replace(/_r$/, ""), min, max), rev: /_r$/.test(def._cmap0), opacity: def.opacity ?? 1 };
   }
   return null;
 }
-function styleHtml(def) {
-  const st = styleOf(def);
-  if (!st) return "";
-  return `${rampBar(st)}<div class="style-ctl" data-id="${def.id}">
-    <select class="st-cmap">${Object.keys(COLORMAPS).map((k) => `<option ${k === st.cmap ? "selected" : ""}>${k}</option>`).join("")}</select>
-    <label><input type="checkbox" class="st-rev" ${st.rev ? "checked" : ""}> ${t("st_rev")}</label>
-    <label>min <input type="number" step="any" class="st-min" value="${st.min}"></label>
-    <label>max <input type="number" step="any" class="st-max" value="${st.max}"></label>
-    <button class="small-btn st-reset">${t("st_reset")}</button></div>`;
+const styleOf = (def) => { const b = styleBase(def); return b ? MapStyle.get(def.id, b) : null; };
+const limitedStyle = (def) => def.type === "s2live";      // tasselli colorati dal server: niente classi né limiti automatici
+// funzione colore per i livelli COG: fuori dai dati è trasparente, salvo il colore "nessun dato" dentro il campo
+function cogColor(def, st) {
+  const C = MapStyle.classify(st, fieldStats[def.id]);
+  return (v) => (v == null || !Number.isFinite(v) || v <= -9000 ? (Clip.active() ? C.nodata : null) : C.color(v));
 }
 function applyStyle(def) {
-  const layer = leafletLayers[def.id], st = STYLE[def.id];
+  const layer = leafletLayers[def.id], st = styleOf(def);
   if (!layer || !st) return;
+  layer.setOpacity(st.opacity);
   if (def.type === "s2live") {
-    def.rescale = `${st.min},${st.max}`;
+    const [lo, hi] = MapStyle.limits(st, null);
+    def.rescale = `${+lo.toPrecision(4)},${+hi.toPrecision(4)}`;
     def.colormap = st.cmap + (st.rev ? "_r" : "");
     Live.refreshLayer(def);
-  } else {
-    layer.setColor(rampFn(st));
-  }
+  } else layer.setColor(cogColor(def, st));
+  renderLegendDock();
 }
-function bindStyle(def, el) {
-  const box = el.querySelector(".style-ctl");
+// pannello Style del livello (dentro la sua riga nella sezione Livelli)
+function renderStyle(def, el) {
+  const box = el.querySelector(".st-panel");
   if (!box) return;
-  const q = (c) => box.querySelector(c);
-  const update = () => {
-    const st = STYLE[def.id];
-    st.cmap = q(".st-cmap").value;
-    st.rev = q(".st-rev").checked;
-    st.min = +q(".st-min").value;
-    st.max = +q(".st-max").value;
-    applyStyle(def);
-    el.querySelector(".fm-legend").outerHTML = rampBar(st);
-  };
-  box.querySelectorAll("select,input").forEach((i) => (i.onchange = update));
-  q(".st-reset").onclick = () => {
-    delete STYLE[def.id];
-    if (def.type === "s2live") { // torna ai valori originali salvati da loadLegend
-      def.rescale = def._rescale0 || def.rescale;
-      def.colormap = def._cmap0 || def.colormap;
-    }
-    styleOf(def);
-    applyStyle(def);
-    const legendBox = el.querySelector(".legend");
-    legendBox.innerHTML = "";
-    delete legendBox.dataset.loaded;
-    loadLegend(def, el);
-  };
+  const st = styleOf(def);
+  MapStyle.panel(box, {
+    st, S: fieldStats[def.id] || null, limited: limitedStyle(def), title: def[LANG].name,
+    onSave: (x) => MapStyle.save(def.id, x),
+    onChange: () => applyStyle(def),
+    onReset: () => { MapStyle.reset(def.id); applyStyle(def); renderStyle(def, el); },
+  });
+}
+// URL del COG di un livello (per leggere i valori dentro il campo)
+function cogUrl(def) {
+  if (def.type === "clms") { const d = clmsPick(def.product); return d ? Clms.url(def.product, d) : null; }
+  if (def.type === "soil" && def.soil !== "tessitura") return Suolo.url(def.soil);
+  return null;
+}
+// statistiche del campo selezionato per i livelli accesi che hanno valori leggibili nel browser
+async function updateFieldStats(def) {
+  const f = Clip.feature(), url = cogUrl(def);
+  if (!f || !url) { delete fieldStats[def.id]; return; }
+  const vals = await fieldValues(url, f).catch(() => null);
+  if (Clip.feature() !== f) return;
+  fieldStats[def.id] = MapStyle.stats(vals);
+  applyStyle(def);
+  const el = document.querySelector(`.layer[data-id="${def.id}"]`);
+  if (el && el.classList.contains("expanded")) renderStyle(def, el);
+}
+Clip.onChange(() => {
+  Object.keys(fieldStats).forEach((k) => delete fieldStats[k]);
+  [...state.on].forEach((id) => { const def = LAYERS.find((l) => l.id === id); if (def && styleBase(def)) { applyStyle(def); updateFieldStats(def); } });
+  updateSummaries();
+});
+// legenda dei livelli accesi a valori continui, in basso a destra sulla mappa
+let legendDock = null;
+function renderLegendDock() {
+  if (!legendDock) {
+    legendDock = L.control({ position: "bottomright" });
+    legendDock.onAdd = () => L.DomUtil.create("div", "legend-dock");
+    legendDock.addTo(map);
+  }
+  const html = [...state.on].map((id) => LAYERS.find((l) => l.id === id)).filter((d) => d && styleBase(d)).map((d) => {
+    const st = styleOf(d);
+    return MapStyle.legend(d[LANG].name, st, MapStyle.classify(st, fieldStats[d.id]));
+  }).join("");
+  legendDock.getContainer().innerHTML = html;
+  legendDock.getContainer().hidden = !html;
 }
 // data Copernicus più vicina (non successiva) a quella scelta, per ogni prodotto; senza scelta, la più recente
 const clmsPick = (p) => {
@@ -169,18 +190,19 @@ const clmsPick = (p) => {
 const state = { on: new Set() };
 
 function makeLayer(def) {
+  const pane = Clip.pane(), st = styleOf(def);
   if (def.type === "s2live") return Live.makeS2Layer(def);
-  if (def.type === "clms") return Clms.layer(def.product, clmsPick(def.product), { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.8, zIndex: 25 }, styleOf(def));
-  if (def.type === "soil") return Suolo.layer(def.soil, { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.85, zIndex: 24 }, styleOf(def));
-  if (def.type === "cty") return new CropLayer.Layer(ctyYear, { minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.85, zIndex: 30 });
-  const common = { opacity: def.opacity ?? 0.7, zIndex: 10, crossOrigin: false };
+  if (def.type === "clms") return Clms.layer(def.product, clmsPick(def.product), { pane, minZoom: def.minZoom, maxZoom: 19, opacity: st.opacity, zIndex: 25, color: cogColor(def, st) });
+  if (def.type === "soil") return Suolo.layer(def.soil, { pane, minZoom: def.minZoom, maxZoom: 19, opacity: st ? st.opacity : def.opacity ?? 0.85, zIndex: 24, ...(st ? { color: cogColor(def, st) } : {}) });
+  if (def.type === "cty") return new CropLayer.Layer(ctyYear, { pane, minZoom: def.minZoom, maxZoom: 19, opacity: def.opacity ?? 0.85, zIndex: 30 });
+  const common = { pane, opacity: def.opacity ?? 0.7, zIndex: 10, crossOrigin: false };
   if (def.type === "wms") {
-    const o = { layers: def.wmsLayers, format: "image/png", transparent: true, version: def.wmsVersion || "1.3.0", opacity: def.opacity ?? 0.7,
+    const o = { pane, layers: def.wmsLayers, format: "image/png", transparent: true, version: def.wmsVersion || "1.3.0", opacity: def.opacity ?? 0.7,
       zIndex: 12, minZoom: def.minZoom || 0, maxZoom: 19, attribution: def.source, styles: "" };
     if (def.wmsTime === "hrvpp") o.time = `${hvYear}-01-01`;
     return L.tileLayer.wms(def.wmsUrl, o);
   }
-  if (def.type === "catasto") {
+  if (def.type === "catasto") {          // il catasto (linee) resta visibile anche fuori dal campo
     return new CatastoTiles(def, { ...common, pane: "catasto", minZoom: def.minZoom || 0, maxZoom: 19, tileSize: 256,
       attribution: "Catasto © Agenzia delle Entrate (CC BY 4.0)" });
   }
@@ -196,6 +218,7 @@ function setLayer(id, on) {
     if (!leafletLayers[id]) leafletLayers[id] = makeLayer(def);
     leafletLayers[id].addTo(map);
     state.on.add(id);
+    if (styleBase(def)) { applyStyle(def); updateFieldStats(def); }
   } else {
     if (leafletLayers[id]) map.removeLayer(leafletLayers[id]);
     state.on.delete(id);
@@ -203,6 +226,8 @@ function setLayer(id, on) {
   const el = document.querySelector(`.layer[data-id="${id}"]`);
   if (el) { el.classList.toggle("on", on); el.querySelector("input[type=checkbox]").checked = on; if (on) loadLegend(def, el); }
   updateZoomNotes();
+  renderLegendDock();
+  updateSummaries();
   saveHash();
 }
 
@@ -248,16 +273,16 @@ const legendTitle = () => `<div style="font-weight:600;margin-top:4px">${t("lege
 async function loadLegend(def, el) {
   const box = el.querySelector(".legend");
   if (!box) return;
-  // mappe a valori continui: scala colori modificabile
-  if (styleOf(def)) {
-    if (def.type === "s2live") { def._rescale0 = def._rescale0 || def.rescale; def._cmap0 = def._cmap0 || def.colormap; }
-    box.innerHTML = styleHtml(def) + (def.type === "clms" ? `<div class="hint small">${t("hv_date")} ${clmsPick(def.product) || "—"}</div>` : "");
-    bindStyle(def, el);
+  // mappe a valori continui: pannello Style (scala, limiti, classi, istogramma, legenda)
+  if (styleBase(def)) {
+    box.innerHTML = (def.type === "clms" ? `<div class="hint small">${t("hv_date")} ${clmsPick(def.product) || "—"}</div>` : "") +
+      `<div class="st-panel"></div>`;
+    renderStyle(def, el);
     return;
   }
   if (def.type === "soil") { box.innerHTML = Suolo.texLegend(); return; }
   if (def.type === "cty") { box.innerHTML = legendTitle() + CropLayer.legendHtml(); return; }
-  if (def.legendHtml) { box.innerHTML = legendTitle() + def.legendHtml; return; }
+  if (def.legendHtml) { box.innerHTML = legendTitle() + (def.legendHtml[LANG] || def.legendHtml); return; }
   if (def.type === "wms") {
     box.innerHTML = legendTitle() + `<img alt="" style="max-width:100%" src="${def.wmsUrl}&service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=${def.wmsLayers}&sld_version=1.1.0">`;
     return;
@@ -330,13 +355,13 @@ function renderLayerPanel() {
           <div class="layer-head">
             <input type="checkbox" id="chk_${l.id}" ${state.on.has(l.id) ? "checked" : ""}>
             <label for="chk_${l.id}">${l[LANG].name}</label>
-            <button class="info-toggle" title="info">ⓘ</button>
+            <button class="info-toggle" title="${t(styleBase(l) ? "st_title" : "info")}" aria-label="${t(styleBase(l) ? "st_title" : "info")}">${styleBase(l) ? "🎨" : "ⓘ"}</button>
           </div>
           <div class="zoomnote">${t("zoom_in_to_see").replace("{z}", l.minZoom)}</div>
           <div class="layer-body">
-            <div>${l[LANG].desc}</div>
-            <div class="controls"><span>${t("opacity")}</span>
-              <input type="range" min="0" max="100" value="${Math.round((leafletLayers[l.id]?.options.opacity ?? l.opacity ?? 0.7) * 100)}"></div>
+            <div class="layer-desc">${l[LANG].desc}</div>
+            ${styleBase(l) ? "" : `<div class="controls"><span>${t("opacity")}</span>
+              <input type="range" min="0" max="100" value="${Math.round((leafletLayers[l.id]?.options.opacity ?? l.opacity ?? 0.7) * 100)}"></div>`}
             <div class="legend"></div>
             <div class="src">${t("source")}: ${l.source} · <a href="${l.link}" target="_blank" rel="noopener">${t("more")} ↗</a></div>
           </div>
@@ -354,7 +379,8 @@ function renderLayerPanel() {
       el.classList.toggle("expanded");
       if (el.classList.contains("expanded")) loadLegend(def, el);
     };
-    el.querySelector("input[type=range]").oninput = (e) => {
+    const op = el.querySelector(".controls input[type=range]");
+    if (op) op.oninput = (e) => {
       const v = e.target.value / 100;
       def.opacity = v;
       if (leafletLayers[id]) leafletLayers[id].setOpacity(v);
@@ -370,7 +396,7 @@ function renderLayerPanel() {
   const clmsSel = document.getElementById("clmsDate");
   if (clmsSel) clmsSel.onchange = () => {
     clmsDate = clmsSel.value;
-    LAYERS.filter((l) => l.type === "clms" && leafletLayers[l.id]).forEach((l) => leafletLayers[l.id].setUrl(Clms.url(l.product, clmsPick(l.product))));
+    LAYERS.filter((l) => l.type === "clms" && leafletLayers[l.id]).forEach((l) => { leafletLayers[l.id].setUrl(Clms.url(l.product, clmsPick(l.product))); updateFieldStats(l); });
   };
   const ctySel = document.getElementById("ctyYear");
   if (ctySel) ctySel.onchange = () => { ctyYear = +ctySel.value; if (leafletLayers.cty) leafletLayers.cty.setYear(ctyYear); };
@@ -451,7 +477,6 @@ function parcelUrl(ll) {
 async function queryPoint(ll) {
   if (clickMarker) map.removeLayer(clickMarker);
   clickMarker = L.marker(ll, { icon: L.divIcon({ className: "", html: '<div class="click-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map);
-  if (window.innerWidth > 760) document.getElementById("sidebar").classList.add("open");
 
   const lat = ll.lat.toFixed(6), lng = ll.lng.toFixed(6);
   const panel = document.getElementById("infoPanel");
@@ -664,16 +689,40 @@ sInput.addEventListener("focus", () => {
 });
 document.addEventListener("click", (e) => { if (!e.target.closest(".search")) sList.hidden = true; });
 
-// ------------------------------------------------------------------ tab, lingua, mobile
-function showTab(name) {
-  document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
-  document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
-  document.body.classList.toggle("wide-sidebar", name === "regions");
-  if (name === "regions") Regions.show();
-  setTimeout(() => map.invalidateSize(), 220);
+// ------------------------------------------------------------------ sezioni della barra laterale, telefono
+// sezioni: fields (Ricerca e campi) · layers · series (Indici e serie temporali) · services · account · data · about
+function openSection(name) {
+  const d = document.getElementById("sec-" + name);
+  if (!d) return;
+  d.open = true;
+  if (document.body.dataset.sheet === "peek") setSheet("half");
+  setTimeout(() => d.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 30);
 }
-document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => showTab(b.dataset.tab));
-document.getElementById("toggleSidebar").onclick = () => document.getElementById("sidebar").classList.toggle("open");
+// compatibilità con il vecchio sistema a tab
+const showTab = (name) => openSection({ info: "layers", regions: "services", data: "data", about: "about" }[name] || name);
+document.querySelectorAll("details.sec").forEach((d) => d.addEventListener("toggle", () => {
+  if (d.id === "sec-services" && d.open) Regions.show();
+  // barra più larga (schermi grandi) quando sono aperti grafici o tabelle
+  document.body.classList.toggle("wide-sidebar", ["sec-series", "sec-services"].some((id) => document.getElementById(id).open));
+  setTimeout(() => map.invalidateSize(), 220);
+}));
+// riepilogo accanto al titolo di ogni sezione
+function updateSummaries() {
+  const set = (id, txt) => { const el = document.getElementById("sum-" + id); if (el) el.textContent = txt; };
+  set("layers", state.on.size ? t("sum_on").replace("{n}", state.on.size) : "");
+  const f = Clip.feature();
+  set("series", f ? t("sum_field") : t("sum_nofield"));
+  set("services", f ? t("sum_field") : "");
+  const u = typeof Account !== "undefined" && Account.utente();
+  set("account", u ? u.email.split("@")[0] : "");
+}
+// telefono: la barra laterale diventa un foglio dal basso (peek / half / full)
+function setSheet(pos) { document.body.dataset.sheet = pos; setTimeout(() => map.invalidateSize(), 260); }
+document.getElementById("sheetHandle").onclick = () => setSheet({ peek: "half", half: "full", full: "peek" }[document.body.dataset.sheet] || "half");
+document.getElementById("toggleSidebar").onclick = () => {
+  if (matchMedia("(max-width: 899px)").matches) setSheet(document.body.dataset.sheet === "peek" ? "half" : "peek");
+  else { document.body.classList.toggle("sidebar-closed"); setTimeout(() => map.invalidateSize(), 220); }
+};
 
 function applyLang() {
   document.documentElement.lang = LANG;
@@ -683,9 +732,12 @@ function applyLang() {
   document.querySelectorAll(".lang button").forEach((b) => b.classList.toggle("active", b.dataset.lang === LANG));
   renderLayerPanel();
   renderCatalog();
+  renderLegendDock();
+  updateSummaries();
   Live.refreshLang();
   Tools.refreshLang();
-  if (document.body.classList.contains("wide-sidebar")) Regions.render();
+  Account.render();
+  if (document.getElementById("sec-services").open) Regions.render();
   const info = document.getElementById("infoPanel");
   if (!clickMarker) info.innerHTML = `<p class="hint">${t("info_hint")}</p>`;
   else queryPoint(clickMarker.getLatLng());
@@ -708,8 +760,10 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&a
   } else {
     LAYERS.filter((l) => l.on).forEach((l) => state.on.add(l.id));
   }
+  document.body.dataset.sheet = "peek";
   Tools.init();
   Account.init().catch((e) => console.warn("account non disponibile", e));
+  if (typeof Account.onChange === "function") Account.onChange(updateSummaries);
   Clms.loadIndex().then((j) => { clmsIdx = j || {}; renderLayerPanel(); });
   applyLang();
   setBase(currentBase);
