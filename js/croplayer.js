@@ -5,7 +5,8 @@
 //       Suolo     SoilGrids 0–30 cm (tessitura, sabbia, limo, argilla, SOC, azoto, pH…) e valori sul campo
 //       CropLayer colture Copernicus HRL Crop Types (classi 1..19)
 //       Clms      variabili biogeofisiche Copernicus (LAI, FAPAR, FCOVER, NDVI 300 m, GDMP, SWI, SSM, ETa)
-//       COLORMAPS, rampFn, rampBar, cmapCols, CROP_COLORS: scale colori condivise con app.js, live.js, tools.js
+//       COLORMAPS, rampFn, rampBar, cmapCols, CROP_COLORS: scale colori condivise con app.js, live.js, tools.js, mapstyle.js
+//       fieldValues / fieldMean: valori (o media) di un COG dentro il poligono di un campo
 //     Dipendenze: Leaflet (L), GeoTIFF e proj4 (js/vendor), LANG (app.js), data/clms_indice.json.
 //     Va caricato prima di layers.js, che usa Suolo.P e Clms.P.
 // EN: COG raster layers from Hugging Face drawn in the browser (CogLayer, Suolo, CropLayer, Clms) plus
@@ -110,8 +111,8 @@ const CogLayer = L.GridLayer.extend({
   },
 });
 
-// media di un COG geografico (EPSG:4326) sul poligono: pixel col centro dentro il campo, altrimenti quello del centro
-async function fieldMean(url, feature, categorical = false) {
+// valori di un COG geografico (EPSG:4326) sul poligono: pixel col centro dentro il campo, altrimenti quello del centro
+async function fieldValues(url, feature, categorical = false) {
   const polys = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
   const all = polys.flat(2), lo0 = Math.min(...all.map((q) => q[0])), lo1 = Math.max(...all.map((q) => q[0])), la0 = Math.min(...all.map((q) => q[1])), la1 = Math.max(...all.map((q) => q[1]));
   const inRing = (x, y, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > y) !== (r[j][1] > y) && x < ((r[j][0] - r[i][0]) * (y - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) c = !c; return c; };
@@ -127,7 +128,12 @@ async function fieldMean(url, feature, categorical = false) {
     if (ok(v) && inside(lev.ox + (c0 + c + 0.5) * lev.rx, lev.oy - (r0 + r + 0.5) * lev.ry)) vals.push(v);
   }
   if (!vals.length) { const v = b[Math.floor((r1 - r0) / 2) * W + Math.floor(W / 2)]; if (ok(v)) vals.push(v); }
-  if (!vals.length) return null;
+  return vals;
+}
+// media sul campo (classe più frequente se categorico)
+async function fieldMean(url, feature, categorical = false) {
+  const vals = await fieldValues(url, feature, categorical);
+  if (!vals || !vals.length) return null;
   if (categorical) {   // classe più frequente
     const cnt = {};
     vals.forEach((v) => (cnt[v] = (cnt[v] || 0) + 1));
@@ -153,7 +159,8 @@ const Suolo = (() => {
     7: ["#c97b42", "franco-sabbioso-argilloso", "sandy clay loam"], 8: ["#a6611a", "franco-argilloso", "clay loam"], 9: ["#6a8f9c", "franco-limoso-argilloso", "silty clay loam"],
     10: ["#b2453b", "argilloso-sabbioso", "sandy clay"], 11: ["#5e6fa3", "argilloso-limoso", "silty clay"], 12: ["#6b3a7d", "argilloso", "clay"] };
   const texRgb = Object.fromEntries(Object.entries(TEX).map(([k, v]) => [k, hexRgb(v[0])]));
-  const layer = (n, opts, st) => new CogLayer({ ...opts, url: URL(n), crs: "EPSG:4326", color: n === "tessitura" ? (v) => texRgb[v] || null : rampFn(st || style0(n)) });
+  // opts.color (facoltativo): funzione colore dello stile scelto dall'utente
+  const layer = (n, opts) => new CogLayer({ url: URL(n), crs: "EPSG:4326", color: n === "tessitura" ? (v) => texRgb[v] || null : rampFn(style0(n)), ...opts });
   const texLegend = () => `<div class="crop-legend">${Object.values(TEX).map((t) => `<span><i style="background:${t[0]}"></i>${t[LANG === "it" ? 1 : 2]}</span>`).join("")}</div>`;
   // tutti i valori del campo
   async function field(feature) {
@@ -163,7 +170,7 @@ const Suolo = (() => {
     o.texName = o.tessitura && TEX[o.tessitura] ? TEX[o.tessitura][LANG === "it" ? 1 : 2] : null;
     return o;
   }
-  return { P, layer, texLegend, style0, field, TEX };
+  return { P, layer, texLegend, style0, field, TEX, url: URL };
 })();
 
 // ---------------------------------------------------------------- colture Copernicus
@@ -196,7 +203,7 @@ const Clms = (() => {
   let index = null;
   const loadIndex = () => (index ||= fetch("data/clms_indice.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
   const style0 = (p) => ({ cmap: P[p][3], min: P[p][0], max: P[p][1], rev: false, unit: P[p][2] });
-  const layer = (p, d, opts, st) => new CogLayer({ ...opts, url: url(p, d), crs: "EPSG:4326", color: rampFn(st || style0(p)) });
+  const layer = (p, d, opts) => new CogLayer({ url: url(p, d), crs: "EPSG:4326", color: rampFn(style0(p)), ...opts });
   const label = (p) => P[p][LANG === "it" ? 4 : 5];
   // serie temporale della media sul campo, 4 letture in parallelo
   async function series(p, feature, dates, onStep) {
