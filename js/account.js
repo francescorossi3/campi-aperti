@@ -25,6 +25,7 @@ const Account = (() => {
       check_mail: "Ti abbiamo mandato un'email: apri il link per confermare l'indirizzo, poi accedi.", reset_sent: "Se l'indirizzo è registrato riceverai un'email per scegliere una nuova password.",
       new_pwd: "Scegli una nuova password", pwd_ok: "Password aggiornata.", consent: "Ho letto l'<a href='privacy.html' target='_blank'>informativa sulla privacy</a>",
       need_consent: "Per registrarti devi accettare l'informativa.", err: "Errore: {m}", sync: "I tuoi campi sono salvati nel tuo account.",
+      off: "Gli account non sono ancora attivi: i tuoi campi restano salvati in questo browser.",
       share: "Permetto di usare in forma anonima i campi che segno come condivisi per migliorare i modelli",
     },
     en: {
@@ -35,6 +36,7 @@ const Account = (() => {
       check_mail: "We sent you an email: open the link to confirm the address, then sign in.", reset_sent: "If the address is registered you will receive an email to choose a new password.",
       new_pwd: "Choose a new password", pwd_ok: "Password updated.", consent: "I have read the <a href='privacy.html' target='_blank'>privacy notice</a>",
       need_consent: "To sign up you must accept the privacy notice.", err: "Error: {m}", sync: "Your fields are saved in your account.",
+      off: "Accounts are not active yet: your fields stay saved in this browser.",
       share: "I allow fields I mark as shared to be used anonymously to improve the models",
     },
   };
@@ -47,7 +49,7 @@ const Account = (() => {
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   async function init() {
-    if (!attivo) return;
+    if (!attivo) { panel(); return; }
     // carica supabase-js (copia locale, versione fissa 2.119.1) solo se gli account sono attivi
     await new Promise((ok, ko) => {
       const s = document.createElement("script");
@@ -65,7 +67,7 @@ const Account = (() => {
     });
     notify();
   }
-  function notify() { button(); listeners.forEach((f) => f(user)); }
+  function notify() { button(); panel(user ? "me" : "login"); listeners.forEach((f) => f(user)); }
   // pulsante 👤 nella barra in alto (creato al primo uso)
   function button() {
     let b = document.getElementById("accountBtn");
@@ -73,16 +75,18 @@ const Account = (() => {
       b = document.createElement("button"); b.id = "accountBtn"; b.className = "account-btn";
       const bar = document.querySelector(".topbar .lang") || document.querySelector(".topbar");
       bar.parentNode.insertBefore(b, bar);
-      b.onclick = () => panel(user ? "me" : "login");
+      b.onclick = () => { panel(user ? "me" : "login"); if (typeof openSection === "function") openSection("account"); };
     }
     b.textContent = user ? "👤 " + user.email.split("@")[0] : "👤 " + at("login");
   }
   // stessa regola mostrata all'utente in pwd_short
   const strong = (p) => p.length >= 10 && /[a-z]/i.test(p) && /\d/.test(p);
-  // scheda account sulla mappa; mode: login | signup | reset | newpwd | me
+  // riquadro account nella sezione "Account" della barra laterale; mode: login | signup | reset | newpwd | me
   function panel(mode) {
-    let el = document.getElementById("accountCard");
-    if (!el) { el = document.createElement("section"); el.id = "accountCard"; el.className = "tool-card tc-account"; document.querySelector(".map-wrap").appendChild(el); }
+    const el = document.getElementById("accountBox");
+    if (!el) return;
+    if (!attivo) { el.innerHTML = `<p class="hint">${at("off")}</p>`; return; }
+    if (mode === "me" && !user) mode = "login";
     const form = (inner, btn) => `<form id="acForm" autocomplete="on">${inner}<div class="tc-actions"><button class="btn-primary">${btn}</button></div></form><p class="hint small" id="acMsg"></p>`;
     const mail = `<label>${at("email")}<input name="email" type="email" required autocomplete="email"></label>`;
     let body = "";
@@ -96,8 +100,7 @@ const Account = (() => {
     if (mode === "me") body = `<p>${at("hello", { e: esc(user.email) })}</p><p class="hint small">${at("sync")}</p>
       <div class="tc-actions"><button class="small-btn" id="acExport">${at("export")}</button><button class="small-btn" id="acOut">${at("logout")}</button></div>
       <p><button class="small-btn danger" id="acDel">${at("delete")}</button></p><p class="hint small" id="acMsg"></p>`;
-    el.innerHTML = `<div class="tc-head"><b>${at("title")}</b><button class="icon-x">×</button></div><div class="tc-body">${body}</div>`;
-    el.querySelector(".icon-x").onclick = () => el.remove();
+    el.innerHTML = body;
     el.querySelectorAll("[data-m]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); panel(a.dataset.m); }));
     const msg = (t) => (el.querySelector("#acMsg").textContent = t);
     const f = el.querySelector("#acForm");
@@ -116,10 +119,10 @@ const Account = (() => {
       if (mode === "reset") { r = await sb.auth.resetPasswordForEmail(d.email, { redirectTo: location.origin + location.pathname }); if (!r.error) return msg(at("reset_sent")); }
       if (mode === "newpwd") { if (!strong(d.pwd)) return msg(at("pwd_short")); r = await sb.auth.updateUser({ password: d.pwd }); if (!r.error) return msg(at("pwd_ok")); }
       if (r && r.error) return msg(at("err", { m: r.error.message }));
-      el.remove();
+      panel(user ? "me" : "login");
     };
     if (mode === "me") {
-      el.querySelector("#acOut").onclick = async () => { await sb.auth.signOut(); el.remove(); };
+      el.querySelector("#acOut").onclick = async () => { await sb.auth.signOut(); panel("login"); };
       el.querySelector("#acExport").onclick = async () => {
         const fc = { type: "FeatureCollection", features: await list() };
         const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(fc)], { type: "application/json" })); a.download = "campi-aperti_miei_dati.geojson"; a.click();
@@ -157,5 +160,5 @@ const Account = (() => {
     const { error } = await sb.from("campi").delete().eq("id", id);
     if (error) throw error;
   }
-  return { init, attivo: () => attivo, utente: () => user, onChange: (f) => listeners.push(f), list, save, remove, at };
+  return { init, render: () => panel(user ? "me" : "login"), attivo: () => attivo, utente: () => user, onChange: (f) => listeners.push(f), list, save, remove, at };
 })();
