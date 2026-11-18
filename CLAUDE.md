@@ -5,6 +5,13 @@ Contesto: README.md. Codice principale in `js/` (app.js, i18n.js per le traduzio
 Attenzione licenze: Delineate Anything è AGPL-3.0 (incompatibile con "tutti i diritti riservati" se integrato: chiedere prima di modificarne l'uso).
 Privacy: `privacy.html` va aggiornata a ogni nuovo trattamento di dati.
 
+## Codice essenziale e documentazione
+- Codice **essenziale**: niente codice morto, duplicati o astrazioni inutili; nomi chiari; commenti brevi solo dove la logica non è ovvia.
+- Ogni file `js/*.js` e `pipeline/*.py` inizia con un'**intestazione**: cosa fa, cosa espone/produce, da cosa dipende (come si lancia, per gli script).
+- Le pulizie non devono cambiare il comportamento; `node --check` (JS) o `python -m py_compile` (Python) prima di ogni commit.
+- **Aggiornare `docs/`** (`HOW_IT_WORKS.md` in inglese e `COME_FUNZIONA.md` in italiano, diagrammi Mermaid e tabella "file → cosa fa")
+  a ogni nuovo file, fonte di dati, livello, script della pipeline o modifica a Supabase, nello stesso commit o subito dopo.
+
 ## Regole comuni (famiglia Prognostica · Columella · Torricelli · Census)
 - Proprietario: Francesco Rossi (CNR-IMIOT). Rispondere in italiano.
 - Python (back end): script **lineari stile Spyder**, poche funzioni, **niente `main()` / `if __name__`**; file numerati `NN_nome.py`.
