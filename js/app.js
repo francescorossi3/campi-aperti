@@ -1,5 +1,16 @@
-// Campi Aperti — logica della mappa / map logic
-// Sito statico: tutti i dati arrivano direttamente dai servizi pubblici (EEA, Agenzia delle Entrate, OSM).
+// Columella — js/app.js (caricato per ultimo / loaded last)
+// IT: logica principale della mappa: lingua, mappe di base, layer (ArcGIS EEA, WMS, catasto, Copernicus, suolo,
+//     colture), stile e legende, URL condivisibile (#z/lat/lon/base/layer), pannello layer e catalogo,
+//     clic sulla mappa, ricerca luoghi (comuni locali + Photon + Nominatim), tab e cambio lingua, avvio.
+//     Sito statico: i dati arrivano direttamente dai servizi pubblici (EEA, Agenzia delle Entrate, OSM).
+// EN: main map logic: language, basemaps, layers, styles/legends, shareable URL hash, layer panel, catalogue,
+//     map click, place search, tabs/language switch, start-up.
+//
+// Globali usati da altri file / globals used elsewhere: LANG, t(), map, showTab().
+// Dipende da / depends on: Leaflet (L), i18n.js (I18N, CATALOG_EXTRA, CLC_IT, CLC_EN),
+//   layers.js (LAYERS, LAYER_GROUPS, ARCHIVE_GROUPS, CATASTO_WMS), croplayer.js (COLORMAPS, rampBar, rampFn,
+//   Clms, Suolo, CropLayer), live.js (Live), regions.js (Regions), account.js (Account), tools.js (Tools),
+//   data/comuni.json.
 
 // ------------------------------------------------------------------ lingua / language
 let LANG = (() => {
@@ -26,17 +37,16 @@ map.createPane("catasto");
 map.getPane("catasto").style.zIndex = 450;
 map.getPane("catasto").classList.add("catasto-pane");
 
+const ESRI_IMAGERY = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const BASEMAPS = {
   osm: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19, attribution: "© OpenStreetMap contributors" }),
-  sat: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }),
+  sat: L.tileLayer(ESRI_IMAGERY, { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }),
   s2: L.tileLayer("https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2023_3857/default/g/{z}/{y}/{x}.jpg", {
     maxZoom: 17, maxNativeZoom: 15,
     attribution: 'Sentinel-2 cloudless 2023 by <a href="https://s2maps.eu">EOX</a> (Copernicus Sentinel data 2023), CC BY-NC-SA 4.0' }),
   hybrid: L.layerGroup([
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }),
+    L.tileLayer(ESRI_IMAGERY, { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }),
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, pane: "labels", opacity: 0.8 }),
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19, pane: "labels", attribution: "Etichette © Esri" }),
@@ -46,9 +56,13 @@ const BASEMAPS = {
 };
 let currentBase = "hybrid";
 
-// --- tile layer per ArcGIS (export / exportImage) in EPSG:3857
-const ArcGISTiles = L.TileLayer.extend({
+// --- base comune: tile layer che costruisce l'URL di ogni tassello dalla definizione del layer (def)
+const DefTileLayer = L.TileLayer.extend({
   initialize(def, opts) { this.def = def; L.TileLayer.prototype.initialize.call(this, "", opts); },
+});
+
+// --- tile layer per ArcGIS (export / exportImage) in EPSG:3857
+const ArcGISTiles = DefTileLayer.extend({
   getTileUrl(c) {
     const size = this.getTileSize();
     const nw = this._map.unproject(c.scaleBy(size), c.z);
@@ -65,8 +79,7 @@ const ArcGISTiles = L.TileLayer.extend({
 // --- tile layer per il WMS catastale (accetta solo EPSG:6706/4258/UTM, non 3857):
 //     chiediamo ogni tassello in EPSG:4258 (lon/lat). Alla scala del tassello la differenza
 //     con Web Mercator è trascurabile.
-const CatastoTiles = L.TileLayer.extend({
-  initialize(def, opts) { this.def = def; L.TileLayer.prototype.initialize.call(this, "", opts); },
+const CatastoTiles = DefTileLayer.extend({
   getTileUrl(c) {
     const size = this.getTileSize();
     const nw = this._map.unproject(c.scaleBy(size), c.z);
@@ -76,8 +89,8 @@ const CatastoTiles = L.TileLayer.extend({
     // per tassello (fino a 512) e il browser li riduce a 256. Sotto lo zoom 16 le linee diventano invisibili.
     const widthM = 40075016 * Math.cos(((nw.lat + se.lat) / 2) * Math.PI / 180) / Math.pow(2, c.z);
     const scale256 = widthM / (size.x * 0.00028);
-    const f = Math.min(2, Math.max(1, Math.pow(2, Math.ceil(Math.log2(scale256 / 3500)))));
-    const px = this.def.hiRes ? size.x * f : size.x;
+    const oversample = Math.min(2, Math.max(1, Math.pow(2, Math.ceil(Math.log2(scale256 / 3500)))));
+    const px = this.def.hiRes ? size.x * oversample : size.x;
     return `${CATASTO_WMS}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${this.def.wmsLayers}&STYLES=` +
       `&SRS=EPSG:4258&BBOX=${bbox}&WIDTH=${px}&HEIGHT=${px}&FORMAT=image/png&TRANSPARENT=TRUE`;
   },
@@ -91,7 +104,10 @@ function styleOf(def) {
   if (STYLE[def.id]) return STYLE[def.id];
   if (def.type === "clms") return (STYLE[def.id] = Clms.style0(def.product));
   if (def.type === "soil" && def.soil !== "tessitura") return (STYLE[def.id] = Suolo.style0(def.soil));
-  if (def.type === "s2live" && def.expr) { const [a, b] = def.rescale.split(",").map(Number); return (STYLE[def.id] = { cmap: def.colormap, min: a, max: b, rev: false, unit: "" }); }
+  if (def.type === "s2live" && def.expr) {
+    const [min, max] = def.rescale.split(",").map(Number);
+    return (STYLE[def.id] = { cmap: def.colormap, min, max, rev: false, unit: "" });
+  }
   return null;
 }
 function styleHtml(def) {
@@ -105,28 +121,51 @@ function styleHtml(def) {
     <button class="small-btn st-reset">${t("st_reset")}</button></div>`;
 }
 function applyStyle(def) {
-  const L_ = leafletLayers[def.id], st = STYLE[def.id];
-  if (!L_ || !st) return;
-  if (def.type === "s2live") { def.rescale = `${st.min},${st.max}`; def.colormap = st.cmap + (st.rev ? "_r" : ""); Live.refreshLayer(def); }
-  else L_.setColor(rampFn(st));
+  const layer = leafletLayers[def.id], st = STYLE[def.id];
+  if (!layer || !st) return;
+  if (def.type === "s2live") {
+    def.rescale = `${st.min},${st.max}`;
+    def.colormap = st.cmap + (st.rev ? "_r" : "");
+    Live.refreshLayer(def);
+  } else {
+    layer.setColor(rampFn(st));
+  }
 }
 function bindStyle(def, el) {
   const box = el.querySelector(".style-ctl");
   if (!box) return;
   const q = (c) => box.querySelector(c);
-  const upd = () => {
+  const update = () => {
     const st = STYLE[def.id];
-    st.cmap = q(".st-cmap").value; st.rev = q(".st-rev").checked; st.min = +q(".st-min").value; st.max = +q(".st-max").value;
+    st.cmap = q(".st-cmap").value;
+    st.rev = q(".st-rev").checked;
+    st.min = +q(".st-min").value;
+    st.max = +q(".st-max").value;
     applyStyle(def);
     el.querySelector(".fm-legend").outerHTML = rampBar(st);
   };
-  box.querySelectorAll("select,input").forEach((i) => (i.onchange = upd));
-  q(".st-reset").onclick = () => { delete STYLE[def.id]; if (def.type === "s2live") { def.rescale = def._rescale0 || def.rescale; def.colormap = def._cmap0 || def.colormap; }
-    styleOf(def); applyStyle(def); const b = el.querySelector(".legend"); b.innerHTML = ""; delete b.dataset.loaded; loadLegend(def, el); };
+  box.querySelectorAll("select,input").forEach((i) => (i.onchange = update));
+  q(".st-reset").onclick = () => {
+    delete STYLE[def.id];
+    if (def.type === "s2live") { // torna ai valori originali salvati da loadLegend
+      def.rescale = def._rescale0 || def.rescale;
+      def.colormap = def._cmap0 || def.colormap;
+    }
+    styleOf(def);
+    applyStyle(def);
+    const legendBox = el.querySelector(".legend");
+    legendBox.innerHTML = "";
+    delete legendBox.dataset.loaded;
+    loadLegend(def, el);
+  };
 }
-// data Copernicus più vicina (non successiva) a quella scelta, per ogni prodotto
-const clmsPick = (p) => { const ds = clmsIdx[p] || []; if (!ds.length) return null; if (!clmsDate) return ds[ds.length - 1];
-  return ds.filter((d) => d <= clmsDate).pop() || ds[0]; };
+// data Copernicus più vicina (non successiva) a quella scelta, per ogni prodotto; senza scelta, la più recente
+const clmsPick = (p) => {
+  const dates = clmsIdx[p] || [];
+  if (!dates.length) return null;
+  if (!clmsDate) return dates[dates.length - 1];
+  return dates.filter((d) => d <= clmsDate).pop() || dates[0];
+};
 const state = { on: new Set() };
 
 function makeLayer(def) {
@@ -205,21 +244,26 @@ function readHash() {
 
 // ------------------------------------------------------------------ legenda / legend
 const legendCache = {};
+const legendTitle = () => `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>`;
 async function loadLegend(def, el) {
   const box = el.querySelector(".legend");
-  if (box && styleOf(def)) {
+  if (!box) return;
+  // mappe a valori continui: scala colori modificabile
+  if (styleOf(def)) {
     if (def.type === "s2live") { def._rescale0 = def._rescale0 || def.rescale; def._cmap0 = def._cmap0 || def.colormap; }
     box.innerHTML = styleHtml(def) + (def.type === "clms" ? `<div class="hint small">${t("hv_date")} ${clmsPick(def.product) || "—"}</div>` : "");
-    bindStyle(def, el); return;
-  }
-  if (box && def.type === "soil") { box.innerHTML = Suolo.texLegend(); return; }
-  if (box && def.type === "cty") { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${CropLayer.legendHtml()}`; return; }
-  if (box && def.legendHtml) { box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>${def.legendHtml}`; return; }
-  if (box && def.type === "wms" && !def.legendHtml) {
-    box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div><img alt="" style="max-width:100%" src="${def.wmsUrl}&service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=${def.wmsLayers}&sld_version=1.1.0">`;
+    bindStyle(def, el);
     return;
   }
-  if (!box || box.dataset.loaded || !def.url) return;
+  if (def.type === "soil") { box.innerHTML = Suolo.texLegend(); return; }
+  if (def.type === "cty") { box.innerHTML = legendTitle() + CropLayer.legendHtml(); return; }
+  if (def.legendHtml) { box.innerHTML = legendTitle() + def.legendHtml; return; }
+  if (def.type === "wms") {
+    box.innerHTML = legendTitle() + `<img alt="" style="max-width:100%" src="${def.wmsUrl}&service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=${def.wmsLayers}&sld_version=1.1.0">`;
+    return;
+  }
+  // layer ArcGIS: legenda letta dal servizio (una sola volta per pannello)
+  if (box.dataset.loaded || !def.url) return;
   box.dataset.loaded = "1";
   try {
     const j = legendCache[def.url] || (legendCache[def.url] = await fetch(`${def.url}/legend?f=json`).then((r) => r.json()));
@@ -247,12 +291,29 @@ async function loadLegend(def, el) {
     }
     rows = rows.slice(0, 48);
     if (!rows.length) return;
-    box.innerHTML = `<div style="font-weight:600;margin-top:4px">${t("legend")}</div>` + rows.map((r) =>
+    box.innerHTML = legendTitle() + rows.map((r) =>
       `<div class="legend-row"><img alt="" src="data:${r.contentType};base64,${r.imageData}"><span>${escapeHtml(r.label)}</span></div>`).join("");
   } catch (e) { /* legenda non disponibile */ }
 }
 
 // ------------------------------------------------------------------ pannello layer
+function yearSelect(id, label, current) {
+  const years = [2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017];
+  return `<div class="cty-year">${t(label)} <select id="${id}">${years.map((y) => `<option ${y === current ? "selected" : ""}>${y}</option>`).join("")}</select></div>`;
+}
+// controlli in testa a un gruppo (finestra temporale, data Copernicus, anno HR-VPP, segmentazione + anno colture)
+function groupControls(g) {
+  switch (g.id) {
+    case "live": return Live.windowControl();
+    case "clms": {
+      const dates = [...new Set(Object.values(clmsIdx).flat())].sort().reverse();
+      return `<div class="cty-year">${t("hv_date")} <select id="clmsDate">${dates.map((d) => `<option ${d === clmsDate ? "selected" : ""}>${d}</option>`).join("")}</select></div>`;
+    }
+    case "hrvpp": return yearSelect("hvYear", "hv_year", hvYear);
+    case "fields": return Live.segControl() + yearSelect("ctyYear", "cty_year", ctyYear);
+    default: return "";
+  }
+}
 function renderLayerPanel() {
   const bm = document.getElementById("basemaps");
   bm.innerHTML = Object.keys(BASEMAPS).map((k) =>
@@ -263,7 +324,7 @@ function renderLayerPanel() {
   list.innerHTML = LAYER_GROUPS.map((g, gi) => {
     const items = LAYERS.filter((l) => l.group === g.id);
     return `<details class="group" data-group="${g.id}" ${gi < 3 || items.some((l) => state.on.has(l.id)) ? "open" : ""}>
-      <summary>${g[LANG]}</summary>${g.id === "live" ? Live.windowControl() : ""}${g.id === "clms" ? `<div class="cty-year">${t("hv_date")} <select id="clmsDate">${[...new Set(Object.values(clmsIdx).flat())].sort().reverse().map((d) => `<option ${d === clmsDate ? "selected" : ""}>${d}</option>`).join("")}</select></div>` : ""}${g.id === "hrvpp" ? `<div class="cty-year">${t("hv_year")} <select id="hvYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === hvYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}${g.id === "fields" ? Live.segControl() + `<div class="cty-year">${t("cty_year")} <select id="ctyYear">${[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => `<option ${y === ctyYear ? "selected" : ""}>${y}</option>`).join("")}</select></div>` : ""}
+      <summary>${g[LANG]}</summary>${groupControls(g)}
       ${items.map((l) => `
         <div class="layer ${state.on.has(l.id) ? "on" : ""}" data-id="${l.id}">
           <div class="layer-head">
@@ -301,20 +362,29 @@ function renderLayerPanel() {
     if (state.on.has(id)) { el.classList.add("expanded"); loadLegend(def, el); }
   });
   Live.bindWindowControl();
-  const hy = document.getElementById("hvYear");
-  if (hy) hy.onchange = () => { hvYear = +hy.value; LAYERS.filter((l) => l.wmsTime === "hrvpp" && leafletLayers[l.id]).forEach((l) => leafletLayers[l.id].setParams({ time: `${hvYear}-01-01` })); };
-  const cd = document.getElementById("clmsDate");
-  if (cd) cd.onchange = () => { clmsDate = cd.value; LAYERS.filter((l) => l.type === "clms" && leafletLayers[l.id]).forEach((l) => leafletLayers[l.id].setUrl(Clms.url(l.product, clmsPick(l.product)))); };
-  const cy = document.getElementById("ctyYear");
-  if (cy) cy.onchange = () => { ctyYear = +cy.value; if (leafletLayers.cty) leafletLayers.cty.setYear(ctyYear); };
+  const hvSel = document.getElementById("hvYear");
+  if (hvSel) hvSel.onchange = () => {
+    hvYear = +hvSel.value;
+    LAYERS.filter((l) => l.wmsTime === "hrvpp" && leafletLayers[l.id]).forEach((l) => leafletLayers[l.id].setParams({ time: `${hvYear}-01-01` }));
+  };
+  const clmsSel = document.getElementById("clmsDate");
+  if (clmsSel) clmsSel.onchange = () => {
+    clmsDate = clmsSel.value;
+    LAYERS.filter((l) => l.type === "clms" && leafletLayers[l.id]).forEach((l) => leafletLayers[l.id].setUrl(Clms.url(l.product, clmsPick(l.product))));
+  };
+  const ctySel = document.getElementById("ctyYear");
+  if (ctySel) ctySel.onchange = () => { ctyYear = +ctySel.value; if (leafletLayers.cty) leafletLayers.cty.setYear(ctyYear); };
   updateZoomNotes();
 }
 
 // ------------------------------------------------------------------ catalogo / about
 function renderCatalog() {
-  const onMap = LAYERS.map((l) => `
-    <div class="cat-item"><b>${l[LANG].name}<span class="badge ${ARCHIVE_GROUPS.includes(l.group) ? "coming" : "on"}">${ARCHIVE_GROUPS.includes(l.group) ? t("archive") : t("on_map")}</span></b>
-      <p>${l[LANG].desc}</p><a href="${l.link}" target="_blank" rel="noopener">${l.source} ↗</a></div>`).join("");
+  const onMap = LAYERS.map((l) => {
+    const archived = ARCHIVE_GROUPS.includes(l.group);
+    return `
+    <div class="cat-item"><b>${l[LANG].name}<span class="badge ${archived ? "coming" : "on"}">${archived ? t("archive") : t("on_map")}</span></b>
+      <p>${l[LANG].desc}</p><a href="${l.link}" target="_blank" rel="noopener">${l.source} ↗</a></div>`;
+  }).join("");
   const extra = CATALOG_EXTRA.map((d) => `
     <div class="cat-item"><b>${d[LANG]}<span class="badge ${d.status === "on" ? "on" : "coming"}">${t(d.status === "on" ? "on_map" : "coming")}</span></b>
       <p>${LANG === "it" ? d.dit : d.den}</p><a href="${d.link}" target="_blank" rel="noopener">${d.link.replace(/^https?:\/\//, "").split("/")[0]} ↗</a></div>`).join("");
@@ -344,6 +414,8 @@ async function rasterLabel(def, value) {
   } catch (e) { return null; }
 }
 
+// NB: identify() (e quindi rasterLabel()) al momento non è chiamata da nessuna parte: queryPoint non interroga
+// più i layer. Lasciata per una futura riattivazione (usa CLC_IT/CLC_EN di i18n.js).
 async function identify(def, ll, clc = false) {
   const geom = encodeURIComponent(JSON.stringify({ x: ll.lng, y: ll.lat, spatialReference: { wkid: 4326 } }));
   if (def.type === "arcgis-image") {
@@ -382,7 +454,6 @@ async function queryPoint(ll) {
   if (window.innerWidth > 760) document.getElementById("sidebar").classList.add("open");
 
   const lat = ll.lat.toFixed(6), lng = ll.lng.toFixed(6);
-  const active = LAYERS.filter((l) => state.on.has(l.id) && l.type.startsWith("arcgis"));
   const panel = document.getElementById("infoPanel");
   panel.innerHTML = `
     <div class="info-block"><h4>${t("info_coords")}</h4>
@@ -400,7 +471,6 @@ async function queryPoint(ll) {
   document.getElementById("copyBtn").onclick = async (ev) => {
     try { await navigator.clipboard.writeText(`${lat}, ${lng}`); ev.target.textContent = t("copied"); } catch (e) {}
   };
-
 }
 
 // ------------------------------------------------------------------ ricerca luoghi
@@ -437,6 +507,7 @@ function loadComuni() {
     .then((j) => { COMUNI = j ? j.comuni.map((c) => ({ c, n: norm(c[0]) })) : []; }).catch(() => { COMUNI = []; });
   return comuniLoading;
 }
+// distanza di Levenshtein con uscita anticipata: restituisce max + 1 appena la distanza supera max
 function lev(a, b, max) {
   if (Math.abs(a.length - b.length) > max) return max + 1;
   let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
@@ -450,24 +521,34 @@ function lev(a, b, max) {
 }
 function searchComuni(q) {
   if (!COMUNI || !COMUNI.length) return [];
-  // "Nome (RM)" o "Nome, provincia"
-  let pr = null; const m = q.match(/^(.*?)[\s,(]+([A-Za-z]{2})\)?\s*$/);
-  let qq = norm(q);
-  if (m && m[2]) { const sig = m[2].toUpperCase(); if (COMUNI.some((x) => x.c[1] === sig)) { pr = sig; qq = norm(m[1]); } }
-  if (qq.length < 2) return [];
-  const maxD = qq.length <= 4 ? 1 : qq.length <= 8 ? 2 : 3;
-  const sc = [];
-  for (const x of COMUNI) {
-    if (pr && x.c[1] !== pr) continue;
-    let s = 0;
-    if (x.n === qq) s = 100;
-    else if (x.n.startsWith(qq)) s = 85 - Math.min(20, x.n.length - qq.length);
-    else if (x.n.split(" ").some((w) => w.startsWith(qq))) s = 70;
-    else if (x.n.includes(qq)) s = 55;
-    else { const d = lev(qq, x.n.slice(0, qq.length + 2), maxD), d2 = lev(qq, x.n, maxD); const dd = Math.min(d, d2); if (dd <= maxD) s = 50 - dd * 10; }
-    if (s > 0) sc.push([s, x.c]);
+  // "Nome (RM)" o "Nome RM": la sigla filtra la provincia se esiste
+  // (voce di comuni.json: [nome, sigla provincia, regione, lat, lon, ovest, sud, est, nord])
+  let prov = null, qn = norm(q);
+  const m = q.match(/^(.*?)[\s,(]+([A-Za-z]{2})\)?\s*$/);
+  if (m && m[2]) {
+    const sig = m[2].toUpperCase();
+    if (COMUNI.some((x) => x.c[1] === sig)) { prov = sig; qn = norm(m[1]); }
   }
-  return sc.sort((a, b) => b[0] - a[0]).slice(0, 6).map(([s, c]) => ({ nome: c[0], dove: `${c[1]} · ${c[2]}`, tipo: "comune", lat: c[3], lon: c[4], ext: [c[6], c[5], c[8], c[7]], score: s }));
+  if (qn.length < 2) return [];
+  let maxD;                                       // errori di battitura tollerati
+  if (qn.length <= 4) maxD = 1;
+  else if (qn.length <= 8) maxD = 2;
+  else maxD = 3;
+  const scored = [];
+  for (const x of COMUNI) {
+    if (prov && x.c[1] !== prov) continue;
+    let s = 0;
+    if (x.n === qn) s = 100;
+    else if (x.n.startsWith(qn)) s = 85 - Math.min(20, x.n.length - qn.length);
+    else if (x.n.split(" ").some((w) => w.startsWith(qn))) s = 70;
+    else if (x.n.includes(qn)) s = 55;
+    else {
+      const d = Math.min(lev(qn, x.n.slice(0, qn.length + 2), maxD), lev(qn, x.n, maxD));
+      if (d <= maxD) s = 50 - d * 10;
+    }
+    if (s > 0) scored.push([s, x.c]);
+  }
+  return scored.sort((a, b) => b[0] - a[0]).slice(0, 6).map(([s, c]) => ({ nome: c[0], dove: `${c[1]} · ${c[2]}`, tipo: "comune", lat: c[3], lon: c[4], ext: [c[6], c[5], c[8], c[7]], score: s }));
 }
 
 // parole che non aiutano il geocoder ("località Strada" -> "Strada", cercata come località)
@@ -477,8 +558,14 @@ function rank(items, q) {
   const c = map.getCenter(), z = map.getZoom(), nq = norm(q.replace(FILLER, ""));
   const placeWanted = FILLER.test(q) || !/\d/.test(q);
   return items.map((r) => {
-    let s = PLACE_T[r.tipo] || (r.tipo === "house" ? 6 : r.tipo === "street" ? 4 : 2);
-    if (!placeWanted) s = r.tipo === "house" || r.tipo === "street" ? 30 : s;
+    const isAddress = r.tipo === "house" || r.tipo === "street";
+    // punteggio di base per tipo; se la ricerca contiene numeri si privilegiano vie e indirizzi
+    let s;
+    if (PLACE_T[r.tipo]) s = PLACE_T[r.tipo];
+    else if (r.tipo === "house") s = 6;
+    else if (r.tipo === "street") s = 4;
+    else s = 2;
+    if (!placeWanted && isAddress) s = 30;
     const nn = norm(r.nome);
     if (nn === nq) s += 40; else if (nn.startsWith(nq)) s += 20; else if (nn.includes(nq)) s += 5;
     const km = Math.hypot((r.lat - c.lat) * 111, (r.lon - c.lng) * 111 * Math.cos(c.lat * Math.PI / 180));
@@ -525,7 +612,7 @@ async function doSearch(q) {
   let web = [];
   try {
     // per "località X" o una sola parola si cercano anche solo i luoghi abitati (città, frazioni, località)
-    const solo = FILLER.test(q) || !/\s/.test(q.trim());
+    const solo = FILLER.test(q) || !/\s/.test(q);
     web = sCache[q] || (sCache[q] = (await Promise.all([photon(q).catch(() => []), solo ? photon(q, "&osm_tag=place").catch(() => []) : []])).flat()
       .filter((r, i, a) => a.findIndex((x) => x.nome === r.nome && Math.abs(x.lat - r.lat) < 0.002 && Math.abs(x.lon - r.lon) < 0.002) === i));
     if (!web.length && !loc.length) web = sCache[q] = await nominatim(q.replace(FILLER, ""));
@@ -539,7 +626,7 @@ async function doSearch(q) {
   renderResults();
 }
 function renderResults() {
-  const tip = (t) => (TIPI[LANG] && TIPI[LANG][t]) || t || "";
+  const tip = (tipo) => (TIPI[LANG] && TIPI[LANG][tipo]) || tipo || "";
   sList.innerHTML = sItems.length ? sItems.map((r, i) =>
     `<li data-i="${i}" class="${i === sSel ? "sel" : ""}"><b>${escapeHtml(r.nome)}</b> <span class="s-tipo">${escapeHtml(tip(r.tipo))}</span>` +
     (r.dove ? `<br><small>${escapeHtml(r.dove)}</small>` : "") + `</li>`).join("") : `<li>${t("search_none")}</li>`;
@@ -571,8 +658,10 @@ document.getElementById("searchForm").addEventListener("submit", async (e) => {
   if (!sItems.length || sList.hidden) await doSearch(sInput.value);
   if (sItems.length) goTo(sItems[Math.max(0, sSel)]);
 });
-sInput.addEventListener("focus", () => { loadComuni(); });
-sInput.addEventListener("focus", () => { if (sItems.length && sInput.value.trim().length >= 2) sList.hidden = false; });
+sInput.addEventListener("focus", () => {
+  loadComuni();
+  if (sItems.length && sInput.value.trim().length >= 2) sList.hidden = false;
+});
 document.addEventListener("click", (e) => { if (!e.target.closest(".search")) sList.hidden = true; });
 
 // ------------------------------------------------------------------ tab, lingua, mobile
