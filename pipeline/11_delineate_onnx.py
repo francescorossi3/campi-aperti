@@ -1,5 +1,10 @@
-# Esporta il modello Delineate Anything S (YOLO11n-seg, AGPL-3.0, Lavreniuk et al. 2025)
+# Columella — 11: esporta il modello Delineate Anything S (YOLO11n-seg, AGPL-3.0, Lavreniuk et al. 2025)
 # in formato ONNX per l'inferenza nel browser e lo pubblica nel repository dati (pubblico).
+# Licenza: il modello e i pesi restano AGPL-3.0 (attribuzione: Lavreniuk et al. 2025, torchgeo/delineate-anything-s).
+# Ingressi: pesi da Hugging Face (revisione fissata); env HF_TOKEN, HF_DATA_REPO (obbligatori)
+# Uscita: data/modelli/delineate_anything_s.onnx, caricato in <HF_DATA_REPO>/modelli/
+# Esecuzione: workflow delineate.yml (da pipeline/) oppure Spyder
+# EN: exports Delineate Anything S (AGPL-3.0) to ONNX and uploads it to the public HF dataset.
 import os
 from huggingface_hub import hf_hub_download, HfApi
 from ultralytics import YOLO
