@@ -1,4 +1,4 @@
-# 16 — Variabili biogeofisiche Copernicus (CLMS) ritagliate sull'Italia, per la mappa e la scheda campo
+# Columella — 16: variabili biogeofisiche Copernicus (CLMS) ritagliate sull'Italia, per la mappa e la scheda campo
 #
 # Prodotti (catalogo Copernicus Data Space, collezione CLMS, versioni COG):
 #   LAI, FAPAR, FCOVER (300 m, Sentinel-3 OLCI, ogni 10 giorni)     NDVI 300 m (ogni 10 giorni)
@@ -6,7 +6,11 @@
 #   SSM 1 km (umidità superficiale del suolo da Sentinel-1, Europa)
 # Per ogni decade degli ultimi MESI mesi si legge solo la finestra Italia (letture parziali HTTP col token CDSE),
 # si applicano scala e offset e si salva un COG float32 (nullo -9999). I file già presenti su Hugging Face si saltano.
+# Ingressi: env PRODOTTO (def. LAI), MESI (def. 14), FORZA (prodotti da rielaborare, separati da virgola),
+#           HF_TOKEN, HF_DATA_REPO, CDSE_USERNAME, CDSE_PASSWORD
 # Uscita: data/clms/<PRODOTTO>/<AAAA-MM-GG>.tif
+# Esecuzione: workflow clms.yml (un job per prodotto, poi hf_sync.py carica "clms") oppure Spyder
+# EN: clips Copernicus CLMS biophysical products to Italy as float32 COGs, one per dekad.
 
 import os
 import time
@@ -74,7 +78,8 @@ for dec, p in da_fare:
         if not tif:
             tif = [n for n in nomi if n.lower().endswith((".tif", ".tiff")) and not any(e in n.upper() for e in ESCLUDI)]
         if not tif:
-            print(dec, "nessun GeoTIFF fra", nomi[:8]); continue
+            print(dec, "nessun GeoTIFF fra", nomi[:8])
+            continue
         href = f"{base}/Nodes({tif[0]})/$value"
         with rasterio.Env(GDAL_HTTP_HEADERS=f"Authorization: Bearer {tok}", GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
                           CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif,.tiff,$value", GDAL_HTTP_MAX_RETRY=4, GDAL_HTTP_RETRY_DELAY=5):
@@ -82,7 +87,8 @@ for dec, p in da_fare:
                 win = from_bounds(*ITALIA, ds.transform).round_offsets().round_lengths()
                 a = ds.read(1, window=win, masked=True).astype("float32")
                 sc, of = ds.scales[0] or 1.0, ds.offsets[0] or 0.0
-                prof = ds.profile.copy(); tr = ds.window_transform(win)
+                prof = ds.profile.copy()
+                tr = ds.window_transform(win)
         a = a * sc + of
         prof.update(driver="COG", width=a.shape[1], height=a.shape[0], transform=tr, dtype="float32", nodata=-9999, compress="deflate", count=1)
         for k in ("blockxsize", "blockysize", "tiled", "interleave"):
