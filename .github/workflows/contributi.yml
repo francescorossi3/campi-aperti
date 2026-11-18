@@ -33,12 +33,19 @@ jobs:
               g = f and f.get("geometry", {})
               if f and f.get("type") == "Feature" and g.get("type") in ("Polygon", "MultiPolygon"):
                   pts = json.dumps(g["coordinates"])
-                  assert len(pts) < 200000
+                  assert len(pts) < 200000 and len(body) < 300000
                   # solo campi in Italia (circa)
                   xs = [float(v) for v in re.findall(r"-?\d+\.?\d*", pts)]
                   lon, lat = xs[0::2], xs[1::2]
                   assert 6 <= min(lon) and max(lon) <= 19 and 35 <= min(lat) and max(lat) <= 47.5
-                  p = {k: v for k, v in f.get("properties", {}).items() if k != "nome" and not isinstance(v, (dict, list))}
+                  # proprietà: al massimo 30, solo valori semplici, testi corti e senza HTML (il dataset è pubblico)
+                  p = {}
+                  for k, v in list((f.get("properties") or {}).items())[:30]:
+                      if k == "nome" or isinstance(v, (dict, list)) or len(str(k)) > 40:
+                          continue
+                      if isinstance(v, str):
+                          v = re.sub(r"[<>]", "", v)[:200]
+                      p[re.sub(r"[^\w.-]", "_", str(k))] = v
                   p.update({"issue": int(os.environ["NUM"]), "ricevuto": datetime.date.today().isoformat()})
                   os.makedirs("data/contributi", exist_ok=True)
                   path = "data/contributi/campi.geojson"
