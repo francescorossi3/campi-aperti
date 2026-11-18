@@ -1,6 +1,12 @@
-// Campi Aperti — tab "Regioni": riepiloghi per regione, coltura e periodo
-// Dati: data/riepiloghi.json, prodotto ogni giorno dalla GitHub Action "Meteo e riepiloghi regionali"
-// (superfici: Copernicus HRL Crop Types; pioggia ed ET0: ERA5; ET coltura: Kc FAO-56 × ET0)
+// Columella – regions.js
+// IT: tab "Regioni" con due viste: (1) acqua per regione, coltura e periodo da data/riepiloghi.json,
+//     prodotto ogni giorno dalla GitHub Action "Meteo e riepiloghi regionali" (superfici: Copernicus HRL
+//     Crop Types; pioggia ed ET0: ERA5; ET coltura: Kc FAO-56 × ET0); (2) rese per provincia, ISTAT contro
+//     modello di Monteith, da data/monteith_province.json.
+//     Espone il globale Regions { show, render, taratura } (usato da app.js e live.js).
+//     Dipendenze: LANG (app.js), Chart.js (js/vendor), elemento #regionsPanel.
+// EN: "Regions" tab: water balance by region/crop/period and province yields (ISTAT vs Monteith model).
+//     Exposes Regions { show, render, taratura }; needs LANG, Chart.js and #regionsPanel.
 
 const Regions = (() => {
   const RT = {
@@ -60,9 +66,16 @@ const Regions = (() => {
     },
   };
   const rt = (k) => (RT[LANG] || RT.it)[k];
+  const locale = () => (LANG === "it" ? "it-IT" : "en-GB");
+  const opt = (v, l, s) => `<option value="${v}" ${v == s ? "selected" : ""}>${l}</option>`;
+  const seasonLabel = (y) => `${y - 1}/${String(y).slice(2)}`;   // annata agraria, es. 2024 -> "2023/24"
+
+  // D/rows: riepiloghi regionali; M: rese per provincia; chart/chart2: grafici Chart.js attivi
   let D = null, rows = null, loaded = false, chart = null;
-  const sel = { regione: "Italia", classe: "all", anno: null, periodo: "q1", vista: "acqua", prov: null, rcl: 1, ranno: null };
   let M = null, mLoaded = false, chart2 = null;
+  const sel = { regione: "Italia", classe: "all", anno: null, periodo: "q1", vista: "acqua", prov: null, rcl: 1, ranno: null };
+
+  // ---------- Vista "rese per provincia" ----------
   async function loadM() {
     if (mLoaded) return M;
     mLoaded = true;
@@ -98,14 +111,20 @@ const Regions = (() => {
       sel.prov = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || provs[0];
     }
     const anni = [...new Set(M.rows.map((r) => r.y))].sort((a, b) => b - a);
-    const opt = (v, l, s) => `<option value="${v}" ${v == s ? "selected" : ""}>${l}</option>`;
     const mine = M.rows.filter((r) => r.prov === sel.prov && r.cl === sel.rcl).sort((a, b) => a.y - b.y);
     const f = fat(sel.rcl), T = M.taratura[sel.rcl];
-    const f2 = (x) => (x == null ? "—" : x.toLocaleString(LANG === "it" ? "it-IT" : "en-GB", { maximumFractionDigits: 1, minimumFractionDigits: 1 }));
+    const f2 = (x) => (x == null ? "—" : f1(x));
     const righe = mine.map((r) => {
-      const t = r.mod * f, sc = r.ist ? Math.round((t / r.ist - 1) * 100) : null;
-      return `<tr><td>${r.y - 1}/${String(r.y).slice(2)}</td><td>${f2(r.ist)}</td><td>${f2(r.mod)}</td><td><b>${f2(t)}</b></td>` +
-        `<td class="${sc == null ? "" : Math.abs(sc) > 25 ? "bad" : "good"}">${sc == null ? "—" : (sc > 0 ? "+" : "") + sc + "%"}</td><td>${r.ha ? Math.round(r.ha).toLocaleString() : "—"}</td><td>${r.px}</td></tr>`;
+      const t = r.mod * f;
+      // scarto % del modello tarato rispetto a ISTAT: "bad" oltre ±25 %
+      let scClass = "", scText = "—";
+      if (r.ist) {
+        const sc = Math.round((t / r.ist - 1) * 100);
+        scClass = Math.abs(sc) > 25 ? "bad" : "good";
+        scText = (sc > 0 ? "+" : "") + sc + "%";
+      }
+      return `<tr><td>${seasonLabel(r.y)}</td><td>${f2(r.ist)}</td><td>${f2(r.mod)}</td><td><b>${f2(t)}</b></td>` +
+        `<td class="${scClass}">${scText}</td><td>${r.ha ? Math.round(r.ha).toLocaleString() : "—"}</td><td>${r.px}</td></tr>`;
     }).join("");
     box.innerHTML = viewTabs() + `
       <div class="reg-form">
@@ -116,8 +135,8 @@ const Regions = (() => {
       ${T ? `<p class="reg-sentence">${rt("tar").replace("{c}", clName(sel.rcl).toLowerCase()).replace("{f}", T.fattore.toFixed(2)).replace("{n}", T.n).replace("{r2}", T.r2.toFixed(2)).replace("{e}", Math.round(T.errore_rel_tarato * 100))}</p>` : ""}
       <div class="reg-table-wrap"><table class="reg-table"><thead><tr>${rt("th_r").map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${righe}</tbody></table></div>
       <figure class="reg-fig"><figcaption>${rt("ch_r")}</figcaption><div class="cbox"><canvas id="rpChart"></canvas></div></figure>
-      <figure class="reg-fig"><figcaption>${rt("sc_r").replace("{y}", `${sel.ranno - 1}/${String(sel.ranno).slice(2)}`)}</figcaption><div class="cbox"><canvas id="rpScatter"></canvas></div></figure>
-      <p class="hint small">${rt("r_note")} ${rt("upd")}: ${new Date(M.generato).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB")}.</p>`;
+      <figure class="reg-fig"><figcaption>${rt("sc_r").replace("{y}", seasonLabel(sel.ranno))}</figcaption><div class="cbox"><canvas id="rpScatter"></canvas></div></figure>
+      <p class="hint small">${rt("r_note")} ${rt("upd")}: ${new Date(M.generato).toLocaleDateString(locale())}.</p>`;
     bindViews();
     document.getElementById("rpP").onchange = (e) => { sel.prov = e.target.value; renderRese(); };
     document.getElementById("rpC").onchange = (e) => { sel.rcl = +e.target.value; sel.prov = null; renderRese(); };
@@ -126,7 +145,7 @@ const Regions = (() => {
     if (chart2) { chart2.destroy(); chart2 = null; }
     chart = new Chart(document.getElementById("rpChart"), {
       type: "line",
-      data: { labels: mine.map((r) => `${r.y - 1}/${String(r.y).slice(2)}`), datasets: [
+      data: { labels: mine.map((r) => seasonLabel(r.y)), datasets: [
         { label: rt("istat"), data: mine.map((r) => r.ist), borderColor: "#2b6cb0", backgroundColor: "#2b6cb0", tension: 0.2 },
         { label: rt("mod"), data: mine.map((r) => r.mod * f), borderColor: "#2f8f3a", backgroundColor: "#2f8f3a", tension: 0.2 },
         { label: rt("modraw"), data: mine.map((r) => r.mod), borderColor: "#2f8f3a77", borderDash: [4, 3], pointRadius: 0, tension: 0.2 },
@@ -150,6 +169,7 @@ const Regions = (() => {
     });
   }
 
+  // ---------- Vista "acqua per regione" ----------
   async function load() {
     if (loaded) return D;
     loaded = true;
@@ -189,8 +209,8 @@ const Regions = (() => {
       .sort((a, b) => b.ha - a.ha);
   }
 
-  const f0 = (x) => Math.round(x).toLocaleString(LANG === "it" ? "it-IT" : "en-GB");
-  const f1 = (x) => x.toLocaleString(LANG === "it" ? "it-IT" : "en-GB", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  const f0 = (x) => Math.round(x).toLocaleString(locale());
+  const f1 = (x) => x.toLocaleString(locale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 });
   const cname = (cl) => D.classi[cl] ? D.classi[cl][LANG] : cl;
 
   function render() {
@@ -199,20 +219,19 @@ const Regions = (() => {
     if (!D) { box.innerHTML = viewTabs() + `<p class="hint">${rt("missing")}</p>`; bindViews(); return; }
     const regs = ["Italia", ...[...new Set(rows.map((r) => r.reg))].filter((r) => r !== "Italia").sort()];
     const periods = ["q1", "q2", "q3", "q4", "annata", "solare", ...Array.from({ length: 12 }, (_, i) => "m" + (i + 1))];
-    const opt = (v, l, s) => `<option value="${v}" ${v == s ? "selected" : ""}>${l}</option>`;
     const data = aggregate();
     const shown = sel.classe === "all" ? data : data.filter((o) => String(o.cl) === String(sel.classe));
     const hasEta = shown.length && shown.every((o) => o.eta != null);
     const tot = shown.reduce((a, o) => ({ ha: a.ha + o.ha, p: a.p + o.p * o.ha, e0: a.e0 + o.e0 * o.ha, etc: a.etc + o.etc * o.ha,
       eta: a.eta + (o.eta || 0) * o.ha, tra: a.tra + (o.tra || 0) * o.ha }), { ha: 0, p: 0, e0: 0, etc: 0, eta: 0, tra: 0 });
-    const vol = (mm, ha) => (mm * ha * 10) / 1e6;
+    const vol = (mm, ha) => (mm * ha * 10) / 1e6;   // mm × ha -> milioni di m³
     const nd = (x) => (x == null ? "—" : f0(x));
     const etUse = (o) => (o.eta != null ? o.eta : o.etc);   // per bilancio e volume: misura satellitare se c'è
     const row = (name, o, cls = "") => `<tr class="${cls}"><td>${name}</td><td>${f0(o.ha)}</td><td>${f0(o.p)}</td><td>${f0(o.e0)}</td><td>${f0(o.etc)}</td>` +
       `<td>${nd(o.eta)}</td><td>${nd(o.tra)}</td><td>${f0(o.p - etUse(o))}</td><td>${f1(vol(etUse(o), o.ha))}</td></tr>`;
     const T = tot.ha ? { ha: tot.ha, p: tot.p / tot.ha, e0: tot.e0 / tot.ha, etc: tot.etc / tot.ha, eta: hasEta ? tot.eta / tot.ha : null, tra: hasEta ? tot.tra / tot.ha : null } : null;
     const lead = sel.classe === "all" ? null : shown[0];
-    const sentence = lead ? rt("sentence").replace("{p}", periodName()).replace("{y}", sel.periodo === "annata" ? `${sel.anno - 1}/${String(sel.anno).slice(2)}` : sel.anno).replace("{c}", cname(lead.cl).toLowerCase())
+    const sentence = lead ? rt("sentence").replace("{p}", periodName()).replace("{y}", sel.periodo === "annata" ? seasonLabel(sel.anno) : sel.anno).replace("{c}", cname(lead.cl).toLowerCase())
       .replace("{r}", sel.regione).replace("{ha}", f0(lead.ha)).replace("{rain}", f0(lead.p)).replace("{vr}", f1(vol(lead.p, lead.ha)))
       .replace("{etc}", f0(lead.etc)).replace("{ve}", f1(vol(lead.etc, lead.ha))).replace("{bal}", (lead.p - lead.etc >= 0 ? "+" : "") + f0(lead.p - lead.etc))
       + (lead.eta != null ? rt("eta_s").replace("{eta}", f0(lead.eta)).replace("{tra}", f0(lead.tra)) : "") : "";
@@ -229,7 +248,7 @@ const Regions = (() => {
       <div class="reg-table-wrap"><table class="reg-table"><thead><tr>${rt("th").map((h) => `<th>${h}</th>`).join("")}</tr></thead>
         <tbody>${shown.map((o) => row(cname(o.cl), o)).join("")}${T && shown.length > 1 ? row(rt("total"), T, "tot") : ""}</tbody></table></div>
       <figure class="reg-fig"><figcaption>${rt("chart")}</figcaption><div class="cbox"><canvas id="rgChart"></canvas></div></figure>
-      <p class="hint small">${rt("note")} ${rt("upd")}: ${new Date(D.generato).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB")}.</p>`;
+      <p class="hint small">${rt("note")} ${rt("upd")}: ${new Date(D.generato).toLocaleDateString(locale())}.</p>`;
     bindViews();
     document.getElementById("rgReg").onchange = (e) => { sel.regione = e.target.value; render(); };
     document.getElementById("rgCl").onchange = (e) => { sel.classe = e.target.value; render(); };
