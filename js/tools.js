@@ -1,9 +1,17 @@
-// Campi Aperti — strumenti sulla mappa:
-//  ✏️ disegna un campo (con coltura, filari, alberi, resa…) e, se l'utente vuole, lo condivide per addestrare i modelli
-//  ▭  scarica i campi di un'area (GeoJSON / KML / CSV)
+// Columella — js/tools.js
+// IT: barra degli strumenti sulla mappa (testi IT/EN propri, tabella TT):
+//  ✏️ disegna un campo (coltura, filari, alberi, resa…) e, se l'utente vuole, lo condivide su GitHub per i modelli
+//  ▭  scarica i campi di un'area (GeoJSON / KML / CSV), divisi automaticamente da Sentinel-2
 //  📂 carica una propria mappa (GeoTIFF, GeoJSON, KML) e sceglie la legenda — il file non lascia il computer
-//  🏡 il mio prato: quanta acqua dare, quando tagliare
-//  ⭐ i miei campi (salvati nel browser)
+//  🏡 il mio prato: quanta acqua dare, quando tagliare (meteo Open-Meteo)
+//  ⭐ i miei campi (nel browser, oppure nell'account Supabase se l'utente ha fatto l'accesso)
+// EN: map toolbar: draw a field, download the fields of an area, load your own maps, lawn advice, saved fields.
+//
+// Globale esposto / exposed global: Tools { init, busy, refreshLang, startDraw, welcome }
+//   (app.js usa init, busy, refreshLang).
+// Dipende da / depends on: Leaflet (L), app.js (LANG, map — usati solo dopo Tools.init()), croplayer.js (COLORMAPS),
+//   live.js (Live), segment.js (Segment), account.js (Account, facoltativo), vendor GeoTIFF + proj4,
+//   servizi esterni: Open-Meteo, epsg.io, GitHub issues.
 
 const Tools = (() => {
   const REPO = "francescorossi3/columella";
@@ -99,7 +107,12 @@ const Tools = (() => {
       l_src: "Weather: ERA5 and Open-Meteo forecast. Turfgrass crop coefficient FAO-56: 0.85 cool-season, 0.65 warm-season. Growth: growth potential model (Gelernter & Stowell).",
     },
   };
-  const tt = (k, v) => { let s = (TT[LANG] || TT.it)[k] ?? TT.it[k] ?? k; if (v && typeof s === "string") Object.entries(v).forEach(([a, b]) => (s = s.replace("{" + a + "}", b))); return s; };
+  // testo tradotto; i segnaposto {nome} vengono sostituiti con i valori di vars
+  const tt = (k, vars) => {
+    let s = (TT[LANG] || TT.it)[k] ?? TT.it[k] ?? k;
+    if (vars && typeof s === "string") Object.entries(vars).forEach(([name, val]) => (s = s.replace("{" + name + "}", val)));
+    return s;
+  };
   const CROPS = {
     it: ["Frumento tenero", "Frumento duro", "Orzo", "Mais", "Riso", "Altri cereali", "Legumi", "Patate", "Barbabietola", "Girasole", "Soia", "Colza",
       "Pomodoro da industria", "Ortaggi", "Erba medica", "Prato / pascolo", "Vite da vino", "Uva da tavola", "Olivo", "Melo", "Pero", "Pesco / nettarina",
@@ -113,13 +126,21 @@ const Tools = (() => {
   const download = (name, text, type = "application/json") => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([text], { type }));
-    a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
+  // area geodetica (sfera) di un Polygon/MultiPolygon GeoJSON, in ettari; i buchi vengono sottratti
   const areaHa = (geom) => {
-    const ring = (r) => { let a = 0; const R = 6378137;
-      for (let i = 0; i < r.length - 1; i++) { const [x1, y1] = r[i], [x2, y2] = r[i + 1];
-        a += ((x2 - x1) * Math.PI / 180) * (2 + Math.sin(y1 * Math.PI / 180) + Math.sin(y2 * Math.PI / 180)); }
-      return Math.abs((a * R * R) / 2); };
+    const ring = (r) => {
+      const R = 6378137;
+      let a = 0;
+      for (let i = 0; i < r.length - 1; i++) {
+        const [x1, y1] = r[i], [x2, y2] = r[i + 1];
+        a += ((x2 - x1) * Math.PI / 180) * (2 + Math.sin(y1 * Math.PI / 180) + Math.sin(y2 * Math.PI / 180));
+      }
+      return Math.abs((a * R * R) / 2);
+    };
     const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
     return polys.reduce((s, p) => s + ring(p[0]) - p.slice(1).reduce((q, h) => q + ring(h), 0), 0) / 10000;
   };
@@ -137,13 +158,16 @@ const Tools = (() => {
   function stopDraw() {
     if (!drawing) return;
     drawing.layers.forEach((l) => map.removeLayer(l));
-    map.off("click", drawing.onClick); map.off("mousemove", drawing.onMove); map.off("dblclick", drawing.onDbl);
+    map.off("click", drawing.onClick);
+    map.off("mousemove", drawing.onMove);
+    map.off("dblclick", drawing.onDbl);
     document.removeEventListener("keydown", drawing.onKey);
     map.doubleClickZoom.enable();
     map.getContainer().classList.remove("drawing");
     drawing = null;
     hint("");
   }
+  // kind "poly": poligono, done(feature GeoJSON); kind "rect": due angoli, done(L.LatLngBounds)
   function startDraw(kind, done, hintKey) {
     stopDraw();
     const pts = [];
@@ -151,13 +175,13 @@ const Tools = (() => {
     const ghost = L.polyline([], { color: "#ffd84a", weight: 2, dashArray: "4 4" }).addTo(map);
     const rect = L.rectangle([[0, 0], [0, 0]], { color: "#ffd84a", weight: 2, fillOpacity: 0.1 });
     const dots = L.layerGroup().addTo(map);
+    const addDot = (latlng) => L.circleMarker(latlng, { radius: 4, color: "#333", weight: 1, fillColor: "#ffd84a", fillOpacity: 1 }).addTo(dots);
     drawing = { layers: [line, ghost, rect, dots] };
     map.doubleClickZoom.disable();
     map.getContainer().classList.add("drawing");
     const finish = () => {
-      if (kind === "rect") return;
-      if (pts.length < 3) return;
-      const ring = [...pts.map((p) => [+p.lng.toFixed(6), +p.lat.toFixed(6)])];
+      if (kind === "rect" || pts.length < 3) return;
+      const ring = pts.map((p) => [+p.lng.toFixed(6), +p.lat.toFixed(6)]);
       ring.push(ring[0]);
       stopDraw();
       done({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } });
@@ -165,28 +189,43 @@ const Tools = (() => {
     drawing.onClick = (e) => {
       if (kind === "rect") {
         pts.push(e.latlng);
-        if (pts.length === 2) { const b = L.latLngBounds(pts); stopDraw(); done(b); }
-        else rect.setBounds(L.latLngBounds([e.latlng, e.latlng])).addTo(map);
+        if (pts.length === 2) {
+          const bounds = L.latLngBounds(pts);
+          stopDraw();
+          done(bounds);
+        } else {
+          rect.setBounds(L.latLngBounds([e.latlng, e.latlng])).addTo(map);
+        }
         return;
       }
+      // clic vicino al primo punto (entro 10 px): chiude il poligono
       if (pts.length >= 3 && map.latLngToContainerPoint(pts[0]).distanceTo(e.containerPoint) < 10) return finish();
       pts.push(e.latlng);
-      L.circleMarker(e.latlng, { radius: 4, color: "#333", weight: 1, fillColor: "#ffd84a", fillOpacity: 1 }).addTo(dots);
+      addDot(e.latlng);
       line.setLatLngs(pts);
     };
     drawing.onMove = (e) => {
       if (kind === "rect") { if (pts.length === 1) rect.setBounds(L.latLngBounds([pts[0], e.latlng])); return; }
       if (pts.length) ghost.setLatLngs([pts[pts.length - 1], e.latlng, pts[0]]);
     };
-    drawing.onDbl = (e) => { L.DomEvent.stop(e); if (pts.length && pts[pts.length - 1].equals(e.latlng)) pts.pop(); finish(); };
+    drawing.onDbl = (e) => {
+      L.DomEvent.stop(e);
+      // il doppio clic ha già aggiunto un punto con il primo clic: lo tolgo
+      if (pts.length && pts[pts.length - 1].equals(e.latlng)) pts.pop();
+      finish();
+    };
     drawing.onKey = (e) => {
       if (e.key === "Escape") stopDraw();
       else if ((e.key === "Backspace" || e.key === "Delete") && pts.length && !/input|textarea|select/i.test(e.target.tagName)) {
-        pts.pop(); line.setLatLngs(pts); dots.clearLayers();
-        pts.forEach((p) => L.circleMarker(p, { radius: 4, color: "#333", weight: 1, fillColor: "#ffd84a", fillOpacity: 1 }).addTo(dots));
+        pts.pop();
+        line.setLatLngs(pts);
+        dots.clearLayers();
+        pts.forEach(addDot);
       }
     };
-    map.on("click", drawing.onClick); map.on("mousemove", drawing.onMove); map.on("dblclick", drawing.onDbl);
+    map.on("click", drawing.onClick);
+    map.on("mousemove", drawing.onMove);
+    map.on("dblclick", drawing.onDbl);
     document.addEventListener("keydown", drawing.onKey);
     hint(tt(hintKey));
   }
@@ -202,12 +241,17 @@ const Tools = (() => {
   }
 
   // ================================================================== ✏️ campo disegnato dall'utente
-  const STORE = "campiAperti.mieiCampi";
+  const STORE = "campiAperti.mieiCampi";   // chiave storica di localStorage: non rinominare
   // senza account i campi stanno nel browser; con l'account nel database (cache in memoria per la mappa)
   let cloud = null;
   const loggedIn = () => typeof Account !== "undefined" && Account.utente();
-  const loadMine = () => { if (loggedIn() && cloud) return cloud; try { return JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { return []; } };
-  const saveMine = (a) => { try { localStorage.setItem(STORE, JSON.stringify(a)); return true; } catch (e) { return false; } };
+  const loadMine = () => {
+    if (loggedIn() && cloud) return cloud;
+    try { return JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { return []; }
+  };
+  const saveMine = (list) => {
+    try { localStorage.setItem(STORE, JSON.stringify(list)); return true; } catch (e) { return false; }
+  };
 
   function fieldForm(feature) {
     const p = feature.properties || {};
@@ -245,9 +289,13 @@ const Tools = (() => {
       </div>
       <p class="hint small">${tt("share_info")}</p><p class="hint small" id="tfMsg"></p>`, "tc-field");
     const form = el.querySelector("#tfForm");
+    // proprietà del campo lette dal modulo: i campi numerici diventano numeri, quelli vuoti vengono tolti
     const read = () => {
       const o = { ...feature.properties };
-      new FormData(form).forEach((v, k) => { if (v !== "") o[k] = isNaN(+v) || /semina|raccolta|nome|varieta|note|coltura|irrigazione/.test(k) ? v : +v; else delete o[k]; });
+      new FormData(form).forEach((v, k) => {
+        if (v === "") delete o[k];
+        else o[k] = isNaN(+v) || /semina|raccolta|nome|varieta|note|coltura|irrigazione/.test(k) ? v : +v;
+      });
       o.biologico = form.biologico.checked;
       if (form.condividi) o.condividi = form.condividi.checked;
       o.superficie_ha = +ha.toFixed(4);
@@ -255,19 +303,33 @@ const Tools = (() => {
       else if (o.piante) o.densita_piante_ha = Math.round(o.piante / ha);
       return o;
     };
-    const upd = () => { const o = read(); document.getElementById("tfDensity").textContent = o.densita_piante_ha ? tt("f_density", { d: o.densita_piante_ha }) : ""; };
-    form.oninput = upd; upd();
+    const showDensity = () => {
+      const o = read();
+      document.getElementById("tfDensity").textContent = o.densita_piante_ha ? tt("f_density", { d: o.densita_piante_ha }) : "";
+    };
+    form.oninput = showDensity;
+    showDensity();
     const feat = () => ({ type: "Feature", properties: read(), geometry: feature.geometry });
+    const msg = (text) => (el.querySelector("#tfMsg").textContent = text);
     el.querySelector("#tfAnalyze").onclick = () => Live.analyze(feat(), { userField: true });
     el.querySelector("#tfSave").onclick = () => {
-      const f = feat(); f.properties.id = f.properties.id || "c" + Date.now(); feature.properties.id = f.properties.id;
+      const f = feat();
+      f.properties.id = f.properties.id || "c" + Date.now();
+      feature.properties.id = f.properties.id;
       if (loggedIn()) {
-        Account.save(f).then((id) => { f.properties.id = feature.properties.id = id; cloud = (cloud || []).filter((x) => x.properties.id !== id).concat([f]);
-          el.querySelector("#tfMsg").textContent = Account.at("sync"); refreshMine(); }).catch((e) => (el.querySelector("#tfMsg").textContent = e.message));
+        Account.save(f).then((id) => {
+          f.properties.id = feature.properties.id = id;
+          cloud = (cloud || []).filter((x) => x.properties.id !== id).concat([f]);
+          msg(Account.at("sync"));
+          refreshMine();
+        }).catch((e) => msg(e.message));
         return;
       }
-      const all = loadMine().filter((x) => x.properties.id !== f.properties.id); all.push(f); saveMine(all);
-      el.querySelector("#tfMsg").textContent = tt("saved"); refreshMine();
+      const all = loadMine().filter((x) => x.properties.id !== f.properties.id);
+      all.push(f);
+      saveMine(all);
+      msg(tt("saved"));
+      refreshMine();
     };
     el.querySelector("#tfGeo").onclick = () => download(`campo_${(read().nome || "campi-aperti").replace(/\W+/g, "_")}.geojson`, JSON.stringify(feat()));
     el.querySelector("#tfShare").onclick = () => share(feat());
@@ -278,8 +340,14 @@ const Tools = (() => {
     delete g.properties.nome;                         // niente dati personali nel dataset pubblico
     const body = "Contributo inviato dal sito Columella. Licenza: CC BY 4.0.\n\n```json\n" + JSON.stringify(g) + "\n```\n";
     const title = `[contributo] ${g.properties.coltura || "campo"} ${g.properties.superficie_ha || ""} ha`;
-    const url = `https://github.com/${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
-    if (url.length > 7500) { download("contributo_campo.geojson", JSON.stringify(g)); alert(tt("too_long")); window.open(`https://github.com/${REPO}/issues/new?title=${encodeURIComponent(title)}`, "_blank", "noopener"); return; }
+    const issueUrl = `https://github.com/${REPO}/issues/new?title=${encodeURIComponent(title)}`;
+    const url = `${issueUrl}&body=${encodeURIComponent(body)}`;
+    if (url.length > 7500) { // URL troppo lungo per GitHub: scarico il file da allegare a mano
+      download("contributo_campo.geojson", JSON.stringify(g));
+      alert(tt("too_long"));
+      window.open(issueUrl, "_blank", "noopener");
+      return;
+    }
     window.open(url, "_blank", "noopener");
   }
   let mineLayer = null;
@@ -298,13 +366,20 @@ const Tools = (() => {
       `<li><b>${esc(f.properties.nome || f.properties.coltura || "—")}</b> <small>${f.properties.superficie_ha ?? ""} ha</small>
         <button class="small-btn" data-o="${i}">${tt("open")}</button><button class="small-btn" data-d="${i}">${tt("del")}</button></li>`).join("")}</ul>
         <button class="small-btn" id="mineAll">${tt("export_all")}</button>` : `<p class="hint">${tt("mine_empty")}</p>`);
-    el.querySelectorAll("[data-o]").forEach((b) => (b.onclick = () => { const f = all[+b.dataset.o]; map.fitBounds(L.geoJSON(f).getBounds(), { maxZoom: 17 }); fieldForm(f); }));
+    el.querySelectorAll("[data-o]").forEach((b) => (b.onclick = () => {
+      const f = all[+b.dataset.o];
+      map.fitBounds(L.geoJSON(f).getBounds(), { maxZoom: 17 });
+      fieldForm(f);
+    }));
     el.querySelectorAll("[data-d]").forEach((b) => (b.onclick = async () => {
       const [f] = all.splice(+b.dataset.d, 1);
-      if (loggedIn()) await Account.remove(f.properties.id); else saveMine(all);
-      refreshMine(); showMine(); }));
-    const ea = el.querySelector("#mineAll");
-    if (ea) ea.onclick = () => download("miei_campi.geojson", JSON.stringify({ type: "FeatureCollection", features: all }));
+      if (loggedIn()) await Account.remove(f.properties.id);
+      else saveMine(all);
+      refreshMine();
+      showMine();
+    }));
+    const exportAll = el.querySelector("#mineAll");
+    if (exportAll) exportAll.onclick = () => download("miei_campi.geojson", JSON.stringify({ type: "FeatureCollection", features: all }));
   }
 
   // ================================================================== ▭ campi di un'area
@@ -312,13 +387,14 @@ const Tools = (() => {
     const w = b.getWest(), s = b.getSouth(), e = b.getEast(), n = b.getNorth();
     const wM = (e - w) * 111320 * Math.cos(((s + n) / 2) * Math.PI / 180), hM = (n - s) * 110540;
     const el = card("toolArea", tt("r_title"), `<p class="hint" id="raMsg"></p>`);
-    const msg = (t) => (el.querySelector("#raMsg").textContent = t);
-    if (wM > 6100 || hM > 6100) { msg(tt("r_big")); return; }
+    const msg = (text) => (el.querySelector("#raMsg").textContent = text);
+    if (wM > 6100 || hM > 6100) { msg(tt("r_big")); return; }  // 6 × 6 km più un piccolo margine
     try { await Segment.smart([w, s, e, n], Live.periodRange().end, (k, t) => msg(tt("r_seg", { n: k, t }))); }
     catch (err) { msg(tt("r_fail")); return; }
     const fc = Segment.allFields();
     if (!fc || !fc.features.length) { msg(tt("r_fail")); return; }
     const nomi = Live.CTY_NOMI();
+    // coltura Copernicus 2024 di ogni campo, 4 richieste alla volta
     let k = 0;
     const queue = fc.features.slice();
     await Promise.all(Array.from({ length: 4 }, async () => {
@@ -361,7 +437,6 @@ const Tools = (() => {
   }
 
   // ================================================================== 📂 mappe dell'utente
-  const CMAPS = COLORMAPS;      // scale colori comuni (croplayer.js)
   const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const userMaps = [];
   let legendCtl = null, hoverCtl = null;
@@ -482,9 +557,17 @@ const Tools = (() => {
     if (!m.bands[k]) m.bands[k] = (await m.img.readRasters({ samples: [k], width: m.W, height: m.H, resampleMethod: "nearest" }))[0];
     return m.bands[k];
   }
+  // percentili p (es. [0.02, 0.98]) dei pixel visibili, campionando 1 pixel di uscita ogni 7
   const pct = (arr, idx, nd, p) => {
-    const v = []; for (let i = 0; i < idx.length; i += 7) { const k = idx[i]; if (k >= 0) { const x = arr[k]; if (isFinite(x) && x !== nd) v.push(x); } }
-    v.sort((a, b) => a - b); return v.length ? p.map((q) => v[Math.floor(q * (v.length - 1))]) : [0, 1];
+    const v = [];
+    for (let i = 0; i < idx.length; i += 7) {
+      const k = idx[i];
+      if (k < 0) continue;
+      const x = arr[k];
+      if (isFinite(x) && x !== nd) v.push(x);
+    }
+    v.sort((a, b) => a - b);
+    return v.length ? p.map((q) => v[Math.floor(q * (v.length - 1))]) : [0, 1];
   };
   function parseClasses(txt) {
     return txt.split("\n").map((l) => l.split("=").map((s) => s.trim())).filter((p) => p.length >= 2 && p[1]).map(([v, c, lab]) => {
@@ -498,32 +581,59 @@ const Tools = (() => {
     if (c.mode === "rgb") {
       const bs = await Promise.all(c.rgb.map((k) => band(m, k)));
       const rng = bs.map((a) => pct(a, m.idx, nd, [0.02, 0.98]));
-      for (let i = 0; i < n; i++) { const k = m.idx[i]; if (k < 0) continue;
+      for (let i = 0; i < n; i++) {
+        const k = m.idx[i];
+        if (k < 0) continue;
         if (bs.some((a) => a[k] === nd || !isFinite(a[k]))) continue;
-        out.data.set([0, 1, 2].map((j) => Math.max(0, Math.min(255, ((bs[j][k] - rng[j][0]) / (rng[j][1] - rng[j][0] || 1)) * 255))).concat(255), i * 4); }
+        const rgb = [0, 1, 2].map((j) => Math.max(0, Math.min(255, ((bs[j][k] - rng[j][0]) / (rng[j][1] - rng[j][0] || 1)) * 255)));
+        out.data.set(rgb.concat(255), i * 4);
+      }
       m.legend = null;
     } else {
       const a = await band(m, c.band);
       if (c.auto) [c.min, c.max] = pct(a, m.idx, nd, [0.02, 0.98]);
       const cls = c.cmap === "classes" ? parseClasses(c.classes) : null;
-      const ramp = (CMAPS[c.cmap] || CMAPS.viridis).map(hex);
-      for (let i = 0; i < n; i++) { const k = m.idx[i]; if (k < 0) continue; const v = a[k]; if (!isFinite(v) || v === nd) continue;
+      const colors = COLORMAPS[c.cmap] || COLORMAPS.viridis;   // scale colori comuni (croplayer.js)
+      const ramp = colors.map(hex);
+      for (let i = 0; i < n; i++) {
+        const k = m.idx[i];
+        if (k < 0) continue;
+        const v = a[k];
+        if (!isFinite(v) || v === nd) continue;
         let col;
-        if (cls) { const h = cls.find((q) => v >= q.a && v <= q.b); if (!h) continue; col = hex(h.c); }
-        else { let u = (v - c.min) / (c.max - c.min || 1); u = Math.max(0, Math.min(1, u)) * (ramp.length - 1);
-          const j = Math.min(ramp.length - 2, Math.floor(u)), f = u - j; col = ramp[j].map((x, q) => x + f * (ramp[j + 1][q] - x)); }
-        out.data.set([col[0], col[1], col[2], 255], i * 4); }
-      m.legend = cls ? { classes: cls } : { ramp: CMAPS[c.cmap] || CMAPS.viridis, min: c.min, max: c.max };
+        if (cls) {
+          const hit = cls.find((q) => v >= q.a && v <= q.b);
+          if (!hit) continue;
+          col = hex(hit.c);
+        } else { // interpolazione lineare tra i colori della scala
+          const u = Math.max(0, Math.min(1, (v - c.min) / (c.max - c.min || 1))) * (ramp.length - 1);
+          const j = Math.min(ramp.length - 2, Math.floor(u)), f = u - j;
+          col = ramp[j].map((x, q) => x + f * (ramp[j + 1][q] - x));
+        }
+        out.data.set([col[0], col[1], col[2], 255], i * 4);
+      }
+      m.legend = cls ? { classes: cls } : { ramp: colors, min: c.min, max: c.max };
     }
-    const cv = document.createElement("canvas"); cv.width = m.OW; cv.height = m.OH; cv.getContext("2d").putImageData(out, 0, 0);
+    const cv = document.createElement("canvas");
+    cv.width = m.OW;
+    cv.height = m.OH;
+    cv.getContext("2d").putImageData(out, 0, 0);
     if (m.layer) map.removeLayer(m.layer);
     m.layer = L.imageOverlay(cv.toDataURL(), m.bounds, { opacity: c.op, className: "seg-overlay", interactive: false, zIndex: 460 }).addTo(map);
     drawLegend();
   }
   function drawLegend() {
-    if (!legendCtl) { legendCtl = L.control({ position: "bottomleft" }); legendCtl.onAdd = () => L.DomUtil.create("div", "user-legend"); legendCtl.addTo(map); }
+    if (!legendCtl) {
+      legendCtl = L.control({ position: "bottomleft" });
+      legendCtl.onAdd = () => L.DomUtil.create("div", "user-legend");
+      legendCtl.addTo(map);
+    }
     const box = legendCtl.getContainer();
-    const fmt = (x) => (Math.abs(x) >= 100 ? x.toFixed(0) : Math.abs(x) >= 1 ? x.toFixed(2) : x.toPrecision(3));
+    const fmt = (x) => {
+      if (Math.abs(x) >= 100) return x.toFixed(0);
+      if (Math.abs(x) >= 1) return x.toFixed(2);
+      return x.toPrecision(3);
+    };
     box.innerHTML = userMaps.filter((m) => m.kind === "raster" && m.legend).map((m) => `<div class="ul-item"><b>${esc(m.cfg.title)}</b>${m.cfg.unit ? ` <small>(${esc(m.cfg.unit)})</small>` : ""}<br>` +
       (m.legend.classes ? m.legend.classes.map((k) => `<span class="ul-cls"><i style="background:${esc(k.c)}"></i>${esc(k.lab)}</span>`).join("")
         : `<span class="ul-bar" style="background:linear-gradient(90deg,${m.legend.ramp.join(",")})"></span><span class="ul-lim"><span>${fmt(m.legend.min)}</span><span>${fmt(m.legend.max)}</span></span>`) + `</div>`).join("");
@@ -585,12 +695,17 @@ const Tools = (() => {
   function onHover(e) {
     const ms = userMaps.filter((m) => m.kind === "raster");
     if (!ms.length) { if (hoverCtl) hoverCtl.getContainer().hidden = true; return; }
-    if (!hoverCtl) { hoverCtl = L.control({ position: "bottomright" }); hoverCtl.onAdd = () => L.DomUtil.create("div", "user-hover"); hoverCtl.addTo(map); }
+    if (!hoverCtl) {
+      hoverCtl = L.control({ position: "bottomright" });
+      hoverCtl.onAdd = () => L.DomUtil.create("div", "user-hover");
+      hoverCtl.addTo(map);
+    }
     const txt = ms.map((m) => {
-      const [[s, w], [n, ee]] = m.bounds;
-      if (e.latlng.lat < s || e.latlng.lat > n || e.latlng.lng < w || e.latlng.lng > ee) return null;
+      const [[s, w], [n, east]] = m.bounds;
+      if (e.latlng.lat < s || e.latlng.lat > n || e.latlng.lng < w || e.latlng.lng > east) return null;
+      // pixel dell'immagine di uscita (griglia Web Mercator)
       const merc = (la) => Math.log(Math.tan((90 + la) * Math.PI / 360));
-      const x = Math.floor(((e.latlng.lng - w) / (ee - w)) * m.OW), y = Math.floor(((merc(n) - merc(e.latlng.lat)) / (merc(n) - merc(s))) * m.OH);
+      const x = Math.floor(((e.latlng.lng - w) / (east - w)) * m.OW), y = Math.floor(((merc(n) - merc(e.latlng.lat)) / (merc(n) - merc(s))) * m.OH);
       const k = m.idx[y * m.OW + x];
       if (k == null || k < 0) return null;
       const bnd = m.cfg.mode === "rgb" ? null : m.bands[m.cfg.band];
@@ -619,13 +734,16 @@ const Tools = (() => {
     const today = new Date().toISOString().slice(0, 10);
     const render = () => {
       const kc = tipo === "cool" ? 0.85 : 0.65;
-      const past = d.time.map((t, i) => i).filter((i) => d.time[i] < today), next = d.time.map((t, i) => i).filter((i) => d.time[i] >= today);
+      const days = d.time.map((_, i) => i);
+      const past = days.filter((i) => d.time[i] < today), next = days.filter((i) => d.time[i] >= today);
       const sum = (ix, a) => ix.reduce((s, i) => s + (a[i] || 0), 0);
+      // pioggia efficace: si contano solo i giorni con più di 2 mm, all'80%
       const eff = (ix) => ix.reduce((s, i) => s + ((d.precipitation_sum[i] || 0) > 2 ? 0.8 * d.precipitation_sum[i] : 0), 0);
       const cP = kc * sum(past, d.et0_fao_evapotranspiration), cN = kc * sum(next, d.et0_fao_evapotranspiration);
       const rP = sum(past, d.precipitation_sum), rN = sum(next, d.precipitation_sum);
       const next3 = next.slice(0, 3), r3 = eff(next3);
       const deficit = Math.max(0, cP - eff(past) - r3 * 0.7);
+      // potenziale di crescita (Gelernter & Stowell): gaussiana della temperatura media attorno all'ottimo
       const Topt = tipo === "cool" ? 20 : 31, sd = tipo === "cool" ? 5.5 : 7;
       const tm = next.map((i) => d.temperature_2m_mean[i]), gp = tm.reduce((s, t) => s + Math.exp(-0.5 * ((t - Topt) / sd) ** 2), 0) / (tm.length || 1);
       const tmax = Math.max(...next.map((i) => d.temperature_2m_max[i])), tmin = Math.min(...next.map((i) => d.temperature_2m_min[i]));
@@ -633,11 +751,15 @@ const Tools = (() => {
       let feed = tt("feed")[mese];
       if (tipo === "warm" && (mese === 5 || mese === 6)) feed = LANG === "it" ? "sì: azoto per le macroterme" : "yes: nitrogen for warm-season grass";
       const nIrr = deficit > 20 ? 2 : 1;
+      let mowKey;
+      if (gp < 0.25) mowKey = "l_mow0";
+      else if (gp < 0.6) mowKey = "l_mow1";
+      else mowKey = "l_mow2";
       el.querySelector("#lwOut").innerHTML = `
         <p>${tt("l_area", { a: Math.round(m2).toLocaleString(loc()) })}</p>
         <p>${tt("l_last7", { p: rP.toFixed(0), c: cP.toFixed(0) })}<br>${tt("l_next", { p: rN.toFixed(0), c: cN.toFixed(0) })}</p>
         <p class="lw-big">${deficit >= 4 ? tt("l_water", { mm: Math.round(deficit), l: Math.round(deficit * m2).toLocaleString(loc()), n: tt(nIrr > 1 ? "l_n2" : "l_n1") }) : tt("l_nowater")}</p>
-        <p>${tt("l_grow", { g: Math.round(gp * 100) })} — ${gp < 0.25 ? tt("l_mow0") : gp < 0.6 ? tt("l_mow1") : tt("l_mow2")}</p>
+        <p>${tt("l_grow", { g: Math.round(gp * 100) })} — ${tt(mowKey)}</p>
         ${tmax > 30 ? `<p>☀️ ${tt("l_heat")}</p>` : ""}${tmin < 0 ? `<p>❄️ ${tt("l_frost")}</p>` : ""}
         <p>${tt("l_feed", { f: feed })}</p>`;
     };
@@ -656,12 +778,13 @@ const Tools = (() => {
       L.DomEvent.disableClickPropagation(d);
       d.querySelectorAll("a").forEach((a) => (a.onclick = (e) => {
         e.preventDefault();
-        const k = a.dataset.t;
-        if (k === "draw") startDraw("poly", (f) => fieldForm(f), "h_poly");
-        if (k === "rect") startDraw("rect", (b) => areaFields(b), "h_rect");
-        if (k === "lawn") startDraw("poly", (f) => lawn(f), "h_lawn");
-        if (k === "upload") renderMaps();
-        if (k === "mine") showMine();
+        switch (a.dataset.t) {
+          case "draw": startDraw("poly", (f) => fieldForm(f), "h_poly"); break;
+          case "rect": startDraw("rect", (b) => areaFields(b), "h_rect"); break;
+          case "lawn": startDraw("poly", (f) => lawn(f), "h_lawn"); break;
+          case "upload": renderMaps(); break;
+          case "mine": showMine(); break;
+        }
       }));
       return d;
     };
@@ -674,9 +797,14 @@ const Tools = (() => {
       if (u) {
         cloud = await Account.list().catch(() => []);
         // i campi salvati prima nel browser passano nell'account
-        const loc = JSON.parse(localStorage.getItem(STORE) || "[]");
-        for (const f of loc) { try { f.properties.id = await Account.save({ ...f, properties: { ...f.properties, id: null } }); cloud.push(f); } catch (e) { /* resta nel browser */ } }
-        if (loc.length) localStorage.removeItem(STORE);
+        const local = JSON.parse(localStorage.getItem(STORE) || "[]");
+        for (const f of local) {
+          try {
+            f.properties.id = await Account.save({ ...f, properties: { ...f.properties, id: null } });
+            cloud.push(f);
+          } catch (e) { /* resta nel browser */ }
+        }
+        if (local.length) localStorage.removeItem(STORE);
       }
       refreshMine();
     });
@@ -686,15 +814,23 @@ const Tools = (() => {
     mc.addEventListener("dragleave", () => mc.classList.remove("drop"));
     mc.addEventListener("drop", (e) => { e.preventDefault(); mc.classList.remove("drop"); [...e.dataTransfer.files].forEach(loadFile); });
   }
+  const WELCOME_KEY = "campiAperti.benvenuto";   // chiave storica: non rinominare (gli utenti l'hanno già salvata)
   function welcome(force) {
-    try { if (!force && localStorage.getItem("campiAperti.benvenuto")) return; } catch (e) { /* */ }
+    try { if (!force && localStorage.getItem(WELCOME_KEY)) return; } catch (e) { /* */ }
     const el = card("toolWelcome", tt("w_title"), `<ol class="welcome">${tt("w_steps").map((x) => `<li>${x}</li>`).join("")}</ol>
       <p class="hint small">${tt("w_note")}</p><div class="tc-actions"><button class="btn-primary" id="wGo">${tt("w_go")}</button></div>`, "tc-welcome");
-    const done = () => { try { localStorage.setItem("campiAperti.benvenuto", "1"); } catch (e) { /* */ } el.remove(); };
-    el.querySelector("#wGo").onclick = done; el.querySelector(".icon-x").onclick = done;
+    const done = () => {
+      try { localStorage.setItem(WELCOME_KEY, "1"); } catch (e) { /* */ }
+      el.remove();
+    };
+    el.querySelector("#wGo").onclick = done;
+    el.querySelector(".icon-x").onclick = done;
   }
   function refreshLang() {
-    document.querySelectorAll(".tool-bar a").forEach((a) => { a.title = tt(a.dataset.t); a.querySelector("em").textContent = tt(a.dataset.t); });
+    document.querySelectorAll(".tool-bar a").forEach((a) => {
+      a.title = tt(a.dataset.t);
+      a.querySelector("em").textContent = tt(a.dataset.t);
+    });
   }
   return { init, busy, refreshLang, startDraw, welcome };
 })();
