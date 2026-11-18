@@ -1,4 +1,4 @@
-# 13 — Dataset v2 per il classificatore delle colture: più zone e più prodotti (un'annata alla volta)
+# Columella — 13: dataset v2 per il classificatore delle colture: più zone e più prodotti (un'annata alla volta)
 #
 # Zone: ~130 quadrati di 2 × 2 km scelti dai blocchi da 1 km dello script 03, stratificati per coltura e regione,
 #       con più peso alle colture rare (frutteti, frutta a guscio, vite, olivo, riso, legumi…).
@@ -8,7 +8,10 @@
 #   - Copernicus DEM 30 m: quota e pendenza
 #   - latitudine (clima)
 # Etichetta: Copernicus HRL Crop Types dell'anno, solo pixel omogenei 3×3 a 10 m.
+# Ingressi: data/blocchi/blocchi_<anno>.parquet (03), COG Crop Types su Hugging Face, Planetary Computer (pubblico); env ANNO
 # Uscita: data/dataset_v2/ds_<anno>.parquet
+# Esecuzione: workflow classificatore-v2.yml (poi hf_sync.py carica "dataset_v2") oppure Spyder
+# EN: builds the per-pixel training table (S2, S1, DEM monthly features + Crop Types label) for the v2 classifier.
 
 import os
 import time
@@ -142,7 +145,8 @@ for zi, (cx, cy, regione, c_z) in enumerate(scelti):
     with ThreadPoolExecutor(4) as ex:
         cubo = {d: v for d, v in ex.map(una_s2, s2) if v is not None}
     if len(cubo) < 8:
-        print(zi, "S2 insufficiente", len(cubo)); continue
+        print(zi, "S2 insufficiente", len(cubo))
+        continue
     fs2 = mensili(cubo, 10)
     B = {b: fs2[i] for i, b in enumerate(BANDE)}
     with np.errstate(all="ignore"):
@@ -173,12 +177,16 @@ for zi, (cx, cy, regione, c_z) in enumerate(scelti):
     m = (y_lab > 0) & np.isfinite(fs2).all((0, 1)) & np.isfinite(ind).all((0, 1))
     cols, arrs = [], []
     for i, b in enumerate(BANDE):
-        cols += [f"{b}_{k:02d}" for k in range(12)]; arrs.append(fs2[i][:, m].T)
+        cols += [f"{b}_{k:02d}" for k in range(12)]
+        arrs.append(fs2[i][:, m].T)
     for i, n_ in enumerate(["ndvi", "ndmi", "ndre"]):
-        cols += [f"{n_}_{k:02d}" for k in range(12)]; arrs.append(ind[i][:, m].T)
+        cols += [f"{n_}_{k:02d}" for k in range(12)]
+        arrs.append(ind[i][:, m].T)
     for i, n_ in enumerate(["vv", "vh"]):
-        cols += [f"{n_}_{k:02d}" for k in range(12)]; arrs.append(fs1[i][:, m].T)
-    cols += [f"vhvv_{k:02d}" for k in range(12)]; arrs.append((fs1[1] - fs1[0])[:, m].T)
+        cols += [f"{n_}_{k:02d}" for k in range(12)]
+        arrs.append(fs1[i][:, m].T)
+    cols += [f"vhvv_{k:02d}" for k in range(12)]
+    arrs.append((fs1[1] - fs1[0])[:, m].T)                # rapporto VH/VV in dB
     df = pd.DataFrame(np.hstack(arrs), columns=cols)
     df["quota"], df["pendenza"] = quota_[m], pend[m]
     df["lat"] = to4326.transform(XX[m], YY[m])[1]
