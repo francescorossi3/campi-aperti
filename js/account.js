@@ -149,8 +149,13 @@ const Account = (() => {
     const q = isUuid ? sb.from("campi").update(row).eq("id", f.properties.id).select("id") : sb.from("campi").insert(row).select("id");
     const { data, error } = await q;
     if (error) throw error;
+    if (!data || !data.length) throw new Error("campo non trovato / field not found");  // update senza righe (campo cancellato altrove)
     return data[0].id;
   }
-  async function remove(id) { if (sb && user && UUID_RE.test(id)) await sb.from("campi").delete().eq("id", id); }
+  async function remove(id) {
+    if (!sb || !user || !UUID_RE.test(id)) return;
+    const { error } = await sb.from("campi").delete().eq("id", id);
+    if (error) throw error;
+  }
   return { init, attivo: () => attivo, utente: () => user, onChange: (f) => listeners.push(f), list, save, remove, at };
 })();

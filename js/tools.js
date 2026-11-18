@@ -363,7 +363,7 @@ const Tools = (() => {
   function showMine() {
     const all = loadMine();
     const el = card("toolMine", tt("mine"), all.length ? `<ul class="mine-list">${all.map((f, i) =>
-      `<li><b>${esc(f.properties.nome || f.properties.coltura || "—")}</b> <small>${f.properties.superficie_ha ?? ""} ha</small>
+      `<li><b>${esc(f.properties.nome || f.properties.coltura || "—")}</b> <small>${esc(f.properties.superficie_ha ?? "")} ha</small>
         <button class="small-btn" data-o="${i}">${tt("open")}</button><button class="small-btn" data-d="${i}">${tt("del")}</button></li>`).join("")}</ul>
         <button class="small-btn" id="mineAll">${tt("export_all")}</button>` : `<p class="hint">${tt("mine_empty")}</p>`);
     el.querySelectorAll("[data-o]").forEach((b) => (b.onclick = () => {
@@ -373,8 +373,9 @@ const Tools = (() => {
     }));
     el.querySelectorAll("[data-d]").forEach((b) => (b.onclick = async () => {
       const [f] = all.splice(+b.dataset.d, 1);
-      if (loggedIn()) await Account.remove(f.properties.id);
-      else saveMine(all);
+      if (loggedIn()) {
+        try { await Account.remove(f.properties.id); } catch (e) { alert(e.message || e); return; }
+      } else saveMine(all);
       refreshMine();
       showMine();
     }));
@@ -797,14 +798,16 @@ const Tools = (() => {
       if (u) {
         cloud = await Account.list().catch(() => []);
         // i campi salvati prima nel browser passano nell'account
-        const local = JSON.parse(localStorage.getItem(STORE) || "[]");
-        for (const f of local) {
+        let local = [];
+        try { local = JSON.parse(localStorage.getItem(STORE) || "[]"); } catch (e) { /* dati locali illeggibili */ }
+        const rimasti = [];   // quelli non salvati restano nel browser
+        for (const f of Array.isArray(local) ? local : []) {
           try {
             f.properties.id = await Account.save({ ...f, properties: { ...f.properties, id: null } });
             cloud.push(f);
-          } catch (e) { /* resta nel browser */ }
+          } catch (e) { rimasti.push(f); }
         }
-        if (local.length) localStorage.removeItem(STORE);
+        if (local.length) saveMine(rimasti);
       }
       refreshMine();
     });
