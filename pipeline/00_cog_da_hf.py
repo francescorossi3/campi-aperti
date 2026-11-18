@@ -1,4 +1,8 @@
-# 00 — Se il COG Crop Types dell'anno è già su Hugging Face lo scarica (così 01 e 02 si possono saltare)
+# Columella — 00: se il COG Crop Types dell'anno è già su Hugging Face lo scarica (così 01 e 02 si saltano)
+# Ingressi: env ANNO (def. 2024), HF_DATA_REPO, HF_TOKEN (facoltativo)
+# Uscite: data/cog/cty_<anno>_italia_3035.tif; "presente=true/false" in $GITHUB_OUTPUT
+# Esecuzione: workflow crop-types.yml (da pipeline/) oppure Spyder
+# EN: downloads the yearly Crop Types COG from Hugging Face if it already exists.
 import os
 from huggingface_hub import hf_hub_download
 
