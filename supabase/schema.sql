@@ -34,6 +34,18 @@ begin new.aggiornato = now(); return new; end; $$;
 drop trigger if exists campi_aggiornato on public.campi;
 create trigger campi_aggiornato before update on public.campi for each row execute function public.tocca_aggiornato();
 
+-- limite di campi per utente: impedisce di riempire il database (piano gratuito 500 MB)
+create or replace function public.limite_campi() returns trigger language plpgsql set search_path = '' as $$
+begin
+  if (select count(*) from public.campi where user_id = new.user_id) >= 500 then
+    raise exception 'limite di 500 campi per utente raggiunto';
+  end if;
+  return new;
+end; $$;
+drop trigger if exists campi_limite on public.campi;
+create trigger campi_limite before insert on public.campi for each row execute function public.limite_campi();
+revoke all on function public.limite_campi() from public, anon, authenticated;
+
 -- l'utente può cancellare il proprio account (e, a cascata, i suoi campi): diritto all'oblio GDPR
 create or replace function public.elimina_il_mio_account() returns void
 language plpgsql security definer set search_path = '' as $$
