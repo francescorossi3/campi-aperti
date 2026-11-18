@@ -12,6 +12,7 @@
 # Esecuzione: workflow monteith.yml (poi hf_sync.py carica "province_ndvi") oppure Spyder
 # EN: mean Sentinel-2 NDVI per province × crop × date over "pure" 200 m crop pixels.
 
+import ast
 import os
 import time
 import numpy as np
@@ -68,7 +69,7 @@ def leggi_npy(url):
                 b = r.content
                 hl = int.from_bytes(b[8:10], "little")
                 hdr = b[10:10 + hl].decode()
-                shape = eval(hdr.split("'shape':")[1].split(")")[0] + ")")
+                shape = ast.literal_eval(hdr.split("'shape':")[1].split(")")[0] + ")")
                 return np.frombuffer(b[10 + hl:], dtype="<f8" if "<f8" in hdr else "<f4").reshape(shape).astype("float32")
             if r.status_code in (404, 422):
                 return None
