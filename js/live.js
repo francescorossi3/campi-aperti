@@ -335,7 +335,7 @@ const Live = (() => {
   }
 
   function makeS2Layer(def) {
-    const layer = L.tileLayer("", { minZoom: def.minZoom || 10, maxZoom: 19, maxNativeZoom: 16, opacity: def.opacity ?? 1, zIndex: 20,
+    const layer = L.tileLayer("", { pane: Clip.pane(), minZoom: def.minZoom || 10, maxZoom: 19, maxNativeZoom: 16, opacity: def.opacity ?? 1, zIndex: 20,
       attribution: "Sentinel-2 © Copernicus, via Microsoft Planetary Computer" });
     liveLayers.add({ def, layer });
     (searchId ? Promise.resolve() : (searchPromise || registerMosaic())).then(() => layer.setUrl(s2Url(def)));
@@ -1080,6 +1080,9 @@ const Live = (() => {
       <figure class="ch-fig" data-ch="chClms"><label class="norm">${lt("clms_var")} <select id="clmsVar">${Object.keys(Clms.P).filter((k) => k !== "ETA").map((k) => `<option value="${k}" ${k === clmsSel ? "selected" : ""}>${Clms.label(k)}</option>`).join("")}</select></label>
         <span class="hint small" id="clmsSt"></span><div class="cbox"><canvas id="chClms"></canvas></div></figure>
       <figure class="ch-fig" data-ch="chRadar"><div class="cbox"><canvas id="chRadar"></canvas></div><p class="hint small">${lt("radar_hint")}</p></figure>
+      <p class="hint small fp-foot">${lt("s2_src")} ${lt("meteo_src")} ${lt("et_note")}</p>`;
+    // coltura, resa, suolo, carbonio e avvisi vanno nella sezione "Servizi"
+    document.getElementById("servicesBox").innerHTML = `
       <div id="fpCty" class="fp-cty"></div>
       <div id="fpModel" class="fp-crop fp-model"></div>
       <div id="fpCrop" class="fp-crop"></div>
@@ -1087,11 +1090,9 @@ const Live = (() => {
       <div id="fpSoil" class="fp-soil"></div>
       <div id="fpCarbon" class="fp-carbon"></div>
       <div id="fpAdvice" class="fp-advice"></div>
-      <div id="fpYield" class="fp-yield"></div>
-      <p class="hint small fp-foot">${lt("s2_src")} ${lt("meteo_src")} ${lt("et_note")}</p>`;
+      <div id="fpYield" class="fp-yield"></div>`;
     panel().hidden = false;
     document.body.classList.add("fp-open");
-    setTimeout(() => map.invalidateSize(), 50);
     panel().querySelectorAll("button.seg").forEach((b) => (b.onclick = () => { range = b.dataset.r; year = null; run(); }));
     document.getElementById("fpApply").onclick = () => {
       const a = document.getElementById("fpFrom").value, b = document.getElementById("fpTo").value;
@@ -1129,24 +1130,16 @@ const Live = (() => {
   const mercY = (lat) => Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) * 6378137;
   const lonOf = (x) => (x / 20037508.34) * 180;
   const latOf = (y) => (360 / Math.PI) * Math.atan(Math.exp(y / 6378137)) - 90;
-  // riquadro "Campo selezionato" in cima alla scheda Layer: le mappe del campo si sovrappongono alla mappa grande
+  // riquadro "Mappa del campo" in cima alla sezione "Indici e serie temporali": la mappa è ritagliata sul campo
   function buildFieldLayerBox() {
-    let box = document.getElementById("fieldLayerBox");
-    if (!box) {
-      box = document.createElement("section"); box.id = "fieldLayerBox"; box.className = "field-layer-box";
-      const tab = document.getElementById("tab-layers"); tab.insertBefore(box, tab.firstChild);
-    }
-    const prev = { idx: (document.getElementById("fmIdx") || {}).value || "ndvi", op: (document.getElementById("fmOp") || {}).value || 0.9 };
+    const box = document.getElementById("fieldMapBox");
+    const prev = { idx: (document.getElementById("fmIdx") || {}).value || "ndvi" };
     box.hidden = false;
     box.innerHTML = `<h3>${lt("fl_title")}</h3>
       <label class="fl-row">${lt("fl_map")} <select id="fmIdx">${["ndvi", "lai", "ndre", "ndmi", "evi", "savi", "rgb", "zone"].map((k) => `<option value="${k}" ${k === prev.idx ? "selected" : ""}>${lt("fm_" + k)}</option>`).join("")}</select></label>
       <label class="fl-row">${lt("fl_date")} <select id="fmDate"><option>…</option></select></label>
-      <div class="style-ctl"><select id="fmCmap">${Object.keys(COLORMAPS).map((k) => `<option>${k}</option>`).join("")}</select>
-        <label><input type="checkbox" id="fmRev"> ${t("st_rev")}</label>
-        <label><input type="checkbox" id="fmAuto" checked> ${lt("fm_auto")}</label>
-        <label>min <input type="number" step="any" id="fmMin"></label><label>max <input type="number" step="any" id="fmMax"></label></div>
-      <label class="fl-row small">${lt("fl_op")} <input type="range" id="fmOp" min="0" max="1" step="0.05" value="${prev.op}"></label>
       <div class="fm-legend" id="fmLegend"></div>
+      <details class="st-box" id="fmStyleBox" hidden><summary>${t("st_title")}</summary><div id="fmStyle"></div></details>
       <div class="hint small" id="fmStats"></div>
       <div class="fl-dl"><b>${lt("dl_title")}</b> <button class="small-btn" id="dlOne">${lt("dl_one")}</button>
         <button class="small-btn" id="dlAll">${lt("dl_all")}</button> <button class="small-btn" id="dlCsv">${lt("dl_csv")}</button></div>
@@ -1155,9 +1148,7 @@ const Live = (() => {
       <div class="fl-soil"><b>${lt("fl_pheno")}</b> ${["hv_sosd", "hv_eosd", "hv_length", "hv_tprod"].map((id) =>
         `<button class="seg fl-sg" data-id="${id}">${lt("fl_" + id)}</button>`).join("")}</div>
       <button class="small-btn" id="fmHide">${lt("fl_hide")}</button>`;
-    ["fmIdx", "fmDate", "fmAuto", "fmCmap", "fmRev"].forEach((id) => (document.getElementById(id).onchange = () => drawFieldMap()));
-    ["fmMin", "fmMax"].forEach((id) => (document.getElementById(id).onchange = () => { document.getElementById("fmAuto").checked = false; drawFieldMap(); }));
-    document.getElementById("fmOp").oninput = (e) => fmOverlay && fmOverlay.setOpacity(+e.target.value);
+    ["fmIdx", "fmDate"].forEach((id) => (document.getElementById(id).onchange = () => drawFieldMap()));
     document.getElementById("dlOne").onclick = () => downloadMaps(false);
     document.getElementById("dlAll").onclick = () => downloadMaps(true);
     document.getElementById("dlCsv").onclick = exportCsv;
@@ -1167,7 +1158,7 @@ const Live = (() => {
       b.classList.toggle("active", !!(on() && on().checked));
       b.onclick = () => { const c = on(); if (!c) return; c.checked = !c.checked; c.dispatchEvent(new Event("change", { bubbles: true })); b.classList.toggle("active", c.checked); };
     });
-    if (typeof showTab === "function") showTab("layers");
+    if (typeof openSection === "function") openSection("series");
   }
   function fillFieldDates() {
     const sel = document.getElementById("fmDate");
@@ -1265,58 +1256,74 @@ const Live = (() => {
     st.textContent = lt("dl_done", { n: bands.length });
   }
 
+  // stile della mappa del campo per indice (salvato nel browser); di partenza: percentili 2–98 % del campo
+  const fmStyle = (idx) => MapStyle.get("fm_" + idx, { ...MapStyle.create("rdylgn", ...FIX[idx === "zone" ? "ndvi" : idx]), range: "p2_98", opacity: 0.9 });
   async function drawFieldMap() {
     if (!document.getElementById("fmIdx") || !current) return;
-    const idx = document.getElementById("fmIdx").value, date = document.getElementById("fmDate").value, auto = document.getElementById("fmAuto").checked;
+    const idx = document.getElementById("fmIdx").value, date = document.getElementById("fmDate").value;
     const row = clean().find((r) => r.date === date);
     if (!row) return;
     const stats = document.getElementById("fmStats");
     stats.textContent = lt("fm_loading");
-    const G = fieldGrid(), { W, H, X0, X1, Y0, Y1, inside, polys } = G;
+    const G = fieldGrid();
     let arr;
     try { arr = await fetchIndex(row.item, idx, G); }
     catch (e) { stats.textContent = lt("fm_err"); return; }
     if (document.getElementById("fmDate").value !== date || document.getElementById("fmIdx").value !== idx) return;
-    const n = W * H, band = (b) => arr.data.subarray(b * n, (b + 1) * n);
-    const vals = [];
-    for (let i = 0; i < n; i++) if (inside[i * 4 + 3] > 127 && isFinite(arr.data[i])) vals.push(arr.data[i]);
-    const q = (p) => { const v = vals.slice().sort((a, b) => a - b); return v[Math.min(v.length - 1, Math.floor(p * (v.length - 1)))]; };
-    let a, b;
-    if (idx === "rgb") { a = 300; b = 2600; }
-    else if (auto || idx === "zone") { a = q(0.02); b = q(0.98); if (b - a < 0.02) { a -= 0.01; b += 0.01; } }
-    else { a = +document.getElementById("fmMin").value; b = +document.getElementById("fmMax").value; if (!(b > a)) [a, b] = FIX[idx]; }
-    if (idx !== "rgb") { document.getElementById("fmMin").value = +a.toFixed(3); document.getElementById("fmMax").value = +b.toFixed(3); }
-    const st = { cmap: document.getElementById("fmCmap").value, rev: document.getElementById("fmRev").checked, min: a, max: b }, ramp = rampFn(st);
-    const t1 = q(1 / 3), t2 = q(2 / 3);
-    const img = new ImageData(W, H);
-    for (let i = 0; i < n; i++) {
-      if (inside[i * 4 + 3] <= 127) continue;
-      let c;
-      if (idx === "rgb") c = [0, 1, 2].map((bb) => Math.max(0, Math.min(255, ((band(bb)[i] - 1000 - a) / (b - a)) * 255)));
-      else { const v = arr.data[i]; if (!isFinite(v)) continue; c = idx === "zone" ? ZONE_COL[v < t1 ? 0 : v < t2 ? 1 : 2] : ramp(v); }
-      img.data.set([c[0], c[1], c[2], 255], i * 4);
+    const n = G.W * G.H, vals = [];
+    for (let i = 0; i < n; i++) if (G.inside[i * 4 + 3] > 127 && isFinite(arr.data[i])) vals.push(arr.data[i]);
+    fmLast = { ...G, bounds: [[latOf(G.Y0), lonOf(G.X0)], [latOf(G.Y1), lonOf(G.X1)]], idx, date, arr, S: MapStyle.stats(vals) };
+    stats.textContent = "";
+    paintFieldMap();
+  }
+  // disegna la mappa del campo (già scaricata) con lo stile corrente: solo i pixel dentro il poligono
+  function paintFieldMap(withPanel = true) {
+    const F = fmLast;
+    if (!F) return;
+    const { W, H, inside, arr, idx, S } = F, n = W * H, band = (b) => arr.data.subarray(b * n, (b + 1) * n);
+    const img = new ImageData(W, H), leg = document.getElementById("fmLegend"), sbox = document.getElementById("fmStyleBox");
+    let op = 0.9;
+    if (idx === "rgb") {
+      const a = 300, b = 2600;
+      for (let i = 0; i < n; i++) if (inside[i * 4 + 3] > 127) img.data.set([...[0, 1, 2].map((bb) => Math.max(0, Math.min(255, ((band(bb)[i] - 1000 - a) / (b - a)) * 255))), 255], i * 4);
+      leg.innerHTML = ""; sbox.hidden = true;
+    } else if (idx === "zone") {
+      // zone di vigore: terzili dell'NDVI del campo
+      const t1 = S ? S.q(1 / 3) : 0, t2 = S ? S.q(2 / 3) : 0;
+      for (let i = 0; i < n; i++) {
+        const v = arr.data[i];
+        if (inside[i * 4 + 3] > 127 && isFinite(v)) img.data.set([...ZONE_COL[v < t1 ? 0 : v < t2 ? 1 : 2], 255], i * 4);
+      }
+      leg.innerHTML = ["fm_z1", "fm_z2", "fm_z3"].map((z, i) => `<span><i style="background:rgb(${ZONE_COL[i]})"></i>${lt(z)}</span>`).join("") +
+        ` <small>(NDVI &lt; ${t1.toFixed(2)} · ${t1.toFixed(2)}–${t2.toFixed(2)} · &gt; ${t2.toFixed(2)})</small>`;
+      sbox.hidden = true;
+    } else {
+      const st = fmStyle(idx), C = MapStyle.classify(st, S);
+      op = st.opacity;
+      for (let i = 0; i < n; i++) {
+        if (inside[i * 4 + 3] <= 127) continue;
+        const c = C.color(arr.data[i]);
+        if (c) img.data.set([c[0], c[1], c[2], 255], i * 4);
+      }
+      leg.innerHTML = "";
+      sbox.hidden = false;
+      if (withPanel) MapStyle.panel(document.getElementById("fmStyle"), {
+        st, S, title: lt("fm_" + idx),
+        onSave: (x) => MapStyle.save("fm_" + idx, x),
+        onChange: () => paintFieldMap(false),
+        onReset: () => { MapStyle.reset("fm_" + idx); paintFieldMap(); },
+      });
     }
     const tmp = document.createElement("canvas"); tmp.width = W; tmp.height = H; tmp.getContext("2d").putImageData(img, 0, 0);
-    fmLast = { tmp, bounds: [[latOf(Y0), lonOf(X0)], [latOf(Y1), lonOf(X1)]], idx, date, arr, inside, W, H, X0, X1, Y0, Y1 };
+    F.tmp = tmp; F.op = op;
     fieldMapOnMap(true);
-    // legenda e statistiche
-    const leg = document.getElementById("fmLegend");
-    if (idx === "rgb") leg.innerHTML = "";
-    else if (idx === "zone") leg.innerHTML = ["fm_z1", "fm_z2", "fm_z3"].map((z, i) => `<span><i style="background:rgb(${ZONE_COL[i]})"></i>${lt(z)}</span>`).join("") +
-      ` <small>(NDVI &lt; ${t1.toFixed(2)} · ${t1.toFixed(2)}–${t2.toFixed(2)} · &gt; ${t2.toFixed(2)})</small>`;
-    else leg.innerHTML = `<span>${a.toFixed(2)}</span><b class="fm-bar" style="background:linear-gradient(90deg,${cmapCols(st).join(",")})"></b><span>${b.toFixed(2)}</span>`;
-    if (idx !== "rgb" && vals.length) {
-      const m = vals.reduce((x, y) => x + y, 0) / vals.length, sd = Math.sqrt(vals.reduce((x, y) => x + (y - m) ** 2, 0) / vals.length);
-      stats.textContent = lt("fm_stats", { n: vals.length, m: m.toFixed(3), sd: sd.toFixed(3), cv: Math.round((sd / Math.abs(m || 1)) * 100) });
-    } else stats.textContent = "";
   }
   function fieldMapOnMap(refresh) {
     if (fmOverlay && !refresh) { map.removeLayer(fmOverlay); fmOverlay = null; return; }
     if (!fmLast) return;
     if (fmOverlay) map.removeLayer(fmOverlay);
     if (!fmHoverOn) { map.on("mousemove", fmHover); fmHoverOn = true; }
-    const op = +((document.getElementById("fmOp") || {}).value || 0.9);
-    fmOverlay = L.imageOverlay(fmLast.tmp.toDataURL(), fmLast.bounds, { opacity: op, className: "seg-overlay", interactive: false, zIndex: 470 }).addTo(map);
+    fmOverlay = L.imageOverlay(fmLast.tmp.toDataURL(), fmLast.bounds, { opacity: fmLast.op, className: "seg-overlay", interactive: false, zIndex: 470, pane: Clip.pane() }).addTo(map);
   }
   // valore del pixel sotto il mouse
   let fmTipCtl = null, fmHoverOn = false;
@@ -1592,12 +1599,14 @@ const Live = (() => {
   let highlight = null;
   function setHighlight(feature) {
     if (highlight) map.removeLayer(highlight);
-    highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fillColor: "#ffd84a", fillOpacity: 0.12 }, interactive: false }).addTo(map);
+    highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fill: false }, interactive: false }).addTo(map);
+    Clip.set(feature);                     // raster solo dentro il campo e zoom sul campo
   }
   function showBusy(msg) {
     const p = panel();
     p.hidden = false; document.body.classList.add("fp-open");
     p.innerHTML = `<div class="fp-status">${msg}</div>`;
+    if (typeof openSection === "function") openSection("series");
   }
   function close() {
     runId++;
@@ -1605,9 +1614,11 @@ const Live = (() => {
     document.body.classList.remove("fp-open");
     if (highlight) { map.removeLayer(highlight); highlight = null; }
     if (fmOverlay) { map.removeLayer(fmOverlay); fmOverlay = null; }
-    const flb = document.getElementById("fieldLayerBox"); if (flb) flb.hidden = true;
+    fmLast = null;
+    document.getElementById("fieldMapBox").hidden = true;
+    document.getElementById("servicesBox").innerHTML = "";
     current = null;
-    setTimeout(() => map.invalidateSize(), 50);
+    Clip.set(null);
   }
 
   // avvisi per la coltura del campo: quella indicata dall'utente, la coltura permanente di Copernicus (olivo, vite, frutteti),
