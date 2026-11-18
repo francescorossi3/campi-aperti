@@ -47,6 +47,8 @@ async def main():
         rep["copernicus_campo"] = await pg.locator("#clmsSt").inner_text()
         print("copernicus campo:", rep["copernicus_campo"])
         await pg.screenshot(path=os.path.join(OUT, "browser_copernicus_serie.png"))
+        await pg.evaluate("openSection('services')")      # coltura, suolo, avvisi stanno nella sezione Servizi della barra laterale
+        await pg.wait_for_timeout(1000)
         rep["avvisi"] = await pg.locator("#fpAdvice").inner_text()
         print("avvisi:", rep["avvisi"][:300].replace("\n", " | "))
         # riconoscimento della coltura: annata in corso e annata 2023/24 (confronto con la mappa Copernicus 2024)
