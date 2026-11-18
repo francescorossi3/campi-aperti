@@ -1,6 +1,13 @@
-# 17 — Indice dei file Copernicus su Hugging Face (date disponibili per prodotto), letto dal sito
-import os, json, re
+# Columella — 17: indice dei file Copernicus su Hugging Face (date disponibili per prodotto), letto dal sito
+# Ingressi: elenco file del dataset HF (env HF_DATA_REPO, HF_TOKEN facoltativo): clms/<PRODOTTO>/*.tif e eta/italia/*ET-ENSEMBLE.tif
+# Uscita: data/clms_indice.json  {prodotto: [date]}
+# Esecuzione: workflow clms.yml (dalla radice del repository) oppure Spyder
+# EN: writes the index of available CLMS/ETA dates on Hugging Face for the website.
+import os
+import re
+import json
 from huggingface_hub import HfApi
+
 api = HfApi(token=os.environ.get("HF_TOKEN"))
 files = api.list_repo_files(os.environ["HF_DATA_REPO"], repo_type="dataset")
 ind = {}
