@@ -1,5 +1,11 @@
-// Campi Aperti — divisione in campi dalla serie temporale Sentinel-2
-// Field segmentation from the Sentinel-2 time series
+// Columella – segment.js
+// IT: divisione dell'area visibile in campi. Prima prova il modello Delineate Anything (delineate.js,
+//     AGPL-3.0); se non è disponibile usa la segmentazione a grafo sulla serie NDVI Sentinel-2 qui sotto.
+//     Espone il globale Segment { run, smart, useLabels, method, fieldAt, allFields, clear, has, info, parseNpy }
+//     (usato da live.js, tools.js, delineate.js). Dipendenze: Leaflet (L) e la mappa globale `map` (app.js),
+//     API STAC/data di Microsoft Planetary Computer, Delineate (opzionale, caricato dopo).
+// EN: field segmentation: Delineate Anything model first, fallback to a graph segmentation of the
+//     Sentinel-2 NDVI time series. Exposes Segment; needs Leaflet, global `map`, Planetary Computer.
 //
 // Idea: due campi vicini si distinguono perché hanno colture o lavorazioni diverse, quindi una
 // curva NDVI diversa nel corso dell'anno. Per ogni pixel (10 m) si costruisce il vettore NDVI di
@@ -9,10 +15,12 @@
 const Segment = (() => {
   const PC_API = "https://planetarycomputer.microsoft.com/api";
   const NDVI = "(B08-B04)/(B08+B04-2000)";
-  let result = null;   // { bounds:[w,s,e,n], W, H, labels:Int32Array, feat:Float32Array, K, dates, overlay }
+  // segmentazione corrente: { bounds:[w,s,e,n], W, H, labels, feat (NDVI W×H×K o null), K, dates, nonAgri, nSeg,
+  //                           bgZero (etichetta 0 = non campo), method ("ai" se da Delineate), overlay }
+  let result = null;
   let overlay = null;
 
-  // --- lettura file .npy (float64/float32, C order) ---
+  // --- lettura file .npy (float64/float32/uint8/uint16, C order) ---
   function parseNpy(ab) {
     const dv = new DataView(ab);
     const hl = dv.getUint16(8, true);
@@ -83,6 +91,7 @@ const Segment = (() => {
   }
 
   // --- Felzenszwalb–Huttenlocher su griglia 8-connessa ---
+  // k: scala (più alto = segmenti più grandi); minSize: pixel minimi per segmento; diagonali penalizzate ×1.15
   function felzenszwalb(feat, W, H, K, k, minSize) {
     const N = W * H;
     const edges = [];
@@ -133,7 +142,6 @@ const Segment = (() => {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x, l = labels[i];
       const edge = (x + 1 < W && labels[i + 1] !== l) || (y + 1 < H && labels[i + W] !== l);
-      if (result.bgZero && edge && l === 0 && (x + 1 >= W || labels[i + 1] === 0) && (y + 1 >= H || labels[i + W] === 0)) continue;
       const o = i * 4;
       if (edge) { img.data[o] = 0; img.data[o + 1] = 229; img.data[o + 2] = 255; img.data[o + 3] = 235; }
       else if (nonAgri.has(l) && !result.bgZero) { img.data[o] = 30; img.data[o + 1] = 30; img.data[o + 2] = 30; img.data[o + 3] = 70; }
