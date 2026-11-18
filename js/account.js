@@ -48,10 +48,10 @@ const Account = (() => {
 
   async function init() {
     if (!attivo) return;
-    // carica supabase-js solo se gli account sono attivi
+    // carica supabase-js (copia locale, versione fissa 2.119.1) solo se gli account sono attivi
     await new Promise((ok, ko) => {
       const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+      s.src = "js/vendor/supabase.js";
       s.onload = ok; s.onerror = ko;
       document.head.appendChild(s);
     });

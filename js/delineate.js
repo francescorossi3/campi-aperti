@@ -20,13 +20,21 @@ const Delineate = (() => {
   const SZ = 512, TILE_M = 2560, CONF = 0.1, IOU = 0.5, MAX_TILES = 9;
   let session = null, loading = null;
 
-  function loadScript(src) {
-    return new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => ko(new Error("script " + src)); document.head.appendChild(s); });
+  // SRI: il browser rifiuta ort.min.js se il file sul CDN non è identico a quello della versione 1.20.1
+  const ORT_SRI = "sha384-RPL/K8tc0JVaNWsunkEmCzLeieefvFX2UCRLKLmLVChCI6P+CTKhzqF7VIeCc3Zp";
+  function loadScript(src, integrity) {
+    return new Promise((ok, ko) => {
+      const s = document.createElement("script");
+      s.src = src;
+      if (integrity) { s.integrity = integrity; s.crossOrigin = "anonymous"; }
+      s.onload = ok; s.onerror = () => ko(new Error("script " + src));
+      document.head.appendChild(s);
+    });
   }
   async function getSession() {
     if (session) return session;
     if (!loading) loading = (async () => {
-      if (!window.ort) await loadScript(ORT + "ort.min.js");
+      if (!window.ort) await loadScript(ORT + "ort.min.js", ORT_SRI);
       ort.env.wasm.wasmPaths = ORT;
       ort.env.wasm.numThreads = self.crossOriginIsolated ? 4 : 1;
       session = await ort.InferenceSession.create(MODEL, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
