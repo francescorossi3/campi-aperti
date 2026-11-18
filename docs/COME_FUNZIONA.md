@@ -9,11 +9,13 @@ Tutti i calcoli per l'utente avvengono **nel browser**; i lavori pesanti e lenti
 
 ```mermaid
 flowchart TB
-  html[index.html] --> vendor["js/vendor/ (Chart.js, geotiff.js, proj4)<br/>+ Leaflet (CDN)"]
+  html[index.html] --> vendor["js/vendor/ (Leaflet, Chart.js, geotiff.js, proj4, supabase-js)"]
   html --> config[config.js<br/>impostazioni pubbliche Supabase]
   html --> i18n[i18n.js<br/>testi EN/IT, classi CORINE]
   html --> crop[croplayer.js<br/>raster COG: colture, suolo, CLMS]
   html --> layers[layers.js<br/>catalogo dei livelli]
+  html --> ms[mapstyle.js<br/>pannello Stile come QGIS]
+  html --> clip[clip.js<br/>raster ritagliati sul campo]
   html --> seg[segment.js<br/>campi dalla serie NDVI]
   html --> del[delineate.js<br/>Delineate Anything, AGPL]
   html --> live[live.js<br/>Sentinel-2 in diretta + scheda campo]
@@ -26,8 +28,32 @@ flowchart TB
   live -.usa.-> seg
   live -.usa.-> adv
   tools -.usa.-> acc
-  app -.usa.-> layers & crop & live & tools & reg
+  app -.usa.-> layers & crop & live & tools & reg & ms & clip
+  live -.usa.-> ms & clip
 ```
+
+### Impaginazione
+
+```mermaid
+flowchart LR
+  subgraph Barra["Barra laterale (foglio dal basso sul telefono)"]
+    s1[Ricerca e campi<br/>disegna · area · carica · prato · i miei campi]
+    s2[Livelli<br/>mappe di base · gruppi · Stile per livello · punto cliccato]
+    s3[Indici e serie temporali<br/>mappa del campo · grafici · CSV]
+    s4[Servizi<br/>coltura · resa · suolo · carbonio · avvisi · regioni]
+    s5[Account]
+    s6[Dati · Progetto]
+  end
+  Barra --- M[Mappa grande<br/>raster solo dentro il campo selezionato<br/>legenda in basso a destra]
+```
+
+Nessun pannello copre la mappa: strumenti, schede e grafici stanno nelle sezioni a scomparsa della barra laterale. Selezionando un campo
+la mappa si centra su di esso, tutti i livelli raster sono mostrati **solo dentro il poligono** (`clip-path` CSS sul riquadro Leaflet
+`rasters`, `clip.js`) e le statistiche (media, min, max, dev. std.) sono calcolate sull'intero campo. Il pannello **Stile** (`mapstyle.js`,
+ripreso da Prognostica) offre scala di colori, inversione, minimo/massimo (predefiniti, min–max del campo, percentili 2–98 %, media ± 2 dev.
+std., manuali), classi continue / a intervalli uguali / quantili, trasparenza, colore per nessun dato, istogramma dei valori del campo e
+legenda aggiornata; lo stile di ogni livello è salvato nel browser (`localStorage`, chiave `columella.style.<id del livello>`).
+I mosaici Sentinel-2 per periodo sono colorati dal server: per loro solo scala, limiti manuali e trasparenza.
 
 Gli script sono caricati in quest'ordine da `index.html` e condividono variabili globali (`LANG`, `Live`, `Tools`, `Account`, …).
 Il suffisso `?v=NN` di ogni script obbliga i browser a ricaricarlo dopo una modifica.
@@ -112,7 +138,9 @@ sequenceDiagram
 ```
 
 - `js/config.js` contiene solo URL e chiave anon **pubblici**; se è vuoto gli account sono spenti e i campi restano in `localStorage`.
-- La sicurezza sta in `supabase/schema.sql` (Row Level Security). Attivazione: `SUPABASE.md`. Informativa: `privacy.html`.
+- La sicurezza sta in `supabase/schema.sql` (Row Level Security, al massimo 500 campi per utente). Attivazione: `SUPABASE.md`. Informativa: `privacy.html`.
+- La pagina ha una Content-Security-Policy (`index.html`): script solo dal sito, da jsDelivr (onnxruntime-web, con SRI) e da GoatCounter;
+  richieste di rete solo verso i servizi elencati. Un nuovo servizio di dati va aggiunto anche lì.
 
 ## 4. File → cosa fa
 
@@ -123,7 +151,10 @@ sequenceDiagram
 | `js/config.js` | Impostazioni pubbliche Supabase (URL, chiave anon) |
 | `js/i18n.js` | Testi EN/IT, nomi delle classi CORINE, catalogo "in arrivo" |
 | `js/layers.js` | Catalogo dei livelli (gruppi, URL, testi, fonti) |
-| `js/app.js` | Mappa, mappe di base, pannello livelli e stili, clic sul punto, ricerca, lingua, URL condivisibile |
+| `js/mapstyle.js` | Pannello Stile: scale, limiti, classi, istogramma, legenda, salvato per livello |
+| `js/clip.js` | Ritaglia i raster sul campo selezionato e centra la mappa sul campo |
+| `js/vendor/` | Copie locali di Leaflet, supabase-js, Chart.js, geotiff.js, proj4 (licenze in `LICENSES.md`) |
+| `js/app.js` | Mappa, mappe di base, sezioni della barra laterale, pannello livelli e stili, statistiche sul campo, legenda, clic sul punto, ricerca, lingua, URL condivisibile |
 | `js/croplayer.js` | Raster COG nel browser: Crop Types, suolo, CLMS; scale di colori |
 | `js/live.js` | Livelli Sentinel-2/1 in diretta, scheda campo: serie, coltura, suolo, resa, bilancio idrico, CSV |
 | `js/segment.js` | Divisione in campi dalla serie NDVI Sentinel-2 (riserva) |
@@ -132,7 +163,7 @@ sequenceDiagram
 | `js/regions.js` | Tab "Regioni": riepiloghi per regione, coltura e periodo; Monteith vs ISTAT |
 | `js/tools.js` | Disegno/caricamento di campi e mappe, esportazione area, "i miei campi", prato, benvenuto |
 | `js/account.js` | Account Supabase, campi salvati, esportazione e cancellazione |
-| `supabase/schema.sql` | Tabella `campi`, regole RLS, cancellazione account, vista condivisa |
+| `supabase/schema.sql` | Tabella `campi`, regole RLS, massimo 500 campi per utente, cancellazione account, vista condivisa |
 | `pipeline/00`–`02` | Crop Types: download da CDSE, COG Italia, caricamento su HF |
 | `pipeline/03`–`05` | Superfici per blocco di 1 km, celle meteo, bilanci regionali → `data/riepiloghi.json` |
 | `pipeline/06` | ET reale Copernicus per regione e coltura |

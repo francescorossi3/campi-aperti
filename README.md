@@ -50,13 +50,8 @@ Sito **statico** (HTML + JS + Leaflet): nessun server, nessun costo, nessuna reg
 
 ### Struttura
 
-```
-index.html        pagina
-css/style.css     stile
-js/i18n.js        testi IT/EN, classi CORINE, dataset del catalogo "in arrivo"
-js/layers.js      catalogo dei layer: per aggiungerne uno basta un oggetto in più
-js/app.js         mappa, tasselli, clic, ricerca, lingua
-```
+Struttura del sito, flusso dei dati, Supabase e tabella "file → cosa fa": [docs/COME_FUNZIONA.md](docs/COME_FUNZIONA.md) (italiano) ·
+[docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) (English).
 
 ### Aggiungere un layer
 
