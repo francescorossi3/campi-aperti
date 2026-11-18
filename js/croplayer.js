@@ -1,7 +1,15 @@
-// Campi Aperti — strati raster letti da COG su Hugging Face con geotiff.js (letture parziali HTTP) e disegnati nel browser
-//  CogLayer: livello generico (EPSG:3035 o EPSG:4326) con funzione di colore per valore
-//  CropLayer: colture Copernicus HRL Crop Types (classi 1..19)
-//  Clms: variabili biogeofisiche Copernicus (LAI, FAPAR, FCOVER, NDVI 300 m, GDMP, SWI, SSM, ETa) con scala colori e serie sul campo
+// Columella – croplayer.js
+// IT: strati raster letti da Cloud Optimized GeoTIFF (COG) su Hugging Face con geotiff.js (letture HTTP
+//     parziali) e colorati nel browser. Globali principali:
+//       CogLayer  livello Leaflet generico (EPSG:3035 o EPSG:4326) con funzione di colore per valore
+//       Suolo     SoilGrids 0–30 cm (tessitura, sabbia, limo, argilla, SOC, azoto, pH…) e valori sul campo
+//       CropLayer colture Copernicus HRL Crop Types (classi 1..19)
+//       Clms      variabili biogeofisiche Copernicus (LAI, FAPAR, FCOVER, NDVI 300 m, GDMP, SWI, SSM, ETa)
+//       COLORMAPS, rampFn, rampBar, cmapCols, CROP_COLORS: scale colori condivise con app.js, live.js, tools.js
+//     Dipendenze: Leaflet (L), GeoTIFF e proj4 (js/vendor), LANG (app.js), data/clms_indice.json.
+//     Va caricato prima di layers.js, che usa Suolo.P e Clms.P.
+// EN: COG raster layers from Hugging Face drawn in the browser (CogLayer, Suolo, CropLayer, Clms) plus
+//     shared colour ramps. Needs Leaflet, GeoTIFF, proj4, LANG; must load before layers.js.
 
 const HF_RAW = "https://huggingface.co/datasets/Bradipo92/campi-aperti-data/resolve/main/";
 const CROP_COLORS = {
@@ -13,6 +21,7 @@ const CROP_NAMES = { 1: ["Frumento", "Wheat"], 2: ["Orzo", "Barley"], 3: ["Mais"
   6: ["Ortaggi", "Vegetables"], 7: ["Legumi secchi", "Dry pulses"], 8: ["Patate", "Potatoes"], 9: ["Barbabietola", "Sugar beet"], 10: ["Girasole", "Sunflower"],
   11: ["Soia", "Soybeans"], 12: ["Colza", "Rapeseed"], 13: ["Lino/cotone/canapa", "Flax/cotton/hemp"], 14: ["Vite", "Grapes"], 15: ["Olivo", "Olives"],
   16: ["Frutta", "Fruits"], 17: ["Frutta a guscio", "Nuts"], 18: ["Seminativo n.c.", "Unclassified annual"], 19: ["Permanente n.c.", "Unclassified permanent"] };
+// [r, g, b] da "#rrggbb"
 const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 // scale colori comuni a tutte le mappe (nomi = colormap di titiler/matplotlib, così valgono anche per i tasselli Sentinel-2)
 const COLORMAPS = {
@@ -29,14 +38,20 @@ const COLORMAPS = {
   greys: ["#ffffff", "#f0f0f0", "#d9d9d9", "#bdbdbd", "#969696", "#737373", "#525252", "#3b3b3b", "#252525", "#000000"],
 };
 const cmapCols = (st) => (st.rev ? COLORMAPS[st.cmap].slice().reverse() : COLORMAPS[st.cmap]);
+// funzione valore -> [r,g,b] (interpolazione lineare nella scala); null per nodata (≤ -9000)
 function rampFn(st) {          // st = { cmap, min, max, rev }
   const rr = cmapCols(st).map(hexRgb), a = +st.min, b = +st.max;
-  return (v) => { if (!isFinite(v) || v <= -9000) return null; const u = Math.max(0, Math.min(1, (v - a) / (b - a || 1))) * (rr.length - 1);
-    const i = Math.min(rr.length - 2, Math.floor(u)), f = u - i; return rr[i].map((c, k) => c + f * (rr[i + 1][k] - c)); };
+  return (v) => {
+    if (!isFinite(v) || v <= -9000) return null;
+    const u = Math.max(0, Math.min(1, (v - a) / (b - a || 1))) * (rr.length - 1);
+    const i = Math.min(rr.length - 2, Math.floor(u)), f = u - i;
+    return rr[i].map((c, k) => c + f * (rr[i + 1][k] - c));
+  };
 }
 const rampBar = (st) => `<div class="fm-legend"><span>${st.min}</span><b class="fm-bar" style="background:linear-gradient(90deg,${cmapCols(st).join(",")})"></b><span>${st.max}${st.unit ? " " + st.unit : ""}</span></div>`;
 
 // ---------------------------------------------------------------- livello COG generico
+// livelli (overview) di un COG, con risoluzione e origine; una sola apertura per URL
 const cogCache = {};
 function cogImages(url) {
   if (!cogCache[url]) cogCache[url] = GeoTIFF.fromUrl(url).then(async (t) => {
@@ -49,7 +64,6 @@ function cogImages(url) {
 }
 const CogLayer = L.GridLayer.extend({
   // opts: url, crs ("EPSG:3035" | "EPSG:4326"), color(v) -> [r,g,b] | null
-  initialize(opts) { L.GridLayer.prototype.initialize.call(this, opts); },
   setUrl(url) { this.options.url = url; this.redraw(); },
   setColor(fn) { this.options.color = fn; this.redraw(); },
   createTile(coords, done) {
@@ -63,6 +77,7 @@ const CogLayer = L.GridLayer.extend({
     const S = tile.width, n = Math.pow(2, coords.z);
     const latOf = (Y) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * Y) / n))) * 180) / Math.PI;
     const mpp = (40075016 * Math.cos((latOf(coords.y + 0.5) * Math.PI) / 180)) / (n * S);
+    // overview più grossolana con risoluzione ancora ≤ 1,5 × quella del tassello
     let lev = ims[0];
     for (const l of ims) if ((geo ? l.rx * 111320 : l.rx) <= mpp * 1.5) lev = l;
     // coordinate di ogni pixel su una griglia 16×16 interpolata
@@ -113,7 +128,12 @@ async function fieldMean(url, feature, categorical = false) {
   }
   if (!vals.length) { const v = b[Math.floor((r1 - r0) / 2) * W + Math.floor(W / 2)]; if (ok(v)) vals.push(v); }
   if (!vals.length) return null;
-  if (categorical) { const cnt = {}; vals.forEach((v) => (cnt[v] = (cnt[v] || 0) + 1)); const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0]; return { mean: +top, n: vals.length }; }
+  if (categorical) {   // classe più frequente
+    const cnt = {};
+    vals.forEach((v) => (cnt[v] = (cnt[v] || 0) + 1));
+    const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+    return { mean: +top, n: vals.length };
+  }
   return { mean: vals.reduce((a, v) => a + v, 0) / vals.length, n: vals.length };
 }
 
@@ -149,8 +169,7 @@ const Suolo = (() => {
 // ---------------------------------------------------------------- colture Copernicus
 const CropLayer = (() => {
   const URL = (y) => `${HF_RAW}crop_types/cty_${y}_italia_3035.tif`;
-  const rgb = {};
-  Object.entries(CROP_COLORS).forEach(([k, h]) => (rgb[k] = hexRgb(h)));
+  const rgb = Object.fromEntries(Object.entries(CROP_COLORS).map(([k, h]) => [k, hexRgb(h)]));
   const Layer = CogLayer.extend({
     initialize(year, opts) { CogLayer.prototype.initialize.call(this, { ...opts, url: URL(year), crs: "EPSG:3035", color: (v) => rgb[v] }); },
     setYear(y) { this.setUrl(URL(y)); },
@@ -162,7 +181,7 @@ const CropLayer = (() => {
 
 // ---------------------------------------------------------------- variabili biogeofisiche Copernicus
 const Clms = (() => {
-  // prodotto: [min, max, unità, scala, etichetta it, etichetta en, percorso]
+  // prodotto: [min, max, unità, scala, etichetta it, etichetta en]
   const P = {
     LAI: [0, 5, "m²/m²", "rdylgn", "LAI — area fogliare", "LAI — leaf area index"],
     FAPAR: [0, 0.9, "", "rdylgn", "FAPAR — radiazione assorbita", "FAPAR — absorbed radiation"],
@@ -179,6 +198,7 @@ const Clms = (() => {
   const style0 = (p) => ({ cmap: P[p][3], min: P[p][0], max: P[p][1], rev: false, unit: P[p][2] });
   const layer = (p, d, opts, st) => new CogLayer({ ...opts, url: url(p, d), crs: "EPSG:4326", color: rampFn(st || style0(p)) });
   const label = (p) => P[p][LANG === "it" ? 4 : 5];
+  // serie temporale della media sul campo, 4 letture in parallelo
   async function series(p, feature, dates, onStep) {
     const out = []; let k = 0;
     const queue = dates.slice();
