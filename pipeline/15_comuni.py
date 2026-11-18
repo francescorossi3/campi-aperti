@@ -1,6 +1,8 @@
-# 15 — Indice dei comuni italiani per la ricerca istantanea nel sito (anche con errori di battitura)
-# Fonte: confini comunali ISTAT ridistribuiti da openpolis/geojson-italy (CC BY 4.0).
+# Columella — 15: indice dei comuni italiani per la ricerca istantanea nel sito (anche con errori di battitura)
+# Fonte: confini comunali ISTAT ridistribuiti da openpolis/geojson-italy (CC BY 4.0); copia temporanea in /tmp.
 # Uscita: data/comuni.json  [nome, sigla provincia, regione, lat, lon, ovest, sud, est, nord]
+# Esecuzione: workflow comuni.yml (da pipeline/) oppure Spyder
+# EN: builds the municipality search index (name, province, region, point, bbox) for the website.
 import json
 import requests
 import geopandas as gpd
