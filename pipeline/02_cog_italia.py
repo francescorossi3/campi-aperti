@@ -1,11 +1,14 @@
-# 02 — Unisce i tasselli Crop Types di un anno in un unico COG per l'Italia e lo carica su Hugging Face
+# Columella — 02: unisce i tasselli Crop Types di un anno in un unico COG per l'Italia e lo carica su Hugging Face
 #
 # - ricodifica le classi da uint16 (1110, 1120, ...) a uint8 (1..19), 0 = nessuna coltura, 255 = nodata
 # - resta in EPSG:3035 (equivalente: ogni pixel vale esattamente 100 m²)
 # - COG con compressione DEFLATE, blocchi 512 e panoramiche in modalità "mode" (classi)
 # Usa solo rasterio (GDAL incluso nel pacchetto): il mosaico è un VRT scritto a mano con una LUT.
 #
+# Ingressi: data/cty/<anno>/*.tif (da 01); env ANNO, HF_DATA_REPO, HF_MODEL_REPO, HF_TOKEN (se assente non carica)
 # Uscita: data/cog/cty_<anno>_italia_3035.tif  e  dataset HF  <utente>/campi-aperti-data
+# Esecuzione: workflow crop-types.yml oppure Spyder
+# EN: mosaics the Crop Types tiles into one uint8 COG for Italy and uploads it to Hugging Face.
 
 import os
 import glob
