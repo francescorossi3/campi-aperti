@@ -567,7 +567,7 @@ const Live = (() => {
     if (!items.length) return { quota: NaN, pendenza: NaN };
     const G = fieldGrid(), W = Math.max(3, Math.round(G.W / 3)), H = Math.max(3, Math.round(G.H / 3));
     try {
-      const ab = await fetch(`${PC}/data/v1/item/bbox/${G.X0},${G.Y0},${G.X1},${G.Y1}.npy?collection=cop-dem-glo-30&item=${items[0].id}&assets=data&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${W}&height=${H}`).then((r) => r.arrayBuffer());
+      const ab = await fetch(`${PC}/data/v1/item/bbox/${G.X0},${G.Y0},${G.X1},${G.Y1}.npy?collection=cop-dem-glo-30&item=${encodeURIComponent(items[0].id)}&assets=data&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${W}&height=${H}`).then((r) => r.arrayBuffer());
       const z = parseNpy(ab).data, dx = ((G.X1 - G.X0) / W) * Math.cos((current.ll.lat * Math.PI) / 180);
       let q = 0, sl = 0, n = 0;
       for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
@@ -675,7 +675,7 @@ const Live = (() => {
     current.soil = { sand: S, clay: C, silt: Si, soc: v.soc, n: v.nitrogen, ph: v.phh2o, cec: v.cec, bd: v.bdod, om: OM, fc: t33, wp: t15, paw, tex: usdaTexture(S, Si, C),
       stock: v.stock ?? (v.soc && v.bdod ? v.soc * v.bdod * 0.3 * 10 : null) };
     const cn = v.soc && v.nitrogen ? v.soc / v.nitrogen : null;
-    el.innerHTML = `<b>${lt("soil_title")}</b> <span class="soil-tex">${current.soil.tex}</span>
+    el.innerHTML = `<b>${lt("soil_title")}</b> <span class="soil-tex">${escapeHtml(current.soil.tex)}</span>
       <div class="soil-grid">
         <span>${lt("soil_sand")} <b>${S.toFixed(0)}%</b></span><span>${lt("soil_silt")} <b>${Si.toFixed(0)}%</b></span><span>${lt("soil_clay")} <b>${C.toFixed(0)}%</b></span>
         <span>${lt("soil_soc")} <b>${v.soc.toFixed(1)} g/kg</b></span><span>${lt("soil_n")} <b>${v.nitrogen != null ? v.nitrogen.toFixed(2) + " g/kg" : "—"}</b></span>
@@ -794,7 +794,7 @@ const Live = (() => {
     if (w) current.fieldYield.acqua = w.resa;
     const water = w ? `<div class="fy-water"><b>${lt("fw_title")}:</b> <span class="big">${w.resa.toFixed(1)} t/ha</span>
         <small>${lt("fw_det", { taw: Math.round(w.TAW), r: Math.round(w.rel * 100), s: w.stressDays, ym: w.Ym.toFixed(1) })}${w.irrigato ? " " + lt("fw_irr") : ""}</small></div>` : "";
-    el.innerHTML = `<b>${lt("fy_title", { c: y.nome, y: ca.anno })}:</b> <span class="big">${y.resa.toFixed(1)} t/ha</span>
+    el.innerHTML = `<b>${lt("fy_title", { c: escapeHtml(y.nome), y: ca.anno })}:</b> <span class="big">${y.resa.toFixed(1)} t/ha</span>
       <small>(${lt("fy_range")} ${(y.resa * 0.7).toFixed(1)}–${(y.resa * 1.3).toFixed(1)}${T ? "; " + lt("fy_cal", { f: T.fattore.toFixed(2) }) : ""})</small>${conf}
       ${water}
       <div class="hint small">${lt("fy_note", { d: y.giorni, a: fmtDate(y.t0), b: fmtDate(y.t1), f: ca.fonte })}</div>`;
@@ -850,8 +850,8 @@ const Live = (() => {
       const last = anni[anni.length - 1], y = resaClasse(R, pv.nuts, ref, last) || resaClasse(R, pv.nuts, ref, last - 1);
       if (y && y.dettaglio.length > 1) {
         const tot = y.dettaglio.reduce((a, d) => a + d.ha, 0);
-        specie = `<div class="hint small"><b>${lt("y_species", { p: pv.prov_name })}</b> ` +
-          y.dettaglio.slice(0, 6).map((d) => `${cname(d.c)} ${Math.round((100 * d.ha) / tot)}%`).join(" · ") + `</div>`;
+        specie = `<div class="hint small"><b>${lt("y_species", { p: escapeHtml(pv.prov_name) })}</b> ` +
+          y.dettaglio.slice(0, 6).map((d) => `${escapeHtml(cname(d.c))} ${Math.round((100 * d.ha) / tot)}%`).join(" · ") + `</div>`;
       }
     }
     el.innerHTML = specie;
@@ -1204,7 +1204,7 @@ const Live = (() => {
   }
   const EXPR_MAP = (idx) => (idx === "rgb" ? ["B04", "B03", "B02"] : idx === "lai" ? [`3.618*(${S2_INDEX.evi})-0.118`] : [S2_INDEX[idx === "zone" ? "ndvi" : idx]]);
   async function fetchIndex(item, idx, G) {
-    const url = `${PC}/data/v1/item/bbox/${G.X0},${G.Y0},${G.X1},${G.Y1}.npy?collection=sentinel-2-l2a&item=${item}` +
+    const url = `${PC}/data/v1/item/bbox/${G.X0},${G.Y0},${G.X1},${G.Y1}.npy?collection=sentinel-2-l2a&item=${encodeURIComponent(item)}` +
       `&expression=${encodeURIComponent(EXPR_MAP(idx).join(";"))}&asset_as_band=true&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${G.W}&height=${G.H}&resampling=nearest`;
     return parseNpy(await fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }));
   }
