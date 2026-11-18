@@ -1,9 +1,13 @@
-# 07 — Rese agricole ISTAT per provincia, coltura e anno (dal 2017)
+# Columella — 07: rese agricole ISTAT per provincia, coltura e anno (dal 2017)
 #
 # Fonte: ISTAT, "Stima delle superfici e produzioni delle coltivazioni agrarie", API SDMX
 # dataflow 101_1015_DF_DCSP_COLTIVAZIONI_1. Dati: superficie in produzione (PA_EXT, ha) e produzione raccolta
-# (HP_Q_EXT, quintali); per i seminativi la superficie è quella totale (ART). Resa = produzione / superficie (t/ha). Gli ultimi anni possono essere provvisori.
+# (HP_Q_EXT, quintali); per i seminativi la superficie è quella totale (ART). Resa = produzione / superficie (t/ha).
+# Gli ultimi anni possono essere provvisori.
+# Ingressi: API ISTAT (pubblica), province_istat.geojson
 # Uscite: data/rese.json (per il sito) e data/province.json (confini semplificati con codice NUTS ISTAT)
+# Esecuzione: workflow rese.yml oppure Spyder
+# EN: ISTAT crop yields by province, crop and year, plus simplified province boundaries.
 
 import io
 import os
