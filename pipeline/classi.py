@@ -1,7 +1,8 @@
-# Classi HRL Croplands - Crop Types (CTY) e coefficienti colturali mensili
-# Usato dagli script 02, 03 e 05. Nessuna funzione: solo dizionari.
+# Columella — classi HRL Croplands - Crop Types (CTY), nomi IT/EN e coefficienti colturali mensili (Kc)
+# Modulo importato da 02 (CTY_CODICI) e 05 (NOMI, KC). Nessuna funzione: solo dizionari.
+# EN: Crop Types class codes, IT/EN names and monthly Kc, imported by scripts 02 and 05.
 
-# codice originale CTY (uint16) -> codice compatto (uint8) usato nei COG di Campi Aperti
+# codice originale CTY (uint16) -> codice compatto (uint8) usato nei COG di Columella
 # 0 = nessuna coltura, 255 = fuori area / nodata
 CTY_CODICI = {
     0: 0,
