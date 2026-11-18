@@ -16,7 +16,7 @@
 let LANG = (() => {
   const q = new URLSearchParams(location.search).get("lang");
   if (q === "it" || q === "en") return q;
-  try { const s = localStorage.getItem("campi_lang"); if (s) return s; } catch (e) {}
+  try { const s = localStorage.getItem("campi_lang"); if (s === "it" || s === "en") return s; } catch (e) {}
   return "en";                                   // lingua principale: inglese (italiano con il pulsante IT)
 })();
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.it[k] || k;
@@ -292,7 +292,7 @@ async function loadLegend(def, el) {
     rows = rows.slice(0, 48);
     if (!rows.length) return;
     box.innerHTML = legendTitle() + rows.map((r) =>
-      `<div class="legend-row"><img alt="" src="data:${r.contentType};base64,${r.imageData}"><span>${escapeHtml(r.label)}</span></div>`).join("");
+      `<div class="legend-row">${/^image\/[\w.+-]+$/.test(r.contentType) && /^[A-Za-z0-9+/=]+$/.test(r.imageData) ? `<img alt="" src="data:${r.contentType};base64,${r.imageData}">` : ""}<span>${escapeHtml(r.label)}</span></div>`).join("");
   } catch (e) { /* legenda non disponibile */ }
 }
 
