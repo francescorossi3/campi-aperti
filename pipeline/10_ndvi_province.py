@@ -1,4 +1,4 @@
-# 10 — NDVI medio per provincia × coltura × data (un'annata alla volta), per il confronto rese ISTAT / modello Monteith
+# Columella — 10: NDVI medio per provincia × coltura × data (un'annata alla volta), per il confronto rese ISTAT / modello Monteith
 #
 # Per ogni tassello Sentinel-2 (MGRS) che copre l'Italia:
 #   - immagini L2A dell'annata (novembre dell'anno prima → ottobre) con nuvolosità < 50%, al massimo 3 al mese
@@ -6,7 +6,11 @@
 #   - pixel da 200 m "puri": almeno 80% della superficie con la stessa coltura nella mappa Copernicus Crop Types
 #     (letta a 40 m, blocchi 5×5)
 #   - per ogni provincia e coltura con almeno 15 pixel puri sereni: NDVI medio della data
-# Uscita: data/province_ndvi/ndvi_<anno>.parquet (provincia, classe, data, ndvi, n)
+# Ingressi: Microsoft Planetary Computer (STAC + data API, pubblici), COG Crop Types su Hugging Face,
+#           province_istat.geojson; env ANNO (def. 2024)
+# Uscita: data/province_ndvi/ndvi_<anno>.parquet (provincia, sigla, classe, data, ndvi, n, anno, anno_mappa)
+# Esecuzione: workflow monteith.yml (poi hf_sync.py carica "province_ndvi") oppure Spyder
+# EN: mean Sentinel-2 NDVI per province × crop × date over "pure" 200 m crop pixels.
 
 import os
 import time
@@ -118,6 +122,7 @@ for k, (tile, (x0, y0, x1, y1)) in enumerate(sorted(tiles.items())):
 
     with ThreadPoolExecutor(4) as ex:
         risultati = list(ex.map(una, scelti))
+    tot = pd.Series(1, index=grp[puro]).groupby(level=0).sum()     # pixel puri per gruppo (provincia, classe)
     n_ok = 0
     for d, arr in risultati:
         if arr is None or arr.shape[0] < 2:
@@ -128,9 +133,7 @@ for k, (tile, (x0, y0, x1, y1)) in enumerate(sorted(tiles.items())):
             ok &= arr[-1] > 0
         if not ok.any():
             continue
-        g_ok = grp[ok]
-        tot = pd.Series(1, index=grp[puro]).groupby(level=0).sum()
-        s = pd.DataFrame({"g": g_ok, "v": ndvi[ok]}).groupby("g")["v"].agg(["mean", "count"])
+        s = pd.DataFrame({"g": grp[ok], "v": ndvi[ok]}).groupby("g")["v"].agg(["mean", "count"])
         s = s[s.index.isin(validi_g)]
         s = s[(s["count"] >= MIN_PIX) & (s["count"] >= 0.6 * tot.reindex(s.index).values)]
         for g, r in s.iterrows():
