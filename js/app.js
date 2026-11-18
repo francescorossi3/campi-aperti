@@ -6,9 +6,9 @@
 // EN: main map logic: language, basemaps, layers, styles/legends, shareable URL hash, layer panel, catalogue,
 //     map click, place search, tabs/language switch, start-up.
 //
-// Globali usati da altri file / globals used elsewhere: LANG, t(), map, showTab().
+// Globali usati da altri file / globals used elsewhere: LANG, t(), map, openSection(), escapeHtml().
 // Dipende da / depends on: Leaflet (L), i18n.js (I18N, CATALOG_EXTRA, CLC_IT, CLC_EN),
-//   layers.js (LAYERS, LAYER_GROUPS, ARCHIVE_GROUPS, CATASTO_WMS), croplayer.js (COLORMAPS, rampBar, rampFn,
+//   layers.js (LAYERS, LAYER_GROUPS, ARCHIVE_GROUPS, CATASTO_WMS), mapstyle.js (MapStyle), clip.js (Clip), croplayer.js (COLORMAPS, fieldValues,
 //   Clms, Suolo, CropLayer), live.js (Live), regions.js (Regions), account.js (Account), tools.js (Tools),
 //   data/comuni.json.
 
@@ -698,8 +698,6 @@ function openSection(name) {
   if (document.body.dataset.sheet === "peek") setSheet("half");
   setTimeout(() => d.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 30);
 }
-// compatibilità con il vecchio sistema a tab
-const showTab = (name) => openSection({ info: "layers", regions: "services", data: "data", about: "about" }[name] || name);
 document.querySelectorAll("details.sec").forEach((d) => d.addEventListener("toggle", () => {
   if (d.id === "sec-services" && d.open) Regions.show();
   // barra più larga (schermi grandi) quando sono aperti grafici o tabelle

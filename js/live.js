@@ -10,7 +10,7 @@
 //  - Live: makeS2Layer, refreshLayer, windowControl, bindWindowControl, segControl, periodRange, onMapClick,
 //    analyze, cropOfField, cropHistory, CTY_NOMI, current, refreshLang, _debug
 // Dipende da / depends on: Leaflet (L), Chart.js, geotiff.js, proj4 e i globali LANG, t, map, Segment, Clms,
-//   Suolo, Regions, Advice, COLORMAPS, rampFn, cmapCols, CROP_COLORS, showTab (definiti negli altri file).
+//   Suolo, Regions, Advice, COLORMAPS, rampFn, cmapCols, CROP_COLORS, openSection, Clip, MapStyle (definiti negli altri file).
 //
 // Fonti (tutte gratuite, senza chiavi, lette dal browser):
 //  - Sentinel-2 L2A, Sentinel-1 RTC, Copernicus DEM tramite Microsoft Planetary Computer (STAC + titiler)
