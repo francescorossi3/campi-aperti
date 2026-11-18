@@ -1,4 +1,8 @@
-// Testi dell'interfaccia / Interface strings
+// Columella – i18n.js
+// IT: testi dell'interfaccia in italiano e inglese e tabelle di supporto. Espone le costanti globali
+//     I18N {it, en} (letta da t() in app.js), CATALOG_EXTRA (dataset del catalogo, pannello Dati),
+//     CLC_IT / CLC_EN (nomi delle classi CORINE Land Cover). Nessuna dipendenza.
+// EN: UI strings (IT/EN) and lookup tables. Exposes I18N, CATALOG_EXTRA, CLC_IT, CLC_EN; no dependencies.
 const I18N = {
   it: {
     title: "Columella",
