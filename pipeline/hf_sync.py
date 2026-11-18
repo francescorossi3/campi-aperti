@@ -1,6 +1,9 @@
-# Sincronizza cartelle di lavoro con il dataset Hugging Face (usato dalle GitHub Actions)
+# Columella — sincronizza cartelle di lavoro in data/ con il dataset Hugging Face
 # MODO=giu  scarica  CARTELLE (es. "blocchi,meteo") dal dataset in data/
-# MODO=su   carica   CARTELLE da data/ al dataset
+# MODO=su   carica   CARTELLE da data/ al dataset (crea il dataset pubblico se manca)
+# Ingressi: env MODO, CARTELLE, HF_DATA_REPO, HF_TOKEN (obbligatorio)
+# Esecuzione: quasi tutti i workflow (da pipeline/) oppure Spyder
+# EN: downloads/uploads data/ subfolders from/to the Hugging Face dataset.
 import os
 import time
 from huggingface_hub import HfApi, snapshot_download
