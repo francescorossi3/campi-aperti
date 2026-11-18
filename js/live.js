@@ -1,10 +1,21 @@
-// Campi Aperti — dati in tempo reale e serie temporali per campo
-// Real-time data and per-field time series
+// Columella — js/live.js
+// Mappe Sentinel-2 per periodo e scheda del campo: serie temporali (indici, meteo, ET, radar), coltura
+// (Copernicus HRL, modello v2, regole fenologiche), rese (ISTAT, Monteith, FAO-33), suolo, crediti di carbonio,
+// mappa del campo a 10 m con download GeoTIFF/CSV.
+// Sentinel-2 period maps and the field panel: time series, crop, yields, soil, carbon, 10 m field map.
+//
+// Globali esposti / exposed globals:
+//  - PC (URL Planetary Computer, usato anche da delineate.js), BANDE, S2_INDEX, INDEX_DEF
+//  - LT, lt(key, vars): testi IT/EN di questo file (lt usato anche da app.js, segment.js, delineate.js, tools.js, account.js)
+//  - Live: makeS2Layer, refreshLayer, windowControl, bindWindowControl, segControl, periodRange, onMapClick,
+//    analyze, cropOfField, cropHistory, CTY_NOMI, current, refreshLang, _debug
+// Dipende da / depends on: Leaflet (L), Chart.js, geotiff.js, proj4 e i globali LANG, t, map, Segment, Clms,
+//   Suolo, Regions, Advice, COLORMAPS, rampFn, cmapCols, CROP_COLORS, showTab (definiti negli altri file).
 //
 // Fonti (tutte gratuite, senza chiavi, lette dal browser):
-//  - Sentinel-2 L2A e Sentinel-1 RTC (Copernicus) tramite Microsoft Planetary Computer (STAC + titiler)
-//  - Confini dei campi 2025: Fields of The World (Taylor Geospatial, CC BY 4.0), PMTiles su Source Cooperative
-//  - Meteo: ERA5 / ERA5-Land (Copernicus C3S) e previsioni, tramite Open-Meteo
+//  - Sentinel-2 L2A, Sentinel-1 RTC, Copernicus DEM tramite Microsoft Planetary Computer (STAC + titiler)
+//  - Coltura Copernicus HRL Crop Types, modello colture v2: ritagli su Hugging Face
+//  - Meteo: ERA5 / ERA5-Land (Copernicus C3S) e previsioni, tramite Open-Meteo; suolo: ISRIC SoilGrids
 
 const PC = "https://planetarycomputer.microsoft.com/api";
 
@@ -267,13 +278,18 @@ const Live = (() => {
   let searchId = null, searchPromise = null;
   const liveLayers = new Set();
   const PTYPES = ["week", "month", "3m", "6m", "year"];
+  const PERIOD_MONTHS = { month: 1, "3m": 3, "6m": 6, year: 12 };
+  const DAY_MS = 86400000;
+  const locale = () => (LANG === "it" ? "it-IT" : "en-GB");
+  const cropName = (cls) => CTY_NOMI[cls][LANG === "it" ? 0 : 1];
+  const cropColor = (cls) => (typeof CROP_COLORS !== "undefined" && CROP_COLORS[cls]) || "#7a9";
 
   function periodRange() {
     const a = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate()));
     let start, end;
-    if (ptype === "week") { end = new Date(a.getTime() + 86399999); start = new Date(a.getTime() - 6 * 86400000); }
+    if (ptype === "week") { end = new Date(a.getTime() + DAY_MS - 1); start = new Date(a.getTime() - 6 * DAY_MS); }
     else {
-      const months = { month: 1, "3m": 3, "6m": 6, year: 12 }[ptype];
+      const months = PERIOD_MONTHS[ptype];
       end = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + 1, 0, 23, 59, 59));
       start = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() - months + 1, 1));
     }
@@ -283,17 +299,14 @@ const Live = (() => {
   }
   function shiftPeriod(dir) {
     const a = anchor;
-    if (ptype === "week") anchor = new Date(a.getTime() + dir * 7 * 86400000);
-    else {
-      const m = { month: 1, "3m": 3, "6m": 6, year: 12 }[ptype];
-      anchor = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + dir * m + 1, 0));
-    }
+    if (ptype === "week") anchor = new Date(a.getTime() + dir * 7 * DAY_MS);
+    else anchor = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + dir * PERIOD_MONTHS[ptype] + 1, 0));   // fine mese
     if (anchor > new Date()) anchor = new Date();
     applyPeriod();
   }
   function periodLabel() {
     const { start, end } = periodRange();
-    const f = (d, y) => d.toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { day: "numeric", month: "short", ...(y ? { year: "numeric" } : {}) });
+    const f = (d, y) => d.toLocaleDateString(locale(), { day: "numeric", month: "short", ...(y ? { year: "numeric" } : {}) });
     return `${f(start, start.getUTCFullYear() !== end.getUTCFullYear())} – ${f(end, true)}`;
   }
 
@@ -448,12 +461,17 @@ const Live = (() => {
     const [cls, k] = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
     return { year: y, cls: +cls, share: k / n };
   }
-  async function cropHistory(feature) {
-    if (!window.GeoTIFF || !window.proj4) return [];
+  // poligoni del campo in EPSG:3035 (griglia delle mappe Copernicus) e loro riquadro
+  function to3035(feature) {
     const polys = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
     const rings = polys.map((poly) => poly.map((ring) => ring.map(([lo, la]) => proj4("EPSG:4326", "EPSG:3035", [lo, la]))));
     const all = rings.flat(2);
     const bb = [Math.min(...all.map((p) => p[0])), Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[0])), Math.max(...all.map((p) => p[1]))];
+    return { rings, bb };
+  }
+  async function cropHistory(feature) {
+    if (!window.GeoTIFF || !window.proj4) return [];
+    const { rings, bb } = to3035(feature);
     const res = await Promise.all(CTY_ANNI.map((y) => cropOfYear(y, rings, bb).catch(() => null)));
     return res.filter(Boolean);
   }
@@ -478,13 +496,14 @@ const Live = (() => {
     current.cty = h;
     current.ctyPerm = isPerm ? +top[0] : null;
     el.innerHTML = h.length ? `<b>${lt("cty_title")}:</b> ` + h.slice().reverse().map((r) =>
-      `<span class="cty-chip cty${r.cls} ${r.dubbio ? "dubbio" : ""}" title="${r.dubbio ? lt("cty_dubbio") : ""}">${r.year} ${CTY_NOMI[r.cls] ? CTY_NOMI[r.cls][LANG === "it" ? 0 : 1] : r.cls} <small>${Math.round(r.share * 100)}%</small>${r.dubbio ? " ⚠" : ""}</span>`).join(" ") +
-      (h.some((r) => r.dubbio) ? `<div class="hint small">⚠ ${isPerm ? lt("cty_perm_note").replace("{c}", CTY_NOMI[top[0]][LANG === "it" ? 0 : 1]) : lt("cty_ann_note")}</div>` : "")
+      `<span class="cty-chip cty${r.cls} ${r.dubbio ? "dubbio" : ""}" title="${r.dubbio ? lt("cty_dubbio") : ""}">${r.year} ${CTY_NOMI[r.cls] ? cropName(r.cls) : r.cls} <small>${Math.round(r.share * 100)}%</small>${r.dubbio ? " ⚠" : ""}</span>`).join(" ") +
+      (h.some((r) => r.dubbio) ? `<div class="hint small">⚠ ${isPerm ? lt("cty_perm_note", { c: cropName(top[0]) }) : lt("cty_ann_note")}</div>` : "")
       : `<span class="hint small">${lt("cty_none")}</span>`;
   }
 
   // ================================================================== rese ISTAT della provincia del campo
-  let RESE = null, PROV = null;
+  let RESE = null, PROV = null;                    // promessa del caricamento, poligoni delle province
+  let RESE_DATA = null, TARATURA = null, taraturaChiesta = false;   // rese caricate, taratura per classe
   async function loadRese() {
     if (!RESE) RESE = Promise.all([fetch("data/rese.json?d=" + new Date().toISOString().slice(0, 13)).then((r) => r.json()), fetch("data/province.json?d=" + new Date().toISOString().slice(0, 10)).then((r) => r.json())])
       .then(([r, p]) => { PROV = p; return r; }).catch(() => null);
@@ -493,7 +512,7 @@ const Live = (() => {
   function provinceAt(ll) {
     for (const f of PROV.features) {
       const g = f.geometry, polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
-      if (polys.some((poly) => inRing([ll.lng, ll.lat], poly[0]) && !poly.slice(1).some((h) => inRing([ll.lng, ll.lat], h)))) return f.properties;
+      if (polys.some((poly) => inPoly([ll.lng, ll.lat], poly))) return f.properties;
     }
     return null;
   }
@@ -537,7 +556,6 @@ const Live = (() => {
     const resa = (bio * P.hi) / 100 / (1 - P.u);          // g/m² -> t/ha, a umidità commerciale
     return { resa, giorni, t0, t1, nome: P.n[LANG === "it" ? 0 : 1], bio: bio / 100 };
   }
-  // classe della coltura per l'annata mostrata: Copernicus se esiste per quell'anno, altrimenti stima fenologica
   // ================================================================== classificatore delle colture (v2, nel browser)
   // 3 reti neurali addestrate su 2 milioni di pixel etichettati Copernicus (2019–2024): mediane mensili nov→ott di 10 bande
   // Sentinel-2 e 3 indici, radar Sentinel-1 VV/VH, quota, pendenza, latitudine. Qui le variabili sono medie sul campo.
@@ -592,8 +610,8 @@ const Live = (() => {
   async function classifyField(my) {
     const el = document.getElementById("fpModel");
     if (!el) return;
-    const Y = endDate(range).getUTCFullYear();
-    el.innerHTML = `<span class="hint small">${lt("cm_run", { y: `${Y - 1}/${String(Y).slice(2)}` })}</span>`;
+    const Y = endDate(range).getUTCFullYear(), annata = `${Y - 1}/${String(Y).slice(2)}`;
+    el.innerHTML = `<span class="hint small">${lt("cm_run", { y: annata })}</span>`;
     if (!s1Loaded) { s1Loaded = true; await loadS1(); }
     const [M, dem] = await Promise.all([loadModel(), demStats(current.feature)]);
     if (my !== runId) return;
@@ -602,21 +620,21 @@ const Live = (() => {
     if (f.okMesi < 5) { el.innerHTML = `<span class="hint small">${lt("cm_short")}</span>`; return; }
     const res = predict(M, M.variabili.map(f.get));
     current.model = { anno: Y, top: res[0], res };
-    const nome = (c) => CTY_NOMI[c][LANG === "it" ? 0 : 1];
-    el.innerHTML = `<b>${lt("cm_title", { y: `${Y - 1}/${String(Y).slice(2)}` })}:</b> <span class="cm-main">${nome(res[0].cls)}</span> ` +
-      res.slice(0, 3).map((r) => `<span class="cm-bar"><i style="width:${Math.round(r.p * 100)}%;background:${(typeof CROP_COLORS !== "undefined" && CROP_COLORS[r.cls]) || "#7a9"}"></i>${nome(r.cls)} ${Math.round(r.p * 100)}%</span>`).join("") +
+    el.innerHTML = `<b>${lt("cm_title", { y: annata })}:</b> <span class="cm-main">${cropName(res[0].cls)}</span> ` +
+      res.slice(0, 3).map((r) => `<span class="cm-bar"><i style="width:${Math.round(r.p * 100)}%;background:${cropColor(r.cls)}"></i>${cropName(r.cls)} ${Math.round(r.p * 100)}%</span>`).join("") +
       `<div class="hint small">${lt("cm_note", { m: f.okMesi, s1: (current.s1 || []).length })}</div>`;
     renderAdvice(); drawFieldYield();
   }
 
+  // classe della coltura per l'annata mostrata: Copernicus se esiste per quell'anno, poi il modello, altrimenti stima fenologica
   function classeAnnata() {
     const y = endDate(range).getUTCFullYear();
     const c = (current.cty || []).find((r) => r.year === y && !r.dubbio);
     if (c) return { cls: c.cls, fonte: "Copernicus", anno: y };
     if (current.model && current.model.anno === y && current.model.top.p >= 0.5) return { cls: current.model.top.cls, fonte: lt("cm_src"), anno: y };
     const lab = current.crop && current.crop.label ? current.crop.label.toLowerCase() : "";
-    const map = [[/frumento|wheat|cereale autunno|winter cereal/, 1], [/mais|maize/, 3], [/riso|rice/, 4], [/girasole|sunflower|soia|soy|estiva|summer/, 10]];
-    const m = map.find(([re]) => re.test(lab));
+    const rules = [[/frumento|wheat|cereale autunno|winter cereal/, 1], [/mais|maize/, 3], [/riso|rice/, 4], [/girasole|sunflower|soia|soy|estiva|summer/, 10]];
+    const m = rules.find(([re]) => re.test(lab));
     return m ? { cls: m[1], fonte: LANG === "it" ? "stima fenologica" : "phenology estimate", anno: y } : null;
   }
   // ---- suolo (ISRIC SoilGrids 250 m) e acqua disponibile per le piante (Saxton & Rawls 2006)
@@ -636,11 +654,12 @@ const Live = (() => {
       const j = await fetch(url, { signal: AbortSignal.timeout(45000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       if (my !== runId) return;
       if (!j) { el.innerHTML = `<span class="hint small">${lt("soil_err")}</span>`; return; }
+      // media 0–30 cm pesata sullo spessore degli strati
       const W = { "0-5cm": 5, "5-15cm": 10, "15-30cm": 15 }; v = {};
-      (j.properties.layers || []).forEach((L_) => {
+      (j.properties.layers || []).forEach((prop) => {
         let sw = 0, sv = 0;
-        L_.depths.forEach((d) => { const x = d.values.mean; if (x != null) { sw += W[d.label] || 0; sv += (W[d.label] || 0) * x; } });
-        if (sw) v[L_.name] = sv / sw / (L_.unit_measure.d_factor || 1);
+        prop.depths.forEach((d) => { const x = d.values.mean; if (x != null) { sw += W[d.label] || 0; sv += (W[d.label] || 0) * x; } });
+        if (sw) v[prop.name] = sv / sw / (prop.unit_measure.d_factor || 1);
       });
     }
     if (v.clay == null || v.sand == null) { el.innerHTML = `<span class="hint small">${lt("soil_na")}</span>`; return; }
@@ -692,7 +711,7 @@ const Live = (() => {
     const row = (s) => `<select data-k="uso${s}">${opt(IPCC.flu, carb["uso" + s])}</select>
       <select data-k="lav${s}">${opt({ arata: 1, minima: 1, sodo: 1 }, carb["lav" + s])}</select>
       <select data-k="inp${s}">${opt(IPCC.fi, carb["inp" + s])}</select>`;
-    const f1 = (x) => x.toLocaleString(LANG === "it" ? "it-IT" : "en-GB", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+    const f1 = (x) => x.toLocaleString(locale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 });
     el.innerHTML = `<b>${lt("cb_title")}</b>
       <div class="cb-grid"><span>${lt("cb_now")}</span><div>${row(0)}</div><span>${lt("cb_new")}</span><div>${row(1)}</div></div>
       <div class="cb-res">${lt("cb_stock", { s: f1(S0), c: lt(umido ? "cb_umido" : "cb_secco"), p: Math.round(P), e: Math.round(E) })}<br>
@@ -766,19 +785,21 @@ const Live = (() => {
     let conf = "";
     if (RESE_DATA && PROV) {
       const pv = provinceAt(current.ll), ist = pv && pv.nuts && (resaClasse(RESE_DATA, pv.nuts, ca.cls, ca.anno) || resaClasse(RESE_DATA, pv.nuts, ca.cls, ca.anno - 1));
-      if (ist) { const r = y.resa / ist.resa; conf = ` · ${lt("fy_vs").replace("{p}", pv.prov_name).replace("{r}", ist.resa.toFixed(1)).replace("{x}", (r >= 1 ? "+" : "") + Math.round((r - 1) * 100))}`; }
+      if (ist) { const r = y.resa / ist.resa; conf = ` · ${lt("fy_vs", { r: ist.resa.toFixed(1), x: (r >= 1 ? "+" : "") + Math.round((r - 1) * 100) })}`; }
     }
     const T = TARATURA && TARATURA[ca.cls];
     if (T) { y.grezza = y.resa; y.resa *= T.fattore; }
     current.fieldYield = { ...y, classe: ca.cls };
-    el.innerHTML = `<b>${lt("fy_title").replace("{c}", y.nome).replace("{y}", ca.anno)}:</b> <span class="big">${y.resa.toFixed(1)} t/ha</span>
-      <small>(${lt("fy_range")} ${(y.resa * 0.7).toFixed(1)}–${(y.resa * 1.3).toFixed(1)}${T ? "; " + lt("fy_cal").replace("{f}", T.fattore.toFixed(2)) : ""})</small>${conf}
-      ${(() => { const w = waterYield(ca.cls, y); if (w) current.fieldYield.acqua = w.resa; return w ? `<div class="fy-water"><b>${lt("fw_title")}:</b> <span class="big">${w.resa.toFixed(1)} t/ha</span>
-        <small>${lt("fw_det").replace("{taw}", Math.round(w.TAW)).replace("{r}", Math.round(w.rel * 100)).replace("{s}", w.stressDays).replace("{ym}", w.Ym.toFixed(1))}${w.irrigato ? " " + lt("fw_irr") : ""}</small></div>` : ""; })()}
-      <div class="hint small">${lt("fy_note").replace("{d}", y.giorni).replace("{a}", fmtDate(y.t0)).replace("{b}", fmtDate(y.t1)).replace("{f}", ca.fonte)}</div>`;
+    const w = waterYield(ca.cls, y);
+    if (w) current.fieldYield.acqua = w.resa;
+    const water = w ? `<div class="fy-water"><b>${lt("fw_title")}:</b> <span class="big">${w.resa.toFixed(1)} t/ha</span>
+        <small>${lt("fw_det", { taw: Math.round(w.TAW), r: Math.round(w.rel * 100), s: w.stressDays, ym: w.Ym.toFixed(1) })}${w.irrigato ? " " + lt("fw_irr") : ""}</small></div>` : "";
+    el.innerHTML = `<b>${lt("fy_title", { c: y.nome, y: ca.anno })}:</b> <span class="big">${y.resa.toFixed(1)} t/ha</span>
+      <small>(${lt("fy_range")} ${(y.resa * 0.7).toFixed(1)}–${(y.resa * 1.3).toFixed(1)}${T ? "; " + lt("fy_cal", { f: T.fattore.toFixed(2) }) : ""})</small>${conf}
+      ${water}
+      <div class="hint small">${lt("fy_note", { d: y.giorni, a: fmtDate(y.t0), b: fmtDate(y.t1), f: ca.fonte })}</div>`;
     if (current._yieldArgs) drawYieldChart(...current._yieldArgs);
   }
-  let RESE_DATA = null, TARATURA = null, taraturaChiesta = false;
 
   // ---- grafico delle rese: ISTAT della coltura coltivata ogni anno (colore = coltura Copernicus), serie ISTAT della coltura
   // principale, e la resa stimata del campo con i due modelli
@@ -787,11 +808,10 @@ const Live = (() => {
     if (!el || !R || !pv) return;
     const anni = [...new Set(R.rows.map((r) => r[2]))].sort();
     const per = Object.fromEntries((current.cty || []).filter((r) => !r.dubbio && r.cls > 0).map((r) => [r.year, r.cls]));
-    const col = (c) => (typeof CROP_COLORS !== "undefined" && CROP_COLORS[c]) || "#7a9";
     const bars = anni.map((a) => { const c = per[a]; const y = c && resaClasse(R, pv.nuts, c, a); return y ? { y: y.resa, c } : null; });
-    const sets = [{ type: "bar", label: lt("yc_grown"), data: bars.map((b) => (b ? b.y : null)), backgroundColor: bars.map((b) => (b ? col(b.c) + "cc" : "#0000")),
-      nomi: bars.map((b) => (b ? CTY_NOMI[b.c][LANG === "it" ? 0 : 1] : "")) }];
-    if (ref) sets.push({ type: "line", label: lt("yc_ref").replace("{c}", CTY_NOMI[ref][LANG === "it" ? 0 : 1]), data: anni.map((a) => { const y = resaClasse(R, pv.nuts, ref, a); return y ? y.resa : null; }),
+    const sets = [{ type: "bar", label: lt("yc_grown"), data: bars.map((b) => (b ? b.y : null)), backgroundColor: bars.map((b) => (b ? cropColor(b.c) + "cc" : "#0000")),
+      nomi: bars.map((b) => (b ? cropName(b.c) : "")) }];
+    if (ref) sets.push({ type: "line", label: lt("yc_ref", { c: cropName(ref) }), data: anni.map((a) => { const y = resaClasse(R, pv.nuts, ref, a); return y ? y.resa : null; }),
       borderColor: "#555", borderDash: [5, 3], pointRadius: 2, spanGaps: true });
     const fy = current.fieldYield;
     if (fy) {
@@ -820,26 +840,21 @@ const Live = (() => {
     const pv = provinceAt(current.ll);
     if (!pv || !pv.nuts) { el.innerHTML = ""; return; }
     const cname = (c) => (R.colture[c] ? R.colture[c][LANG] : c);
-    // anni Copernicus + annata corrente stimata
+    // coltura di riferimento: permanente dominante o ultima annata Copernicus attendibile
     const h = (current.cty || []).filter((r) => !r.dubbio && r.cls > 0);
-    const righe = h.map((r) => { const y = resaClasse(R, pv.nuts, r.cls, r.year); return y ? `<span class="cty-chip">${r.year} ${CTY_NOMI[r.cls][LANG === "it" ? 0 : 1]}: <b>${y.resa.toFixed(1)} t/ha</b></span>` : ""; }).join(" ");
-    // coltura di riferimento: permanente dominante o ultima annata Copernicus
     const ref = current.ctyPerm || (h.length ? h[h.length - 1].cls : null);
-    let serie = "", specie = "";
-    if (ref) {
+    // colture permanenti (vite, olivo, frutta, frutta a guscio): quote delle specie in provincia
+    let specie = "";
+    if ([14, 15, 16, 17].includes(ref)) {
       const anni = [...new Set(R.rows.map((r) => r[2]))].sort();
-      const vals = anni.map((a) => { const y = resaClasse(R, pv.nuts, ref, a); return y ? `<td>${y.resa.toFixed(1)}</td>` : "<td>—</td>"; });
-      serie = `<table class="mini"><tr><th>${lt("y_year")}</th>${anni.map((a) => `<th>${a}</th>`).join("")}</tr><tr><td>${CTY_NOMI[ref][LANG === "it" ? 0 : 1]} t/ha</td>${vals.join("")}</tr></table>`;
-      if ([14, 15, 16, 17].includes(ref)) {
-        const last = anni[anni.length - 1], y = resaClasse(R, pv.nuts, ref, last) || resaClasse(R, pv.nuts, ref, last - 1);
-        if (y && y.dettaglio.length > 1) {
-          const tot = y.dettaglio.reduce((a, d) => a + d.ha, 0);
-          specie = `<div class="hint small"><b>${lt("y_species").replace("{p}", pv.prov_name)}</b> ` +
-            y.dettaglio.slice(0, 6).map((d) => `${cname(d.c)} ${Math.round((100 * d.ha) / tot)}%`).join(" · ") + `</div>`;
-        }
+      const last = anni[anni.length - 1], y = resaClasse(R, pv.nuts, ref, last) || resaClasse(R, pv.nuts, ref, last - 1);
+      if (y && y.dettaglio.length > 1) {
+        const tot = y.dettaglio.reduce((a, d) => a + d.ha, 0);
+        specie = `<div class="hint small"><b>${lt("y_species", { p: pv.prov_name })}</b> ` +
+          y.dettaglio.slice(0, 6).map((d) => `${cname(d.c)} ${Math.round((100 * d.ha) / tot)}%`).join(" · ") + `</div>`;
       }
     }
-    el.innerHTML = specie ? `${specie}` : "";
+    el.innerHTML = specie;
     drawYieldChart(R, pv, ref);
     current._yieldArgs = [R, pv, ref];
   }
@@ -859,7 +874,7 @@ const Live = (() => {
     if (r === "jan") return now < new Date(Date.UTC(y, 1, 15)) ? y - 1 : y;
     const sm = new Date(Date.UTC(y, 10, 11));
     const cur = now >= sm ? y : y - 1;
-    return (now - new Date(Date.UTC(cur, 10, 11))) / 86400000 < 45 ? cur - 1 : cur;
+    return (now - new Date(Date.UTC(cur, 10, 11))) / DAY_MS < 45 ? cur - 1 : cur;
   }
   const selYear = () => year ?? defaultYear(range);
   function startDate(r) {
@@ -877,7 +892,7 @@ const Live = (() => {
     const e = r === "jan" ? new Date(Date.UTC(Y, 11, 31)) : new Date(Date.UTC(Y + 1, 10, 10));
     return e < now ? e : now;
   }
-  const isCurrent = () => endDate(range) >= new Date(Date.now() - 86400000);
+  const isCurrent = () => endDate(range) >= new Date(Date.now() - DAY_MS);
   const iso = (d) => d.toISOString().slice(0, 10);
 
   async function pool(items, n, fn) {
@@ -952,7 +967,7 @@ const Live = (() => {
   function despike(arr) {
     let n = 0;
     arr.forEach((r, i) => {
-      const win = arr.filter((q, j) => j !== i && Math.abs(q.t - r.t) <= 25 * 86400000 && !q.outlier).map((q) => q.ndvi).sort((a, b) => a - b);
+      const win = arr.filter((q, j) => j !== i && Math.abs(q.t - r.t) <= 25 * DAY_MS && !q.outlier).map((q) => q.ndvi).sort((a, b) => a - b);
       let out = false;
       if (win.length >= 3) {
         const med = win[win.length >> 1];
@@ -960,7 +975,7 @@ const Live = (() => {
         if (Math.abs(r.ndvi - med) > Math.max(0.08, 3 * mad)) out = true;
       }
       const a = arr[i - 1], b = arr[i + 1];
-      if (a && b && b.t - a.t < 30 * 86400000 && r.ndvi < Math.min(a.ndvi, b.ndvi) - 0.1 && Math.abs(a.ndvi - b.ndvi) < 0.12) out = true;
+      if (a && b && b.t - a.t < 30 * DAY_MS && r.ndvi < Math.min(a.ndvi, b.ndvi) - 0.1 && Math.abs(a.ndvi - b.ndvi) < 0.12) out = true;
       r.outlier = out; if (out) n++;
     });
     return n;
@@ -969,8 +984,8 @@ const Live = (() => {
   // curva smussata: media pesata (tricubica) delle date valide entro ±20 giorni, ogni 3 giorni
   function smooth(key, data = clean()) {
     if (data.length < 3) return [];
-    const out = [], H = 20 * 86400000, t0 = data[0].t, t1 = data[data.length - 1].t;
-    for (let t = t0; t <= t1; t += 3 * 86400000) {
+    const out = [], H = 20 * DAY_MS, t0 = data[0].t, t1 = data[data.length - 1].t;
+    for (let t = t0; t <= t1; t += 3 * DAY_MS) {
       let sw = 0, sv = 0;
       data.forEach((r) => { const d = Math.abs(r.t - t) / H; if (d < 1 && isFinite(r[key])) { const w = Math.pow(1 - d * d * d, 3); sw += w; sv += w * r[key]; } });
       if (sw > 0.2) out.push({ x: t, y: sv / sw });
@@ -1004,7 +1019,7 @@ const Live = (() => {
 
   async function loadMeteo(my) {
     const ll = current.ll, start = startDate(range), end = endDate(range);
-    const recent = new Date(Date.now() - 6 * 86400000);
+    const recent = new Date(Date.now() - 6 * DAY_MS);
     const archEnd = end < recent ? end : recent;
     const vars = "precipitation_sum,temperature_2m_mean,temperature_2m_max,temperature_2m_min,et0_fao_evapotranspiration,shortwave_radiation_sum";
     const out = {};
@@ -1163,7 +1178,7 @@ const Live = (() => {
     const prev = sel.value;
     fmDatesKey = key;
     if (!rows.length) { sel.innerHTML = `<option value="">${lt("fm_nodate")}</option>`; return; }
-    sel.innerHTML = rows.map((r) => `<option value="${r.date}">${new Date(r.t).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB")} · NDVI ${r.ndvi.toFixed(2)}</option>`).join("");
+    sel.innerHTML = rows.map((r) => `<option value="${r.date}">${new Date(r.t).toLocaleDateString(locale())} · NDVI ${r.ndvi.toFixed(2)}</option>`).join("");
     if (rows.some((r) => r.date === prev)) sel.value = prev;
     drawFieldMap();
   }
@@ -1208,7 +1223,7 @@ const Live = (() => {
     put(339, 3, Array(N).fill(3)); put(33550, 12, pixScale); put(33922, 12, tie); put(34735, 3, keys);
     put(42112, 2, meta); put(42113, 2, nod);
     const size = { 2: 1, 3: 2, 4: 4, 12: 8 };
-    const len = (t) => (t.type === 2 ? t.vals.length : t.vals.length) * size[t.type];
+    const len = (t) => t.vals.length * size[t.type];
     const ifdLen = 2 + tags.length * 12 + 4;
     let off = 8 + ifdLen;
     tags.forEach((t) => { if (len(t) > 4) { t.off = off; off += len(t) + (len(t) % 2); } });
@@ -1316,7 +1331,6 @@ const Live = (() => {
   };
   const parseNpy = (buf) => { const r = Segment.parseNpy(buf); return { data: Float32Array.from(r.data) }; };
 
-
   // un grafico alla volta, a tutta larghezza e ridimensionabile (trascinando l'angolo in basso)
   const CHARTS = [["chIndex", "ch_index"], ["chMeteo", "ch_meteo"], ["chEt", "ch_et"], ["chYield", "ch_yield"], ["chCmp", "ch_cmp"], ["chClms", "ch_clms"], ["chRadar", "ch_radar"]];
   let chartSel = "chIndex", s1Loaded = false;
@@ -1338,14 +1352,14 @@ const Live = (() => {
     }
     return opts.join("");
   }
-  const fmtDate = (t) => new Date(t).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { day: "2-digit", month: "short" });
-  const xScale = () => ({ type: "linear", min: startDate(range).getTime(), max: endDate(range).getTime() + (isCurrent() ? 8 * 86400000 : 0),
+  const fmtDate = (t) => new Date(t).toLocaleDateString(locale(), { day: "2-digit", month: "short" });
+  const xScale = () => ({ type: "linear", min: startDate(range).getTime(), max: endDate(range).getTime() + (isCurrent() ? 8 * DAY_MS : 0),
     ticks: { callback: (v) => fmtDate(v), maxTicksLimit: 8, font: { size: 10 } }, grid: { color: "#0000000d" } });
   const baseOpts = (extra = {}) => ({
     responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
     interaction: { mode: "nearest", intersect: false },
     plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 }, filter: (it) => !!it.text } },
-      tooltip: { callbacks: { title: (it) => new Date(it[0].parsed.x).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB") } } },
+      tooltip: { callbacks: { title: (it) => new Date(it[0].parsed.x).toLocaleDateString(locale()) } } },
     scales: { x: xScale(), ...extra },
   });
 
@@ -1392,6 +1406,7 @@ const Live = (() => {
   }
 
   // ---- evapotraspirazione nel tempo: ET0, ET coltura (Kc da NDVI), ET reale Copernicus, cumulate
+  // Kc giornaliero interpolato linearmente tra le date Sentinel-2 serene
   function kcSeries() {
     const s2 = clean();
     return (t) => {
@@ -1462,8 +1477,7 @@ const Live = (() => {
           y3: { position: "right", grid: { display: false }, ticks: { font: { size: 10 } } } }) });
   }
 
-  // ---- ET reale Copernicus (CLMS ETA 300 m) per il campo, dai ritagli Italia su Hugging Face
-  // ET reale Copernicus (300 m, decadale): media sul campo dalle mappe ritagliate sull'Italia
+  // ---- ET reale Copernicus (CLMS ETA 300 m, decadale): media sul campo dalle mappe ritagliate sull'Italia (Hugging Face)
   async function loadEta(my) {
     const idx = await Clms.loadIndex(), start = iso(startDate(range)), end = iso(endDate(range));
     const dates = (idx.ETA || []).filter((d) => d >= start && d <= end);
@@ -1491,7 +1505,6 @@ const Live = (() => {
       options: baseOpts({ y: { title: { display: !!u, text: u } } }) });
   }
 
-
   function drawRadar() {
     const d = current.s1 || [];
     const ds = (k, label, color, orbit) => ({ type: "line", label: `${label} (${orbit === "ascending" ? "asc" : "desc"})`,
@@ -1502,13 +1515,10 @@ const Live = (() => {
       options: baseOpts({ y: { ticks: { font: { size: 10 } }, title: { display: true, text: "dB", font: { size: 10 } } } }) });
   }
 
-  // ET coltura: Kc giornaliero interpolato dalle date Sentinel-2 serene
-
-
   // ---- stima della coltura dalla curva NDVI (regole fenologiche per l'Italia) ----
   function classifyCrop(s2) {
     const d = (s2 || []).filter((r) => isFinite(r.ndvi)).sort((a, b) => a.t - b.t);
-    if (d.length < 8 || d[d.length - 1].t - d[0].t < 240 * 86400000) return null;
+    if (d.length < 8 || d[d.length - 1].t - d[0].t < 240 * DAY_MS) return null;
     const v = d.map((r) => r.ndvi).sort((a, b) => a - b);
     const q = (p) => v[Math.min(v.length - 1, Math.floor(p * v.length))];
     const p10 = q(0.1), p90 = q(0.9), med = q(0.5), amp = p90 - p10;
@@ -1540,7 +1550,7 @@ const Live = (() => {
     if (amp < 0.22 && med >= 0.3 && med <= 0.7) return R("Coltura arborea permanente (oliveto, frutteto) o pascolo arborato", "Permanent tree crop (olive grove, orchard) or wooded pasture", `NDVI stabile tutto l'anno (mediana ${f2(med)}, escursione ${f2(amp)})`, `NDVI stable all year (median ${f2(med)}, range ${f2(amp)})`, "bassa");
     return R("Coltura non classificata (andamento irregolare)", "Unclassified crop (irregular pattern)", `picco a ${monthName(pm)}, escursione ${f2(amp)}`, `peak in ${monthName(pm)}, range ${f2(amp)}`, "—");
   }
-  const monthName = (m) => new Date(Date.UTC(2020, m, 15)).toLocaleDateString(LANG === "it" ? "it-IT" : "en-GB", { month: "long" });
+  const monthName = (m) => new Date(Date.UTC(2020, m, 15)).toLocaleDateString(locale(), { month: "long" });
 
   function drawSummary() {
     if (!current) return;
@@ -1580,6 +1590,10 @@ const Live = (() => {
   }
 
   let highlight = null;
+  function setHighlight(feature) {
+    if (highlight) map.removeLayer(highlight);
+    highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fillColor: "#ffd84a", fillOpacity: 0.12 }, interactive: false }).addTo(map);
+  }
   function showBusy(msg) {
     const p = panel();
     p.hidden = false; document.body.classList.add("fp-open");
@@ -1627,17 +1641,13 @@ const Live = (() => {
 
   // analisi di un poligono qualsiasi (disegnato dall'utente, importato, prato)
   function analyze(feature, extra = {}) {
-    if (highlight) map.removeLayer(highlight);
-    highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fillColor: "#ffd84a", fillOpacity: 0.12 }, interactive: false }).addTo(map);
+    setHighlight(feature);
     const c = L.geoJSON(feature).getBounds().getCenter();
     current = { feature, ll: c, ...extra };
     run();
   }
   async function cropOfField(feature, y) {
-    const polys = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
-    const rings = polys.map((poly) => poly.map((ring) => ring.map(([lo, la]) => proj4("EPSG:4326", "EPSG:3035", [lo, la]))));
-    const all = rings.flat(2);
-    const bb = [Math.min(...all.map((p) => p[0])), Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[0])), Math.max(...all.map((p) => p[1]))];
+    const { rings, bb } = to3035(feature);
     return cropOfYear(y, rings, bb).catch(() => null);
   }
 
@@ -1646,20 +1656,21 @@ const Live = (() => {
     if (!feature) {
       // nessuna divisione in campi qui: segmento automaticamente 2 km × 2 km attorno al punto
       const dLat = 1000 / 111320, dLon = 1000 / (111320 * Math.cos((ll.lat * Math.PI) / 180));
+      const area = [ll.lng - dLon, ll.lat - dLat, ll.lng + dLon, ll.lat + dLat];
+      const progress = (n, t) => showBusy(lt("seg_prog", { n, t }));
       showBusy(lt("seg_auto"));
-      try { await Segment.smart([ll.lng - dLon, ll.lat - dLat, ll.lng + dLon, ll.lat + dLat], periodRange().end, (n, t) => showBusy(lt("seg_prog", { n, t }))); }
+      try { await Segment.smart(area, periodRange().end, progress); }
       catch (e) { console.warn("segmentazione", e); }
       feature = Segment.fieldAt(ll);
       if (!feature && Segment.method() === "ai") {
         // il modello non vede un campo qui (bosco, frutteto fitto, area mista): provo la segmentazione sulla serie NDVI
-        try { await Segment.run([ll.lng - dLon, ll.lat - dLat, ll.lng + dLon, ll.lat + dLat], periodRange().end, (n, t) => showBusy(lt("seg_prog", { n, t }))); }
+        try { await Segment.run(area, periodRange().end, progress); }
         catch (e) { console.warn("segmentazione", e); }
         feature = Segment.fieldAt(ll);
       }
     }
     if (!feature) feature = squareAround(ll);
-    if (highlight) map.removeLayer(highlight);
-    highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fillColor: "#ffd84a", fillOpacity: 0.12 }, interactive: false }).addTo(map);
+    setHighlight(feature);
     current = { feature, ll };
     run();
     return feature;
