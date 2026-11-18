@@ -1,8 +1,11 @@
-# 03 — Superfici per coltura su blocchi di 1 km, con regione e cella meteo
+# Columella — 03: superfici per coltura su blocchi di 1 km, con regione e cella meteo
 #
 # Legge il COG Crop Types di un anno a finestre e conta i pixel di ogni classe in blocchi di 100×100 pixel
 # (1 km × 1 km). Ogni blocco riceve la regione ISTAT (dal centro del blocco) e la cella meteo 0,5°.
+# Ingressi: COG di 02 (o env COG), regioni_istat.geojson; env ANNO
 # Uscita: data/blocchi/blocchi_<anno>.parquet  colonne: x, y, lon, lat, regione, cella, c1..c19 (ettari)
+# Esecuzione: workflow crop-types.yml (poi hf_sync.py carica "blocchi") oppure Spyder
+# EN: per-crop areas on 1 km blocks, tagged with ISTAT region and 0.5° weather cell.
 
 import os
 import numpy as np
