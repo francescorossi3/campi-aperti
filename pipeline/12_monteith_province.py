@@ -1,11 +1,15 @@
-# 12 — Resa stimata con il modello di Monteith per provincia × coltura × annata e confronto con ISTAT
+# Columella — 12: resa stimata con il modello di Monteith per provincia × coltura × annata e confronto con ISTAT
 #
 # biomassa = Σ RUE × fAPAR × 0,48 × radiazione globale ; resa = biomassa × indice di raccolto / (1 − umidità commerciale)
 # fAPAR = 1,24·NDVI − 0,168 (Myneni & Williams 1994), NDVI medio dei pixel puri della coltura nella provincia (script 10),
 # ripulito (Hampel) e smussato (tricubica ±20 giorni) come nel sito; radiazione ERA5 giornaliera nel baricentro della provincia.
 # Stessi parametri del sito (js/live.js, RESA_PAR). Il confronto con ISTAT dà, per ogni coltura, un fattore di taratura
 # (mediana ISTAT / modello) che il sito applica anche alla resa stimata del singolo campo.
-# Uscita: data/monteith_province.json
+# Ingressi: data/province_ndvi/ndvi_*.parquet (10), data/province.json e data/rese.json (07),
+#           cache data/province_ndvi/radiazione.parquet; radiazione da Open-Meteo (riserva NASA POWER)
+# Uscita: data/monteith_province.json (e cache radiazione aggiornata)
+# Esecuzione: workflow monteith.yml (poi hf_sync.py carica "province_ndvi") oppure Spyder
+# EN: Monteith (RUE × fAPAR × radiation) yield per province × crop × season, calibrated against ISTAT.
 
 import os
 import glob
@@ -60,7 +64,9 @@ for k in range(0, len(mancano), 20):
         try:
             r = requests.get(url, timeout=600)
             if r.status_code == 200:
-                js = r.json(); js = js if isinstance(js, list) else [js]; break
+                js = r.json()
+                js = js if isinstance(js, list) else [js]     # con un solo punto Open-Meteo non restituisce una lista
+                break
             print("Open-Meteo", r.status_code, r.text[:150], flush=True)
         except (requests.RequestException, ValueError) as e:
             print("Open-Meteo errore", e, flush=True)
@@ -94,7 +100,8 @@ def resa(g, cls, rs):
         w = np.abs(t - t[i]) <= 25
         w[i] = False
         if w.sum() >= 3:
-            med = np.median(v[w]); mad = np.median(np.abs(v[w] - med)) * 1.4826
+            med = np.median(v[w])
+            mad = np.median(np.abs(v[w] - med)) * 1.4826
             if abs(v[i] - med) > max(0.08, 3 * mad):
                 ok[i] = False
     t, v = t[ok], v[ok]
@@ -117,9 +124,12 @@ def resa(g, cls, rs):
     if win.sum() < 10:
         return None
     sm = np.where(win, sm, -1)
-    ip = int(np.argmax(sm)); a = b = ip
-    while a > 0 and sm[a - 1] > 0.3: a -= 1
-    while b < len(sm) - 1 and sm[b + 1] > 0.3: b += 1
+    # stagione: dal picco si allarga finché NDVI > 0,3
+    a = b = int(np.argmax(sm))
+    while a > 0 and sm[a - 1] > 0.3:
+        a -= 1
+    while b < len(sm) - 1 and sm[b + 1] > 0.3:
+        b += 1
     giorni = np.arange(grid[a], grid[b] + 1)
     nd_g = np.interp(giorni, grid, sm)
     r = rs.reindex(pd.to_datetime(giorni.astype("datetime64[D]"))).values
