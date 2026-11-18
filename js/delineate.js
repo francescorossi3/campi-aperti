@@ -1,5 +1,12 @@
-// Campi Aperti — confini dei campi con Delineate Anything S (YOLO11n-seg, Lavreniuk et al. 2025, AGPL-3.0)
+// Columella – delineate.js
+// Confini dei campi con Delineate Anything S (YOLO11n-seg, Lavreniuk et al. 2025, AGPL-3.0)
 // Field boundaries with the Delineate Anything S instance-segmentation model, run in the browser (onnxruntime-web).
+//
+// IT: espone il globale Delineate { run, warmup, _split }; run() restituisce Segment.useLabels(...).
+//     Dipendenze: Segment (segment.js: parseNpy, useLabels), onnxruntime-web 1.20.1 (CDN jsDelivr, caricato
+//     al primo uso), modello ONNX su Hugging Face, API STAC/data di Microsoft Planetary Computer.
+// EN: exposes Delineate { run, warmup, _split }; needs Segment, onnxruntime-web (CDN), the ONNX model on
+//     Hugging Face and the Planetary Computer API.
 //
 // Immagine: Sentinel-2 a colori reali (asset "visual") di una data serena della stagione vegetativa,
 // ricampionata a 5 m (tasselli di 2,56 × 2,56 km = 512 × 512 pixel): a questa scala il modello riconosce
