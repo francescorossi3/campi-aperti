@@ -58,9 +58,15 @@ const LT = {
     cty_dubbio: "Probabile errore di classificazione",
     y_title: "Resa media ISTAT in provincia di {p}:",
     fy_title: "Resa stimata di questo campo ({c}, {y})",
+    yy_title: "Resa del campo annata per annata: modello di Monteith e ISTAT", yy_run: "Calcola tutte le annate (circa 1–2 minuti)",
+    yy_load: "Annata {y}: leggo {n}/{t} immagini…", yy_meteo: "Leggo radiazione e meteo ERA5…",
+    yy_th: ["Annata", "Coltura (Copernicus)", "Monteith tarato (t/ha)", "ISTAT provincia (t/ha)", "Scarto"],
+    yy_none: "Nessuna annata stimabile: servono seminativi riconosciuti da Copernicus (anni 2017–2024) con una stagione intera.",
+    yy_note: "Per ogni annata (novembre–ottobre): coltura dalla mappa Copernicus di quell'anno, NDVI Sentinel-2 medio del campo, radiazione ERA5, stesso fattore di taratura delle province. Le annate senza mappa Copernicus non sono stimate.",
+    yy_csv: "Scarica (CSV)",
     fy_range: "intervallo plausibile",
     soil_title: "Suolo (0–30 cm)", soil_loading: "Carico i dati del suolo…", soil_slow: "Il servizio SoilGrids è lento, riprovo…", soil_err: "Dati del suolo non raggiungibili ora (SoilGrids).", soil_na: "Nessun dato di suolo qui.",
-    soil_sand: "Sabbia", soil_silt: "Limo", soil_clay: "Argilla", soil_soc: "Carbonio organico", soil_n: "Azoto totale", soil_paw: "Acqua disponibile",
+    soil_sand: "Sabbia", soil_silt: "Limo", soil_clay: "Argilla", soil_soc: "Carbonio organico", soil_n: "Azoto totale", soil_paw: "Acqua disponibile (PAW)", soil_fc: "Capacità di campo", soil_wp: "Punto di appassimento", soil_paw30: "PAW nei primi 30 cm",
     soil_note: "ISRIC SoilGrids 2.0 (250 m, stima da modelli: indicativa, non sostituisce un'analisi del terreno). Acqua disponibile per le piante tra capacità di campo e punto di appassimento, dalla tessitura e dalla sostanza organica (Saxton & Rawls 2006).",
     fw_title: "Modello idrico FAO-33", fw_det: "(acqua disponibile nelle radici {taw} mm; consumo reale {r}% del potenziale; {s} giorni di stress; resa raggiungibile in provincia {ym} t/ha)",
     fw_irr: "Campo irrigato: nessuno stress idrico.",
@@ -112,6 +118,11 @@ const LT = {
     balance: "Pioggia − ET coltura",
     ndvi_mean: "NDVI medio",
     idx_ndvi: "NDVI", idx_ndre: "NDRE", idx_ndmi: "NDMI", idx_evi: "EVI", idx_savi: "SAVI", idx_ndwi: "NDWI (acqua)", idx_nbr: "NBR",
+    chip_show: "Mostra questo campo nel pannello", chip_remove: "Togli il campo",
+    mc_title: "Serie nel tempo per campo", mc_var: "Variabile", mc_wait: "Serie in caricamento per: {ids}.", mc_csv: "Scarica serie (CSV)",
+    sc_title: "Grafico a dispersione dei pixel (una mappa contro l'altra)", sc_x: "Asse X", sc_y: "Asse Y", sc_date: "Data", sc_run: "Calcola",
+    sc_csv: "Scarica valori (CSV)", sc_load: "Leggo i pixel del campo {id}…", sc_done: "{n} pixel da {k} campi; data più vicina a quella scelta per ogni campo (±{d} giorni al massimo).",
+    sc_none: "Nessuna immagine senza nuvole vicina alla data scelta.", sc_r: "correlazione r",
     idx_cire: "CIre (clorofilla)", idx_lai: "LAI stimato", idx_kc: "Kc (coeff. colturale)",
     et_note: "ET coltura = Kc × ET0 (FAO-56), con Kc ricavato dall'NDVI del campo (Kc = 1,457·NDVI − 0,173) e interpolato giorno per giorno. LAI stimato da EVI (LAI = 3,618·EVI − 0,118).",
     panel_title: "Campo",
@@ -168,9 +179,15 @@ const LT = {
     cty_dubbio: "Likely classification error",
     y_title: "ISTAT average yield in the province of {p}:",
     fy_title: "Estimated yield of this field ({c}, {y})",
+    yy_title: "Field yield season by season: Monteith model and ISTAT", yy_run: "Compute all seasons (about 1–2 minutes)",
+    yy_load: "Season {y}: reading {n}/{t} images…", yy_meteo: "Reading ERA5 radiation and weather…",
+    yy_th: ["Season", "Crop (Copernicus)", "Calibrated Monteith (t/ha)", "ISTAT province (t/ha)", "Difference"],
+    yy_none: "No season can be estimated: arable crops recognised by Copernicus (2017–2024) with a full season are needed.",
+    yy_note: "For each season (November–October): crop from that year's Copernicus map, mean Sentinel-2 NDVI of the field, ERA5 radiation, same calibration factor as the provinces. Seasons without a Copernicus map are not estimated.",
+    yy_csv: "Download (CSV)",
     fy_range: "plausible range",
     soil_title: "Soil (0–30 cm)", soil_loading: "Loading soil data…", soil_slow: "SoilGrids is slow, retrying…", soil_err: "Soil data not reachable right now (SoilGrids).", soil_na: "No soil data here.",
-    soil_sand: "Sand", soil_silt: "Silt", soil_clay: "Clay", soil_soc: "Organic carbon", soil_n: "Total nitrogen", soil_paw: "Available water",
+    soil_sand: "Sand", soil_silt: "Silt", soil_clay: "Clay", soil_soc: "Organic carbon", soil_n: "Total nitrogen", soil_paw: "Plant available water (PAW)", soil_fc: "Field capacity", soil_wp: "Wilting point", soil_paw30: "PAW in the top 30 cm",
     soil_note: "ISRIC SoilGrids 2.0 (250 m, model-based estimate: indicative, not a substitute for a soil test). Plant-available water between field capacity and wilting point, from texture and organic matter (Saxton & Rawls 2006).",
     fw_title: "FAO-33 water model", fw_det: "(available water in the root zone {taw} mm; actual use {r}% of potential; {s} stress days; attainable yield in the province {ym} t/ha)",
     fw_irr: "Irrigated field: no water stress.",
@@ -222,6 +239,11 @@ const LT = {
     balance: "Rain − crop ET",
     ndvi_mean: "Mean NDVI",
     idx_ndvi: "NDVI", idx_ndre: "NDRE", idx_ndmi: "NDMI", idx_evi: "EVI", idx_savi: "SAVI", idx_ndwi: "NDWI (water)", idx_nbr: "NBR",
+    chip_show: "Show this field in the panel", chip_remove: "Remove field",
+    mc_title: "Time series by field", mc_var: "Variable", mc_wait: "Series still loading for: {ids}.", mc_csv: "Download series (CSV)",
+    sc_title: "Pixel scatter plot (one map against another)", sc_x: "X axis", sc_y: "Y axis", sc_date: "Date", sc_run: "Compute",
+    sc_csv: "Download values (CSV)", sc_load: "Reading the pixels of field {id}…", sc_done: "{n} pixels from {k} fields; closest date to the chosen one for each field (at most ±{d} days).",
+    sc_none: "No cloud-free image near the chosen date.", sc_r: "correlation r",
     idx_cire: "CIre (chlorophyll)", idx_lai: "Estimated LAI", idx_kc: "Kc (crop coefficient)",
     et_note: "Crop ET = Kc × ET0 (FAO-56), with Kc derived from the field NDVI (Kc = 1.457·NDVI − 0.173) and interpolated day by day. LAI estimated from EVI (LAI = 3.618·EVI − 0.118).",
     panel_title: "Field",
@@ -476,11 +498,12 @@ const Live = (() => {
     return res.filter(Boolean);
   }
   async function showCropHistory(my) {
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
     const el = document.getElementById("fpCty");
     if (!el) return;
     el.innerHTML = `<span class="hint small">${lt("cty_loading")}</span>`;
-    const h = await cropHistory(current.feature);
-    if (my !== runId) return;
+    const h = await cropHistory(F.feature);
+    if (my !== F.run) return;
     // coerenza: le colture permanenti (vite, olivo, frutta, frutta a guscio) non cambiano da un anno all'altro.
     // Se la maggioranza degli anni dice "permanente X", gli anni con una coltura annuale sono probabili errori,
     // e viceversa un permanente isolato in mezzo ad anni di seminativi è un errore.
@@ -493,8 +516,9 @@ const Live = (() => {
       r.dubbio = isPerm ? r.cls !== +top[0] : PERM.has(r.cls);
       if (r.share < 0.5) r.dubbio = true;
     });
-    current.cty = h;
-    current.ctyPerm = isPerm ? +top[0] : null;
+    F.cty = h;
+    F.ctyPerm = isPerm ? +top[0] : null;
+    if (F !== current) return;
     el.innerHTML = h.length ? `<b>${lt("cty_title")}:</b> ` + h.slice().reverse().map((r) =>
       `<span class="cty-chip cty${r.cls} ${r.dubbio ? "dubbio" : ""}" title="${r.dubbio ? lt("cty_dubbio") : ""}">${r.year} ${CTY_NOMI[r.cls] ? cropName(r.cls) : r.cls} <small>${Math.round(r.share * 100)}%</small>${r.dubbio ? " ⚠" : ""}</span>`).join(" ") +
       (h.some((r) => r.dubbio) ? `<div class="hint small">⚠ ${isPerm ? lt("cty_perm_note", { c: cropName(top[0]) }) : lt("cty_ann_note")}</div>` : "")
@@ -536,10 +560,9 @@ const Live = (() => {
     10: { rue: 2.4, hi: 0.33, u: 0.09, n: ["girasole", "sunflower"] }, 11: { rue: 2.0, hi: 0.40, u: 0.13, n: ["soia", "soybean"] },
     12: { rue: 2.3, hi: 0.30, u: 0.09, n: ["colza", "rapeseed"] },
   };
-  function fieldYield(cls) {
+  function fieldYield(cls, sm = smooth("ndvi"), meteo = current.meteo) {
     const P = RESA_PAR[cls];
-    const sm = smooth("ndvi");
-    const met = (current.meteo || []).filter((r) => !r.fc && r.rad != null);
+    const met = (meteo || []).filter((r) => !r.fc && r.rad != null);
     if (!P || sm.length < 10 || met.length < 60) return null;
     // stagione della coltura: tratto continuo attorno al picco con NDVI smussato > 0,3
     let ip = 0; sm.forEach((p, i) => { if (p.y > sm[ip].y) ip = i; });
@@ -608,21 +631,23 @@ const Live = (() => {
     return M.classi.map((c, j) => ({ cls: c, p: P[j] })).sort((a, b) => b.p - a.p);
   }
   async function classifyField(my) {
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
     const el = document.getElementById("fpModel");
     if (!el) return;
     const Y = endDate(range).getUTCFullYear(), annata = `${Y - 1}/${String(Y).slice(2)}`;
     el.innerHTML = `<span class="hint small">${lt("cm_run", { y: annata })}</span>`;
-    if (!s1Loaded) { s1Loaded = true; await loadS1(); }
-    const [M, dem] = await Promise.all([loadModel(), demStats(current.feature)]);
-    if (my !== runId) return;
+    if (!F.s1Loaded) { F.s1Loaded = true; await loadS1(); }
+    const [M, dem] = await Promise.all([loadModel(), demStats(F.feature)]);
+    if (my !== F.run) return;
     if (!M) { el.innerHTML = `<span class="hint small">${lt("cm_err")}</span>`; return; }
     const f = features(Y, dem);
     if (f.okMesi < 5) { el.innerHTML = `<span class="hint small">${lt("cm_short")}</span>`; return; }
     const res = predict(M, M.variabili.map(f.get));
-    current.model = { anno: Y, top: res[0], res };
+    F.model = { anno: Y, top: res[0], res };
+    if (F !== current) return;
     el.innerHTML = `<b>${lt("cm_title", { y: annata })}:</b> <span class="cm-main">${cropName(res[0].cls)}</span> ` +
       res.slice(0, 3).map((r) => `<span class="cm-bar"><i style="width:${Math.round(r.p * 100)}%;background:${cropColor(r.cls)}"></i>${cropName(r.cls)} ${Math.round(r.p * 100)}%</span>`).join("") +
-      `<div class="hint small">${lt("cm_note", { m: f.okMesi, s1: (current.s1 || []).length })}</div>`;
+      `<div class="hint small">${lt("cm_note", { m: f.okMesi, s1: (F.s1 || []).length })}</div>`;
     renderAdvice(); drawFieldYield();
   }
 
@@ -639,20 +664,21 @@ const Live = (() => {
   }
   // ---- suolo (ISRIC SoilGrids 250 m) e acqua disponibile per le piante (Saxton & Rawls 2006)
   async function loadSoil(my) {
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
     const el = document.getElementById("fpSoil");
     if (!el) return;
     el.innerHTML = `<span class="hint small">${lt("soil_loading")}</span>`;
     // prima le mappe SoilGrids già ritagliate sull'Italia (veloci, media sul campo); se mancano, il servizio ISRIC sul centro
     let v = null;
-    const so = await Suolo.field(current.feature).catch(() => null);
-    if (my !== runId) return;
+    const so = await Suolo.field(F.feature).catch(() => null);
+    if (my !== F.run) return;
     if (so && so.argilla != null) v = { sand: so.sabbia, clay: so.argilla, silt: so.limo, soc: so.soc, nitrogen: so.azoto, phh2o: so.ph, bdod: so.densita, cec: null, stock: so.stock_soc };
     else {
-      const ll = current.ll, props = ["clay", "sand", "silt", "soc", "nitrogen", "phh2o", "cec", "bdod"];
+      const ll = F.ll, props = ["clay", "sand", "silt", "soc", "nitrogen", "phh2o", "cec", "bdod"];
       const url = `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${ll.lng.toFixed(5)}&lat=${ll.lat.toFixed(5)}&` +
         props.map((p) => "property=" + p).join("&") + "&depth=0-5cm&depth=5-15cm&depth=15-30cm&value=mean";
       const j = await fetch(url, { signal: AbortSignal.timeout(45000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-      if (my !== runId) return;
+      if (my !== F.run) return;
       if (!j) { el.innerHTML = `<span class="hint small">${lt("soil_err")}</span>`; return; }
       // media 0–30 cm pesata sullo spessore degli strati
       const W = { "0-5cm": 5, "5-15cm": 10, "15-30cm": 15 }; v = {};
@@ -666,22 +692,19 @@ const Live = (() => {
     // unità: clay/sand/silt %, soc g/kg, nitrogen g/kg, ph, cec cmol/kg, bdod kg/dm³
     const S = v.sand, C = v.clay, Si = v.silt != null ? v.silt : 100 - S - C;
     const OM = (v.soc / 10) * 1.724;                         // sostanza organica % (Van Bemmelen)
-    const s_ = S / 100, c_ = C / 100;
-    const t15t = -0.024 * s_ + 0.487 * c_ + 0.006 * OM + 0.005 * s_ * OM - 0.013 * c_ * OM + 0.068 * s_ * c_ + 0.031;
-    const t15 = t15t + (0.14 * t15t - 0.02);
-    const t33t = -0.251 * s_ + 0.195 * c_ + 0.011 * OM + 0.006 * s_ * OM - 0.027 * c_ * OM + 0.452 * s_ * c_ + 0.299;
-    const t33 = t33t + (1.283 * t33t * t33t - 0.374 * t33t - 0.015);
-    const paw = Math.max(0.03, t33 - t15);                   // m³/m³
-    current.soil = { sand: S, clay: C, silt: Si, soc: v.soc, n: v.nitrogen, ph: v.phh2o, cec: v.cec, bd: v.bdod, om: OM, fc: t33, wp: t15, paw, tex: usdaTexture(S, Si, C),
+    const { fc: t33, wp: t15, paw } = saxtonRawls(S, C, OM);   // m³/m³ (croplayer.js)
+    F.soil = { sand: S, clay: C, silt: Si, soc: v.soc, n: v.nitrogen, ph: v.phh2o, cec: v.cec, bd: v.bdod, om: OM, fc: t33, wp: t15, paw, tex: usdaTexture(S, Si, C),
       stock: v.stock ?? (v.soc && v.bdod ? v.soc * v.bdod * 0.3 * 10 : null) };
+    if (F !== current) return;
     const cn = v.soc && v.nitrogen ? v.soc / v.nitrogen : null;
-    el.innerHTML = `<b>${lt("soil_title")}</b> <span class="soil-tex">${escapeHtml(current.soil.tex)}</span>
+    el.innerHTML = `<b>${lt("soil_title")}</b> <span class="soil-tex">${escapeHtml(F.soil.tex)}</span>
       <div class="soil-grid">
         <span>${lt("soil_sand")} <b>${S.toFixed(0)}%</b></span><span>${lt("soil_silt")} <b>${Si.toFixed(0)}%</b></span><span>${lt("soil_clay")} <b>${C.toFixed(0)}%</b></span>
         <span>${lt("soil_soc")} <b>${v.soc.toFixed(1)} g/kg</b></span><span>${lt("soil_n")} <b>${v.nitrogen != null ? v.nitrogen.toFixed(2) + " g/kg" : "—"}</b></span>
         <span>C/N <b>${cn ? cn.toFixed(1) : "—"}</b></span><span>pH <b>${v.phh2o != null ? v.phh2o.toFixed(1) : "—"}</b></span>
         <span>CSC <b>${v.cec != null ? v.cec.toFixed(0) + " cmol/kg" : "—"}</b></span>
-        <span>${lt("soil_paw")} <b>${Math.round(paw * 1000)} mm/m</b></span>
+        <span>${lt("soil_fc")} <b>${(t33 * 100).toFixed(0)}% vol</b></span><span>${lt("soil_wp")} <b>${(t15 * 100).toFixed(0)}% vol</b></span>
+        <span>${lt("soil_paw")} <b>${Math.round(paw * 1000)} mm/m</b></span><span>${lt("soil_paw30")} <b>${Math.round(paw * 300)} mm</b></span>
       </div>
       <div class="hint small">${lt("soil_note")}</div>`;
     drawFieldYield();
@@ -801,6 +824,77 @@ const Live = (() => {
     if (current._yieldArgs) drawYieldChart(...current._yieldArgs);
   }
 
+  // ---- resa del campo annata per annata (Monteith) contro la resa ISTAT della provincia
+  // NDVI medio del campo (solo NDVI, nuvole e foschia escluse come nella serie) per l'annata nov(Y-1)–ott(Y)
+  async function ndviSeason(F, Y, progress) {
+    const items = await stacSearch("sentinel-2-l2a", F.feature.geometry, `${Y - 1}-11-01`, `${Y}-10-31`, { query: { "eo:cloud_cover": { lt: 60 } } });
+    const byDate = {};
+    items.forEach((it) => { const d = it.properties.datetime.slice(0, 10); (byDate[d] = byDate[d] || []).push(it); });
+    const dates = Object.keys(byDate).sort(), exprs = [S2_INDEX.ndvi, S2_INDEX.aot, S2_INDEX.cloud];
+    const params = `expression=${encodeURIComponent(exprs.join(";"))}&asset_as_band=true`, rows = [];
+    let done = 0;
+    await pool(dates, 6, async (d) => {
+      const it = byDate[d].sort((a, b) => a.properties["eo:cloud_cover"] - b.properties["eo:cloud_cover"])[0];
+      const st = await itemStats("sentinel-2-l2a", it.id, F.feature, params).catch(() => null);
+      const v = st && exprs.map((e) => st[e]);
+      if (v && v[0] && v[0].count && v[2].mean <= 0.02 && v[1].mean <= 0.3) rows.push({ date: d, t: Date.parse(d), ndvi: v[0].mean });
+      progress(++done, dates.length);
+    });
+    rows.sort((a, b) => a.t - b.t);
+    despike(rows);
+    return rows.filter((r) => !r.outlier);
+  }
+  async function yieldByYear() {
+    const F = current, box = document.getElementById("yyBox");
+    if (!F || !box) return;
+    const msg = (x) => { if (F === current) box.querySelector(".yy-msg").textContent = x; };
+    const anni = (F.cty || []).filter((r) => !r.dubbio && RESA_PAR[r.cls]).map((r) => ({ y: r.year, cls: r.cls }));
+    if (!anni.length) { msg(lt("yy_none")); return; }
+    msg(lt("yy_meteo"));
+    if (!TARATURA && typeof Regions !== "undefined") TARATURA = await Regions.taratura().catch(() => null);
+    const y0 = Math.min(...anni.map((a) => a.y)) - 1, y1 = Math.max(...anni.map((a) => a.y));
+    const vars = "shortwave_radiation_sum,temperature_2m_mean,precipitation_sum,et0_fao_evapotranspiration";
+    const j = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${F.ll.lat.toFixed(4)}&longitude=${F.ll.lng.toFixed(4)}&start_date=${y0}-11-01&end_date=${y1}-10-31&daily=${vars}&timezone=Europe%2FRome`)
+      .then((r) => r.json()).catch(() => null);
+    const met = j && j.daily ? j.daily.time.map((d, i) => ({ date: d, t: Date.parse(d), rad: j.daily.shortwave_radiation_sum[i], tmean: j.daily.temperature_2m_mean[i],
+      rain: j.daily.precipitation_sum[i], et0: j.daily.et0_fao_evapotranspiration[i], fc: false })) : [];
+    await loadRese();
+    const R = RESE_DATA, pv = PROV && provinceAt(F.ll);
+    const out = [];
+    for (const a of anni) {
+      const rows = await ndviSeason(F, a.y, (n, t) => msg(lt("yy_load", { y: `${a.y - 1}/${String(a.y).slice(2)}`, n, t })));
+      const y = fieldYield(a.cls, smooth("ndvi", rows), met.filter((r) => r.t >= Date.parse(`${a.y - 1}-11-01`) && r.t <= Date.parse(`${a.y}-10-31`)));
+      const T = TARATURA && TARATURA[a.cls];
+      const ist = R && pv && pv.nuts ? resaClasse(R, pv.nuts, a.cls, a.y) : null;
+      out.push({ anno: a.y, cls: a.cls, mod: y ? y.resa * (T ? T.fattore : 1) : null, istat: ist ? ist.resa : null });
+    }
+    F.yearly = out;
+    if (F === current) drawYearly();
+  }
+  function drawYearly() {
+    const box = document.getElementById("yyBox"), Y = current && current.yearly;
+    if (!box || !Y) return;
+    const f1 = (x) => (x == null ? "—" : x.toFixed(1));
+    box.innerHTML = `<b>${lt("yy_title")}</b>
+      <div class="reg-table-wrap"><table class="reg-table"><thead><tr>${lt("yy_th").map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>
+      ${Y.map((r) => { const sc = r.mod != null && r.istat ? Math.round((r.mod / r.istat - 1) * 100) : null;
+        return `<tr><td>${r.anno - 1}/${String(r.anno).slice(2)}</td><td>${cropName(r.cls)}</td><td><b>${f1(r.mod)}</b></td><td>${f1(r.istat)}</td>` +
+          `<td class="${sc == null ? "" : Math.abs(sc) > 25 ? "bad" : "good"}">${sc == null ? "—" : (sc > 0 ? "+" : "") + sc + "%"}</td></tr>`; }).join("")}
+      </tbody></table></div>
+      <div class="cbox"><canvas id="chYearly"></canvas></div>
+      <button class="small-btn" id="yyCsv">${lt("yy_csv")}</button>
+      <p class="hint small">${lt("yy_note")}</p>`;
+    if (charts.chYearly) { charts.chYearly.destroy(); delete charts.chYearly; }
+    const lab = Y.map((r) => `${r.anno - 1}/${String(r.anno).slice(2)}`);
+    charts.chYearly = new Chart(document.getElementById("chYearly"), { data: { labels: lab, datasets: [
+      { type: "bar", label: "ISTAT", data: Y.map((r) => r.istat), backgroundColor: "#2b6cb0aa" },
+      { type: "line", label: "Monteith", data: Y.map((r) => r.mod), borderColor: "#2f8f3a", backgroundColor: "#2f8f3a", pointRadius: 4, spanGaps: true },
+    ] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: "t/ha" } } } } });
+    document.getElementById("yyCsv").onclick = () => csvDownload(`field_${current.id}_yield_by_season.csv`,
+      [["field_id", "season", "crop_class", "monteith_t_ha", "istat_t_ha"], ...Y.map((r) => [current.id, r.anno, r.cls, r.mod == null ? "" : r.mod.toFixed(2), r.istat == null ? "" : r.istat.toFixed(2)])]);
+  }
+
   // ---- grafico delle rese: ISTAT della coltura coltivata ogni anno (colore = coltura Copernicus), serie ISTAT della coltura
   // principale, e la resa stimata del campo con i due modelli
   function drawYieldChart(R, pv, ref) {
@@ -831,18 +925,21 @@ const Live = (() => {
   }
 
   async function showYields(my) {
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
     const el = document.getElementById("fpYield");
     if (!el) return;
     const R = await loadRese();
-    if (!R || my !== runId) return;
+    if (!R || my !== F.run) return;
     if (!R.rows) R.rows = R.righe;
-    RESE_DATA = R; drawFieldYield();
-    const pv = provinceAt(current.ll);
+    RESE_DATA = R;
+    if (F !== current) return;
+    drawFieldYield();
+    const pv = provinceAt(F.ll);
     if (!pv || !pv.nuts) { el.innerHTML = ""; return; }
     const cname = (c) => (R.colture[c] ? R.colture[c][LANG] : c);
     // coltura di riferimento: permanente dominante o ultima annata Copernicus attendibile
-    const h = (current.cty || []).filter((r) => !r.dubbio && r.cls > 0);
-    const ref = current.ctyPerm || (h.length ? h[h.length - 1].cls : null);
+    const h = (F.cty || []).filter((r) => !r.dubbio && r.cls > 0);
+    const ref = F.ctyPerm || (h.length ? h[h.length - 1].cls : null);
     // colture permanenti (vite, olivo, frutta, frutta a guscio): quote delle specie in provincia
     let specie = "";
     if ([14, 15, 16, 17].includes(ref)) {
@@ -856,7 +953,7 @@ const Live = (() => {
     }
     el.innerHTML = specie;
     drawYieldChart(R, pv, ref);
-    current._yieldArgs = [R, pv, ref];
+    F._yieldArgs = [R, pv, ref];
   }
 
   // ================================================================== serie temporali
@@ -865,7 +962,6 @@ const Live = (() => {
   let year = null; // annata scelta (null = automatica)
   let customStart = null, customEnd = null; // intervallo libero scelto dall'utente
   let charts = {};
-  let runId = 0;
 
   // Annata agraria: da San Martino (11 novembre) al 10 novembre dell'anno dopo.
   // Se l'annata in corso è iniziata da meno di 45 giorni, di default si mostra quella appena chiusa.
@@ -923,9 +1019,10 @@ const Live = (() => {
   }
 
   async function loadS2(my) {
-    const f = current.feature, start = iso(startDate(range)), end = iso(endDate(range));
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
+    const f = F.feature, start = iso(startDate(range)), end = iso(endDate(range));
     const items = await stacSearch("sentinel-2-l2a", f.geometry, start, end, { query: { "eo:cloud_cover": { lt: 85 } } });
-    if (my !== runId) return;
+    if (my !== F.run) return;
     const byDate = {};
     items.forEach((it) => { const d = it.properties.datetime.slice(0, 10); (byDate[d] = byDate[d] || []).push(it); });
     const dates = Object.keys(byDate).sort();
@@ -933,11 +1030,11 @@ const Live = (() => {
     const exprs = keys.map((k) => S2_INDEX[k] || `(${k}-1000)/10000`);
     const params = `expression=${encodeURIComponent(exprs.join(";"))}&asset_as_band=true`;
     let done = 0, cloudy = 0;
-    current.s2 = [];
+    F.s2 = [];
     await pool(dates, 6, async (d) => {
       const cands = byDate[d].sort((a, b) => a.properties["eo:cloud_cover"] - b.properties["eo:cloud_cover"]);
       for (const it of cands) {
-        if (my !== runId) return;
+        if (my !== F.run) return;
         const st = await itemStats("sentinel-2-l2a", it.id, f, params).catch(() => null);
         if (!st) continue;
         const v = exprs.map((e) => st[e]);
@@ -949,16 +1046,19 @@ const Live = (() => {
         keys.slice(0, -1).forEach((k, i) => (row[k] = v[i].mean));
         row.lai = Math.max(0, 3.618 * row.evi - 0.118);
         row.kc = Math.min(1.25, Math.max(0.15, 1.457 * row.ndvi - 0.1725));
-        current.s2.push(row);
+        F.s2.push(row);
         break;
       }
       done++;
-      if (my === runId) { setStatus(lt("loading_s2", { n: done, t: dates.length })); if (done % 6 === 0) drawIndex(); }
+      if (my === F.run && F === current) { setStatus(lt("loading_s2", { n: done, t: dates.length })); if (done % 6 === 0) drawIndex(); }
     });
-    if (my !== runId) return;
-    current.s2.sort((a, b) => a.t - b.t);
-    const nOut = despike(current.s2);
-    setStatus(lt("done", { ok: current.s2.length - nOut, t: dates.length, c: cloudy + nOut }));
+    if (my !== F.run) return;
+    F.s2.sort((a, b) => a.t - b.t);
+    const nOut = despike(F.s2);
+    F.s2Done = true;
+    drawMulti();
+    if (F !== current) return;
+    setStatus(lt("done", { ok: F.s2.length - nOut, t: dates.length, c: cloudy + nOut }));
     drawIndex(); drawSummary(); drawEt(); drawCompare();
   }
 
@@ -980,7 +1080,7 @@ const Live = (() => {
     });
     return n;
   }
-  const clean = () => (current.s2 || []).filter((r) => !r.outlier);
+  const clean = (F = current) => ((F && F.s2) || []).filter((r) => !r.outlier);
   // curva smussata: media pesata (tricubica) delle date valide entro ±20 giorni, ogni 3 giorni
   function smooth(key, data = clean()) {
     if (data.length < 3) return [];
@@ -994,11 +1094,12 @@ const Live = (() => {
   }
 
   async function loadS1() {
-    const my = runId, f = current.feature, start = iso(startDate(range)), end = iso(endDate(range));
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
+    const my = F.run, f = F.feature, start = iso(startDate(range)), end = iso(endDate(range));
     const items = await stacSearch("sentinel-1-rtc", f.geometry, start, end);
-    if (my !== runId) return;
+    if (my !== F.run) return;
     let done = 0;
-    current.s1 = [];
+    F.s1 = [];
     const db = (x) => 10 * Math.log10(x);
     await pool(items, 6, async (it) => {
       const st = await itemStats("sentinel-1-rtc", it.id, f, "assets=vv&assets=vh").catch(() => null);
@@ -1006,19 +1107,21 @@ const Live = (() => {
       if (st) {
         const vv = st.vv_b1 || st.vv, vh = st.vh_b1 || st.vh;
         if (vv && vh && vv.count && vv.mean > 0 && vh.mean > 0)
-          current.s1.push({ date: it.properties.datetime.slice(0, 10), t: Date.parse(it.properties.datetime), vv: db(vv.mean), vh: db(vh.mean),
+          F.s1.push({ date: it.properties.datetime.slice(0, 10), t: Date.parse(it.properties.datetime), vv: db(vv.mean), vh: db(vh.mean),
             orbit: it.properties["sat:orbit_state"] });
       }
-      if (my === runId) setStatus(lt("loading_s1", { n: done, t: items.length }));
+      if (my === F.run && F === current) setStatus(lt("loading_s1", { n: done, t: items.length }));
     });
-    if (my !== runId) return;
-    current.s1.sort((a, b) => a.t - b.t);
+    if (my !== F.run) return;
+    F.s1.sort((a, b) => a.t - b.t);
+    if (F !== current) return;
     setStatus("");
     drawRadar(); if (!cmpSel.has("vh")) cmpSel.add("vh"); drawCompare();
   }
 
   async function loadMeteo(my) {
-    const ll = current.ll, start = startDate(range), end = endDate(range);
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
+    const ll = F.ll, start = startDate(range), end = endDate(range);
     const recent = new Date(Date.now() - 6 * DAY_MS);
     const archEnd = end < recent ? end : recent;
     const vars = "precipitation_sum,temperature_2m_mean,temperature_2m_max,temperature_2m_min,et0_fao_evapotranspiration,shortwave_radiation_sum";
@@ -1037,11 +1140,12 @@ const Live = (() => {
       archEnd > start ? fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${iso(start)}&end_date=${iso(archEnd)}&daily=${vars}&timezone=Europe%2FRome`).then((r) => r.json()).catch(() => null) : null,
       isCurrent() ? fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&past_days=10&forecast_days=7&daily=${vars}&timezone=Europe%2FRome`).then((r) => r.json()).catch(() => null) : null,
     ]);
-    if (my !== runId) return;
+    if (my !== F.run) return;
     add(a, false); add(b, true);
     const today = iso(new Date());
     Object.values(out).forEach((r) => (r.fc = r.date > today));
-    current.meteo = Object.values(out).filter((r) => r.date >= iso(start) && (r.fc || r.date <= iso(end)) && r.tmean != null).sort((x, y) => x.t - y.t);
+    F.meteo = Object.values(out).filter((r) => r.date >= iso(start) && (r.fc || r.date <= iso(end)) && r.tmean != null).sort((x, y) => x.t - y.t);
+    if (F !== current) return;
     drawMeteo(); drawSummary(); drawEt(); drawCompare(); drawCarbon();
   }
 
@@ -1087,20 +1191,23 @@ const Live = (() => {
       <div id="fpModel" class="fp-crop fp-model"></div>
       <div id="fpCrop" class="fp-crop"></div>
       <div id="fpFieldYield" class="fp-fieldyield"></div>
+      <div id="yyBox" class="fp-yearly"><button class="small-btn" id="yyRun">${lt("yy_run")}</button><span class="hint small yy-msg"></span></div>
       <div id="fpSoil" class="fp-soil"></div>
       <div id="fpCarbon" class="fp-carbon"></div>
       <div id="fpAdvice" class="fp-advice"></div>
       <div id="fpYield" class="fp-yield"></div>`;
+    document.getElementById("yyRun").onclick = (e) => { e.target.disabled = true; yieldByYear(); };
+    if (current && current.yearly) drawYearly();
     panel().hidden = false;
     document.body.classList.add("fp-open");
-    panel().querySelectorAll("button.seg").forEach((b) => (b.onclick = () => { range = b.dataset.r; year = null; run(); }));
+    panel().querySelectorAll("button.seg").forEach((b) => (b.onclick = () => { range = b.dataset.r; year = null; runAll(); }));
     document.getElementById("fpApply").onclick = () => {
       const a = document.getElementById("fpFrom").value, b = document.getElementById("fpTo").value;
       if (!a || !b || a >= b) return;
-      customStart = new Date(a + "T00:00:00Z"); customEnd = new Date(b + "T23:59:59Z"); range = "custom"; run();
+      customStart = new Date(a + "T00:00:00Z"); customEnd = new Date(b + "T23:59:59Z"); range = "custom"; runAll();
     };
     const ys = document.getElementById("fpYear");
-    if (ys) ys.onchange = () => { year = +ys.value; run(); };
+    if (ys) ys.onchange = () => { year = +ys.value; runAll(); };
     document.getElementById("fpClose").onclick = close;
     panel().querySelectorAll(".chips:not(.cmp-chips) .chip input").forEach((c) => (c.onchange = () => { c.checked ? shown.add(c.dataset.k) : shown.delete(c.dataset.k); drawIndex(); }));
     panel().querySelectorAll(".cmp-chips .chip input").forEach((c) => (c.onchange = () => {
@@ -1114,8 +1221,6 @@ const Live = (() => {
     showChart(chartSel);
     Object.values(charts).forEach((c) => c.destroy());
     charts = {};
-    s1Loaded = false;
-    if (current) current.clms = {};
     buildFieldLayerBox();
     fmDatesKey = "";
   }
@@ -1175,8 +1280,8 @@ const Live = (() => {
   }
   function ringsOf(g) { return g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : []; }
   // griglia a ~10 m (Web Mercator) attorno al campo, con maschera del poligono
-  function fieldGrid() {
-    const polys = ringsOf(current.feature.geometry);
+  function fieldGrid(F = current) {
+    const polys = ringsOf(F.feature.geometry);
     let lo0 = 180, la0 = 90, lo1 = -180, la1 = -90;
     polys.forEach((p) => p[0].forEach(([x, y]) => { lo0 = Math.min(lo0, x); lo1 = Math.max(lo1, x); la0 = Math.min(la0, y); la1 = Math.max(la1, y); }));
     const pad = 0.00015; lo0 -= pad; lo1 += pad; la0 -= pad; la1 += pad;
@@ -1340,12 +1445,12 @@ const Live = (() => {
 
   // un grafico alla volta, a tutta larghezza e ridimensionabile (trascinando l'angolo in basso)
   const CHARTS = [["chIndex", "ch_index"], ["chMeteo", "ch_meteo"], ["chEt", "ch_et"], ["chYield", "ch_yield"], ["chCmp", "ch_cmp"], ["chClms", "ch_clms"], ["chRadar", "ch_radar"]];
-  let chartSel = "chIndex", s1Loaded = false;
+  let chartSel = "chIndex";
   function showChart(id) {
     chartSel = id;
     panel().querySelectorAll(".ch-tabs .seg").forEach((b) => b.classList.toggle("active", b.dataset.ch === id));
     panel().querySelectorAll(".ch-fig").forEach((f) => (f.hidden = f.dataset.ch !== id));
-    if (id === "chRadar" && !s1Loaded) { s1Loaded = true; loadS1(); }
+    if (id === "chRadar" && !current.s1Loaded) { current.s1Loaded = true; loadS1(); }
     if (id === "chClms" && !(current.clms && current.clms[clmsSel])) drawClms();
     if (charts[id]) charts[id].resize();
   }
@@ -1486,26 +1591,28 @@ const Live = (() => {
 
   // ---- ET reale Copernicus (CLMS ETA 300 m, decadale): media sul campo dalle mappe ritagliate sull'Italia (Hugging Face)
   async function loadEta(my) {
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
     const idx = await Clms.loadIndex(), start = iso(startDate(range)), end = iso(endDate(range));
     const dates = (idx.ETA || []).filter((d) => d >= start && d <= end);
     if (!dates.length) return;
-    const ser = await Clms.series("ETA", current.feature, dates);
-    if (my !== runId) return;
-    current.eta = ser.map((r) => { const d0 = new Date(r.x); const days = d0.getUTCDate() < 21 ? 10 : new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 0)).getUTCDate() - 20;
+    const ser = await Clms.series("ETA", F.feature, dates);
+    if (my !== F.run) return;
+    F.eta = ser.map((r) => { const d0 = new Date(r.x); const days = d0.getUTCDate() < 21 ? 10 : new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 0)).getUTCDate() - 20;
       return { t: r.x, et: r.y, days }; });
-    drawEt(); drawCompare();
+    if (F === current) { drawEt(); drawCompare(); }
   }
   // grafico "Copernicus": serie della variabile scelta, media sul campo
   let clmsSel = "LAI";
   async function drawClms() {
-    const my = runId, el = document.getElementById("chClms"), st = document.getElementById("clmsSt");
-    if (!el || !current) return;
+    const F = current;                  // campo a cui appartengono i dati (può non essere più quello attivo)
+    const my = F && F.run, el = document.getElementById("chClms"), st = document.getElementById("clmsSt");
+    if (!el || !F) return;
     const idx = await Clms.loadIndex(), start = iso(startDate(range)), end = iso(endDate(range));
     const dates = (idx[clmsSel] || []).filter((d) => d >= start && d <= end);
     if (!dates.length) { st.textContent = lt("clms_none"); if (charts.chClms) { charts.chClms.destroy(); delete charts.chClms; } return; }
-    const ser = await Clms.series(clmsSel, current.feature, dates, (k, t) => (st.textContent = lt("clms_load", { n: k, t })));
-    if (my !== runId) return;
-    (current.clms = current.clms || {})[clmsSel] = ser;
+    const ser = await Clms.series(clmsSel, F.feature, dates, (k, t) => (st.textContent = lt("clms_load", { n: k, t })));
+    if (my !== F.run || F !== current) return;
+    (F.clms = F.clms || {})[clmsSel] = ser;
     st.textContent = lt("clms_ok", { n: ser.length, px: ser.length ? Math.round(ser.reduce((a, r) => a + r.n, 0) / ser.length) : 0 });
     const u = Clms.P[clmsSel][2];
     upsert("chClms", { type: "line", data: { datasets: [{ label: Clms.label(clmsSel), data: ser, borderColor: "#2f8f3a", backgroundColor: "#2f8f3a", pointRadius: 3, tension: 0.25 }] },
@@ -1596,11 +1703,57 @@ const Live = (() => {
     document.body.appendChild(a); a.click(); a.remove();
   }
 
-  let highlight = null;
-  function setHighlight(feature) {
-    if (highlight) map.removeLayer(highlight);
-    highlight = L.geoJSON(feature, { style: { color: "#ffd84a", weight: 3, fill: false }, interactive: false }).addTo(map);
-    Clip.set(feature);                     // raster solo dentro il campo e zoom sul campo
+  // ================================================================== campi selezionati: più campi con id temporaneo (C1, C2, …)
+  // ogni campo ha i suoi dati (serie, meteo, suolo…); "current" è quello mostrato nel pannello
+  const fields = [];
+  const byId = (id) => fields.find((F) => F.id === id);
+  // add = false: il campo sostituisce la selezione; add = true: si aggiunge (Ctrl/Maiusc + clic o "aggiungi campi")
+  function select(feature, add, extra = {}) {
+    if (!add) { fields.forEach((F) => F.run++); fields.length = 0; }   // ferma i caricamenti dei campi tolti
+    const id = add ? Clip.add(feature) : Clip.set(feature)[0];
+    if (!id) return;
+    const F = { id, feature, ll: L.geoJSON(feature).getBounds().getCenter(), run: 0, ...extra };
+    fields.push(F);
+    current = F;
+    run();
+    renderChips();
+  }
+  // mostra nel pannello un campo già caricato (senza riscaricare serie e meteo)
+  function activate(id) {
+    const F = byId(id);
+    if (!F || F === current) return;
+    current = F; adviceKey = null;
+    const my = F.run;
+    renderPanel();
+    drawIndex(); drawSummary(); drawEt(); drawCompare(); drawMeteo(); drawCarbon();
+    if (F.s1Loaded) drawRadar();
+    showCropHistory(my).then(() => { showYields(my); renderAdvice(); }).catch(() => {});
+    loadSoil(my);
+    if (F.s2Done) classifyField(my);
+    renderChips();
+  }
+  function removeField(id) {
+    const F = byId(id);
+    if (!F) return;
+    F.run++;
+    fields.splice(fields.indexOf(F), 1);
+    Clip.remove(id);
+    if (!fields.length) { close(); return; }
+    if (F === current) { current = null; activate(fields[0].id); }
+    renderChips();
+  }
+  // etichette dei campi selezionati (sezione "Campi selezionati")
+  function renderChips() {
+    const box = document.getElementById("fieldChips");
+    if (!box) return;
+    box.innerHTML = fields.map((F) => `<span class="fchip${F === current ? " active" : ""}" style="--c:${Clip.colorOf(F.id)}">
+      <button type="button" class="fchip-id" data-id="${F.id}" title="${lt("chip_show")}">${F.id}</button>
+      <small>${areaHa(F.feature.geometry).toFixed(2)} ha</small>
+      <button type="button" class="fchip-x" data-x="${F.id}" aria-label="${lt("chip_remove")} ${F.id}">×</button></span>`).join("");
+    box.querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => activate(b.dataset.id)));
+    box.querySelectorAll("[data-x]").forEach((b) => (b.onclick = () => removeField(b.dataset.x)));
+    if (typeof updateSummaries === "function") updateSummaries();
+    drawMulti();
   }
   function showBusy(msg) {
     const p = panel();
@@ -1609,16 +1762,17 @@ const Live = (() => {
     if (typeof openSection === "function") openSection("series");
   }
   function close() {
-    runId++;
+    fields.forEach((F) => F.run++);
+    fields.length = 0;
     panel().hidden = true;
     document.body.classList.remove("fp-open");
-    if (highlight) { map.removeLayer(highlight); highlight = null; }
     if (fmOverlay) { map.removeLayer(fmOverlay); fmOverlay = null; }
     fmLast = null;
     document.getElementById("fieldMapBox").hidden = true;
     document.getElementById("servicesBox").innerHTML = "";
     current = null;
     Clip.set(null);
+    renderChips();
   }
 
   // avvisi per la coltura del campo: quella indicata dall'utente, la coltura permanente di Copernicus (olivo, vite, frutteti),
@@ -1637,32 +1791,31 @@ const Live = (() => {
     Advice.render(el, current.ll.lat, current.ll.lng, user || (cls ? null : lab), cls);
   }
 
-  function run() {
-    const my = ++runId;
-    adviceKey = null;
-    current.s2 = []; current.s1 = []; current.meteo = []; current.eta = [];
-    renderPanel();
-    setStatus(lt("loading_meteo"));
-    loadMeteo(my).catch((e) => setStatus(lt("err", { e: e.message })));
-    loadS2(my).then(() => my === runId && classifyField(my)).catch((e) => setStatus(lt("err", { e: e.message })));
-    showCropHistory(my).then(() => { showYields(my); renderAdvice(); }).catch(() => {});
+  // scarica serie, meteo e servizi di un campo per il periodo scelto (F = campo attivo se non indicato)
+  function run(F = current) {
+    const prev = current;
+    current = F;                           // i caricamenti leggono "current" subito, prima del primo await
+    const my = ++F.run;
+    F.s2 = []; F.s1 = []; F.meteo = []; F.eta = []; F.clms = {}; F.s1Loaded = false; F.s2Done = false;
+    if (F === prev) { adviceKey = null; renderPanel(); setStatus(lt("loading_meteo")); }
+    loadMeteo(my).catch((e) => F === current && setStatus(lt("err", { e: e.message })));
+    loadS2(my).then(() => my === F.run && F === current && classifyField(my)).catch((e) => F === current && setStatus(lt("err", { e: e.message })));
+    showCropHistory(my).then(() => { if (F === current) { showYields(my); renderAdvice(); } }).catch(() => {});
     loadEta(my);
     loadSoil(my);
+    current = prev;
   }
+  // nuovo periodo: ricarica tutti i campi selezionati
+  function runAll() { const act = current; fields.forEach((F) => F !== act && run(F)); run(act); }
 
   // analisi di un poligono qualsiasi (disegnato dall'utente, importato, prato)
-  function analyze(feature, extra = {}) {
-    setHighlight(feature);
-    const c = L.geoJSON(feature).getBounds().getCenter();
-    current = { feature, ll: c, ...extra };
-    run();
-  }
+  function analyze(feature, extra = {}, add = false) { select(feature, add, extra); }
   async function cropOfField(feature, y) {
     const { rings, bb } = to3035(feature);
     return cropOfYear(y, rings, bb).catch(() => null);
   }
 
-  async function onMapClick(ll) {
+  async function onMapClick(ll, add = false) {
     let feature = Segment.fieldAt(ll);
     if (!feature) {
       // nessuna divisione in campi qui: segmento automaticamente 2 km × 2 km attorno al punto
@@ -1681,10 +1834,109 @@ const Live = (() => {
       }
     }
     if (!feature) feature = squareAround(ll);
-    setHighlight(feature);
-    current = { feature, ll };
-    run();
+    // clic su un campo già selezionato: lo mostra (o lo toglie, in modalità "aggiungi")
+    const same = fields.find((F) => F.feature === feature || (F.feature.properties && feature.properties && F.feature.properties.id != null && F.feature.properties.id === feature.properties.id));
+    if (same) { if (add) removeField(same.id); else activate(same.id); return feature; }
+    select(feature, add, { clickLL: ll });
     return feature;
+  }
+
+  // ================================================================== confronto tra campi (sezione "Confronto tra campi")
+  // serie nel tempo di una variabile per ogni campo selezionato (colore e nome = id del campo) e grafico a dispersione
+  // dei pixel di due mappe (es. LAI contro NDVI) colorato per campo; tutto scaricabile in CSV
+  const MC_VARS = INDEX_DEF.map((x) => x[0]);
+  const SC_VARS = ["ndvi", "lai", "ndre", "ndmi", "evi", "savi", "ndwi", "nbr", "cire"];
+  let mcVar = "lai", scX = "ndvi", scY = "lai", scDate = "", scPts = [];
+  const idxName = (k) => lt("idx_" + k) || k.toUpperCase();
+  const csvDownload = (name, rows) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" }));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  };
+  function drawMulti() {
+    const box = document.getElementById("compareBox");
+    if (!box) return;
+    if (!fields.length) { box.innerHTML = `<p class="hint">${t("compare_empty")}</p>`; scPts = []; return; }
+    const loading = fields.filter((F) => !F.s2Done).map((F) => F.id);
+    const dates = [...new Set(fields.flatMap((F) => clean(F).map((r) => r.date)))].sort();
+    if (!dates.includes(scDate)) scDate = dates[dates.length - 1] || "";
+    const opts = (list, v) => list.map((k) => `<option value="${k}"${k === v ? " selected" : ""}>${idxName(k)}</option>`).join("");
+    box.innerHTML = `
+      <h4>${lt("mc_title")}</h4>
+      <div class="fl-row"><label>${lt("mc_var")} <select id="mcVar">${opts(MC_VARS, mcVar)}</select></label>
+        <button class="small-btn" id="mcCsv">${lt("mc_csv")}</button></div>
+      ${loading.length ? `<p class="hint small">${lt("mc_wait", { ids: loading.join(", ") })}</p>` : ""}
+      <div class="cbox"><canvas id="chMulti"></canvas></div>
+      <h4>${lt("sc_title")}</h4>
+      <div class="sc-form">
+        <label>${lt("sc_x")} <select id="scX">${opts(SC_VARS, scX)}</select></label>
+        <label>${lt("sc_y")} <select id="scY">${opts(SC_VARS, scY)}</select></label>
+        <label>${lt("sc_date")} <select id="scDate">${dates.map((d) => `<option${d === scDate ? " selected" : ""}>${d}</option>`).join("")}</select></label>
+        <button class="btn-primary" id="scRun"${dates.length ? "" : " disabled"}>${lt("sc_run")}</button>
+      </div>
+      <p class="hint small" id="scMsg"></p>
+      <div class="cbox sc-box"><canvas id="chScatter"></canvas></div>
+      <button class="small-btn" id="scCsv"${scPts.length ? "" : " disabled"}>${lt("sc_csv")}</button>`;
+    // serie per campo
+    const sets = fields.map((F) => ({ type: "line", label: F.id, data: clean(F).filter((r) => isFinite(r[mcVar])).map((r) => ({ x: r.t, y: r[mcVar] })),
+      borderColor: Clip.colorOf(F.id), backgroundColor: Clip.colorOf(F.id), pointRadius: 2.5, borderWidth: 1.6, tension: 0.25 }));
+    if (charts.chMulti) { charts.chMulti.destroy(); delete charts.chMulti; }
+    charts.chMulti = new Chart(document.getElementById("chMulti"), { data: { datasets: sets }, options: baseOpts({ y: { title: { display: true, text: idxName(mcVar) } } }) });
+    document.getElementById("mcVar").onchange = (e) => { mcVar = e.target.value; drawMulti(); };
+    document.getElementById("mcCsv").onclick = () => csvDownload(`fields_${mcVar}.csv`,
+      [["field_id", "date", mcVar], ...fields.flatMap((F) => clean(F).filter((r) => isFinite(r[mcVar])).map((r) => [F.id, r.date, +r[mcVar].toFixed(4)]))]);
+    ["scX", "scY", "scDate"].forEach((id) => (document.getElementById(id).onchange = (e) => { if (id === "scX") scX = e.target.value; else if (id === "scY") scY = e.target.value; else scDate = e.target.value; }));
+    document.getElementById("scRun").onclick = runScatter;
+    document.getElementById("scCsv").onclick = () => csvDownload(`scatter_${scX}_${scY}.csv`,
+      [["field_id", "date", "lon", "lat", scX, scY], ...scPts.map((p) => [p.id, p.date, p.lon.toFixed(6), p.lat.toFixed(6), +p.x.toFixed(4), +p.y.toFixed(4)])]);
+    if (scPts.length) drawScatter();
+  }
+  // pixel dentro ogni campo: X e Y dall'immagine Sentinel-2 senza nuvole più vicina alla data scelta
+  async function runScatter() {
+    const msg = document.getElementById("scMsg"), t0 = Date.parse(scDate);
+    scPts = [];
+    let maxD = 0, k = 0;
+    for (const F of fields) {
+      const rows = clean(F);
+      if (!rows.length) continue;
+      const row = rows.reduce((a, r) => (Math.abs(r.t - t0) < Math.abs(a.t - t0) ? r : a));
+      if (Math.abs(row.t - t0) > 20 * DAY_MS) continue;
+      msg.textContent = lt("sc_load", { id: F.id });
+      const G = fieldGrid(F);
+      const url = `${PC}/data/v1/item/bbox/${G.X0},${G.Y0},${G.X1},${G.Y1}.npy?collection=sentinel-2-l2a&item=${encodeURIComponent(row.item)}` +
+        `&expression=${encodeURIComponent([...EXPR_MAP(scX), ...EXPR_MAP(scY)].join(";"))}&asset_as_band=true&coord_crs=epsg:3857&dst_crs=epsg:3857&width=${G.W}&height=${G.H}&resampling=nearest`;
+      let arr;
+      try { arr = parseNpy(await fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })); } catch (e) { continue; }
+      const n = G.W * G.H;
+      for (let i = 0; i < n; i++) {
+        if (G.inside[i * 4 + 3] <= 127) continue;
+        const x = arr.data[i], y = arr.data[n + i];
+        if (!isFinite(x) || !isFinite(y)) continue;
+        const cx = G.X0 + ((i % G.W) + 0.5) * ((G.X1 - G.X0) / G.W), cy = G.Y1 - (Math.floor(i / G.W) + 0.5) * ((G.Y1 - G.Y0) / G.H);
+        scPts.push({ id: F.id, date: row.date, x, y, lon: lonOf(cx), lat: latOf(cy) });
+      }
+      maxD = Math.max(maxD, Math.round(Math.abs(row.t - t0) / DAY_MS)); k++;
+    }
+    msg.textContent = scPts.length ? lt("sc_done", { n: scPts.length, k, d: maxD }) : lt("sc_none");
+    document.getElementById("scCsv").disabled = !scPts.length;
+    drawScatter();
+  }
+  function drawScatter() {
+    const el = document.getElementById("chScatter");
+    if (!el) return;
+    const n = scPts.length, mx = scPts.reduce((a, p) => a + p.x, 0) / (n || 1), my = scPts.reduce((a, p) => a + p.y, 0) / (n || 1);
+    let sxy = 0, sxx = 0, syy = 0;
+    scPts.forEach((p) => { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) ** 2; syy += (p.y - my) ** 2; });
+    const r = sxx && syy ? sxy / Math.sqrt(sxx * syy) : NaN;
+    const ids = [...new Set(scPts.map((p) => p.id))];
+    if (charts.chScatter) { charts.chScatter.destroy(); delete charts.chScatter; }
+    charts.chScatter = new Chart(el, { type: "scatter",
+      data: { datasets: ids.map((id) => ({ label: id, data: scPts.filter((p) => p.id === id).map((p) => ({ x: p.x, y: p.y })),
+        backgroundColor: Clip.colorOf(id) + "aa", pointRadius: 1.6 })) },
+      options: { responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } },
+          title: { display: isFinite(r), text: `${lt("sc_r")} = ${r.toFixed(2)} (n = ${n})`, font: { size: 11 } } },
+        scales: { x: { title: { display: true, text: idxName(scX) } }, y: { title: { display: true, text: idxName(scY) } } } } });
   }
 
   function refreshLayer(def) { liveLayers.forEach((x) => { if (x.def === def) x.layer.setUrl(s2Url(def)); }); }
