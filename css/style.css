@@ -400,6 +400,17 @@ table.mini td:first-child, table.mini th:first-child { text-align: left; }
 /* mappe pubbliche */
 .pm-list { list-style: none; margin: 0; padding: 0; }
 .pm-list li { padding: 7px 0; border-bottom: 1px solid var(--line); }
-.pm-form { margin-top: 10px; } .pm-form > summary { cursor: pointer; font-weight: 600; color: var(--green); }
+.pm-form { margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--chalk); } .pm-form h4 { margin: 0 0 6px; color: var(--green); }
 .pm-form label { display: block; font-size: 13px; color: var(--muted); margin: 6px 0; }
 .pm-form input:not([type=file]), .pm-form textarea, .pm-form select { width: 100%; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; }
+/* mappa di base in scala di grigi (luminanza) */
+.bm-gray .leaflet-tile-pane, .bm-gray .leaflet-labels-pane { filter: grayscale(1); }
+.bm-gray-chk { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; font-size: 13.5px; width: 100%; }
+.crop-product label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--muted); margin: 4px 0; }
+.crop-product select { padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; }
+/* finestra dei livelli: campi selezionati */
+.lw-sub { margin: 10px 2px 4px; font-size: 13.5px; color: var(--green); }
+.lw-fields li { grid-template-columns: auto auto 1fr auto auto; }
+.lw-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.lw-fid { font-weight: 700; } .lw-fid.active { background: var(--ochre-soft) !important; }
+.lw-veil { display: flex; gap: 6px; align-items: center; margin: 6px 2px; }
