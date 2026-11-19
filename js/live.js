@@ -1753,6 +1753,7 @@ const Live = (() => {
     box.querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => activate(b.dataset.id)));
     box.querySelectorAll("[data-x]").forEach((b) => (b.onclick = () => removeField(b.dataset.x)));
     if (typeof updateSummaries === "function") updateSummaries();
+    if (typeof renderLayerWin === "function") renderLayerWin();
     drawMulti();
   }
   function showBusy(msg) {
@@ -1939,6 +1940,14 @@ const Live = (() => {
         scales: { x: { title: { display: true, text: idxName(scX) } }, y: { title: { display: true, text: idxName(scY) } } } } });
   }
 
+  // annata agraria scelta (anno di fine, es. 2025 = 2024/25) e sua impostazione da Mappe → Campi e colture (prodotto "modello")
+  const season = () => (range === "sm" ? selYear() + 1 : endDate(range).getUTCFullYear());
+  function setSeason(Y) {
+    range = "sm"; year = Y - 1;
+    if (fields.length) runAll();
+  }
+
   function refreshLayer(def) { liveLayers.forEach((x) => { if (x.def === def) x.layer.setUrl(s2Url(def)); }); }
-  return { refreshLayer, analyze, cropOfField, CTY_NOMI: () => CTY_NOMI, current: () => current, cropHistory, makeS2Layer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, refreshLang: () => current && run(), _debug: () => current };
+  const fieldsInfo = () => fields.map((F) => ({ id: F.id, ha: areaHa(F.feature.geometry), active: F === current }));
+  return { fieldsInfo, activate, removeField, season, setSeason, refreshLayer, analyze, cropOfField, CTY_NOMI: () => CTY_NOMI, current: () => current, cropHistory, makeS2Layer, windowControl, bindWindowControl, segControl, periodRange, onMapClick, refreshLang: () => current && run(), _debug: () => current };
 })();

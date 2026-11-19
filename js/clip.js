@@ -8,12 +8,12 @@
 // EN: selected fields (temporary ids C1, C2…, colours); rasters clipped to their polygons, the rest of the map dimmed.
 //
 // Globale esposto / exposed global: Clip { init(map), pane(), set(list|feature|null, zoom), add(feature), remove(id),
-//   features(), feature() (primo), active(), ids(), byId(id), colorOf(id), onChange(fn) }
+//   features(), feature() (primo), active(), ids(), byId(id), colorOf(id), onChange(fn), veil(), setVeil(on), zoomTo(id) }
 // Dipende da / depends on: Leaflet (L). Va caricato prima di app.js, che chiama Clip.init(map) appena crea la mappa.
 
 const Clip = (() => {
   const COLORS = ["#ffd84a", "#4fd1c5", "#f687b3", "#90cdf4", "#f6ad55", "#b794f4", "#68d391", "#fc8181"];
-  let m = null, pane = null, list = [], next = 1, veil = null, outlines = null;
+  let m = null, pane = null, list = [], next = 1, veil = null, outlines = null, veilOn = true;
   const listeners = [];
 
   function init(theMap) {
@@ -46,7 +46,7 @@ const Clip = (() => {
     if (!list.length) return;
     const world = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
     const holes = list.flatMap((x) => ringsOf(x.feature).map((p) => p[0].map(([lon, lat]) => [lat, lon])));
-    veil = L.polygon([world, ...holes], { pane: "veil", stroke: false, fillColor: "#f4f5ef", fillOpacity: 0.55, interactive: false }).addTo(m);
+    if (veilOn) veil = L.polygon([world, ...holes], { pane: "veil", stroke: false, fillColor: "#f4f5ef", fillOpacity: 0.55, interactive: false }).addTo(m);
     outlines = L.layerGroup(list.map((x) => L.geoJSON(x.feature, { style: { color: x.color, weight: 3, fill: false }, interactive: false })
       .bindTooltip(x.id, { permanent: true, direction: "center", className: "field-id" }))).addTo(m);
   }
@@ -81,6 +81,8 @@ const Clip = (() => {
 
   return {
     init, set, add, remove,
+    veil: () => veilOn, setVeil: (on) => { veilOn = !!on; redraw(); },
+    zoomTo: (id) => { const x = list.find((e) => e.id === id); if (x) m.fitBounds(L.geoJSON(x.feature).getBounds(), { maxZoom: 18, padding: [40, 40] }); },
     features: () => list.map((x) => x.feature), feature: () => (list[0] ? list[0].feature : null), active: () => list.length > 0,
     ids: () => list.map((x) => x.id), byId: (id) => (list.find((x) => x.id === id) || {}).feature,
     colorOf: (id) => (list.find((x) => x.id === id) || {}).color || "#888",
