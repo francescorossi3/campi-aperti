@@ -103,7 +103,12 @@ async def main():
         print("rilevamento:", rep["rilevamento_s"], "s", rep["rilevamento_area_km"], "km", rep["rilevamento"].replace("\n", " | "))
         await pg.screenshot(path=os.path.join(OUT, "browser_rilevamento.png"))
         # PAW, finestra dei livelli, province e regioni
-        await pg.evaluate("document.getElementById('chk_so_paw').click(); toggleLayerWin(true); map.setView([45.25, 9.55], 11)"); await pg.wait_for_timeout(12000)
+        await pg.evaluate("window.__prima = 1")
+        for passo in ["document.getElementById('chk_so_paw').click()", "toggleLayerWin(true)", "map.setView([45.25, 9.55], 11)"]:
+            try: await pg.evaluate(passo); await pg.wait_for_timeout(4000)
+            except Exception as e: print("passo non riuscito:", passo, str(e)[:120])
+            print("dopo", passo, "-> pagina ricaricata:", await pg.evaluate("!window.__prima"))
+        await pg.wait_for_timeout(8000)
         await pg.screenshot(path=os.path.join(OUT, "browser_paw.png"))
         await pg.evaluate("document.getElementById('chk_so_paw').click()")
         await pg.evaluate("openTab('regions')"); await pg.wait_for_timeout(2000)
