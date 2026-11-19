@@ -37,7 +37,7 @@ flowchart TB
 ```mermaid
 flowchart LR
   subgraph Barra["Barra laterale a tab (foglio dal basso sul telefono)"]
-    t1[Mappe<br/>mappe di base · livelli + Stile · punto cliccato · dati · progetto]
+    t1[Mappe<br/>mappa di base (spenta / grigi) · campi e colture · Sentinel-2 · CLMS · suolo · catasto ·<br/>mappe pubbliche · dati · progetto]
     t2[Campi<br/>rileva campi e colture · strumenti · campi selezionati C1, C2… ·<br/>mappa del campo · serie · confronto tra campi · servizi · account]
     t3[Province<br/>rese ISTAT e Monteith]
     t4[Regioni<br/>acqua · rese ISTAT e Monteith]
@@ -53,8 +53,12 @@ flowchart LR
   NDVI) dall'immagine Sentinel-2 serena più vicina, colorato per id, con la correlazione; tutto scaricabile in CSV.
 - **Rileva campi e colture** nell'area visibile (al massimo circa 6 × 6 km) o in un rettangolo disegnato: segmentazione + coltura
   Copernicus per campo, campi colorati per coltura; il clic su un campo lo seleziona.
-- **Finestra dei livelli**: finestra spostabile sulla mappa con i livelli accesi (il primo è in cima); nascondi/mostra, sopra/sotto (anche
-  trascinando), togli. L'ordine vale tra i raster; il catasto resta sempre sopra.
+- **Tab Mappe**, in quest'ordine: mappa di base (si può spegnere o mostrare in scala di grigi secondo la luminosità), **Campi e colture**
+  (mappa delle colture e prodotto con cui dare la coltura ai campi: Copernicus Crop Types di un anno, oppure il modello Columella su un'annata
+  scelta), **Sentinel-2**, **CLMS** (gruppi come nel portafoglio CLMS: parametri biogeofisici, fenologia e produttività HR-VPP, serie lunghe
+  MR-VPP/LPD, copertura del suolo, High Resolution Layers di praterie, alberi e acqua), **Suolo**, **Catasto** (`MAP_SECTIONS` in `layers.js`).
+- **Finestra dei livelli**: finestra spostabile sulla mappa con i livelli accesi (in cima il primo: nascondi/mostra, sopra/sotto, trascina,
+  togli) e i campi selezionati (mostra nel pannello, vai, togli, velo sul resto della mappa sì/no). L'ordine vale tra i raster; il catasto resta sopra.
 - **Stile** (`mapstyle.js`, ripreso da Prognostica): scala di colori, inversione, minimo/massimo (predefiniti, min–max del campo,
   percentili 2–98 %, media ± 2 dev. std., manuali), classi continue / a intervalli uguali / quantili, trasparenza, colore per nessun dato,
   istogramma dei valori del campo e legenda; salvato per livello nel browser (`columella.style.<id del livello>`). I mosaici Sentinel-2

@@ -14,6 +14,7 @@ Privacy: `privacy.html` va aggiornata a ogni nuovo trattamento di dati.
 
 ## Interfaccia
 - Barra laterale a **tab**: Mappe · Campi · Province · Regioni, con sezioni a scomparsa dentro le tab; su telefono diventa un foglio dal basso.
+  Tab Mappe in quest'ordine: mappa di base · Campi e colture · Sentinel-2 · CLMS (gruppi come nel portafoglio CLMS) · Suolo · Catasto (`MAP_SECTIONS`).
   Sopra la mappa solo: finestra dei livelli (spostabile), legenda, controlli Leaflet. Nuove schede e strumenti vanno in una tab.
 - Più campi selezionabili (`clip.js`, id temporanei C1, C2…; Ctrl/Maiusc + clic). I dati di ogni campo stanno nel suo oggetto in `live.js`
   (`fields`, `current` = campo mostrato): i caricamenti leggono `current` subito e poi usano solo il proprio campo.

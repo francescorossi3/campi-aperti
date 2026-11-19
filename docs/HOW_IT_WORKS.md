@@ -37,7 +37,7 @@ flowchart TB
 ```mermaid
 flowchart LR
   subgraph Sidebar["Sidebar with tabs (bottom sheet on phones)"]
-    t1[Maps<br/>base maps · layers + Style · clicked point · data · about]
+    t1[Maps<br/>base map (none / greyscale) · fields and crops · Sentinel-2 · CLMS · soil · cadastre ·<br/>public maps · data · about]
     t2[Fields<br/>detect fields and crops · tools · selected fields C1, C2… ·<br/>field map · time series · compare fields · services · account]
     t3[Provinces<br/>ISTAT vs Monteith yields]
     t4[Regions<br/>water balance · ISTAT vs Monteith yields]
@@ -53,8 +53,12 @@ flowchart LR
   closest cloud-free Sentinel-2 image, coloured by field id, with correlation; both downloadable as CSV.
 - **Detect fields and crops** in the visible area (≤ about 6 × 6 km) or in a drawn rectangle: segmentation + Copernicus crop per field,
   fields coloured by crop; clicking one selects it.
-- **Layer window**: a movable window on the map lists the layers that are on (top first); hide/show, move up/down (also drag and drop),
-  remove. The order works within the raster pane; the cadastre always stays on top.
+- **Maps tab**, in this order: base map (can be switched off or shown in greyscale by brightness), **Fields and crops** (crop map and the
+  product used for field crops: Copernicus Crop Types of a year, or the Columella model applied to a chosen season), **Sentinel-2**, **CLMS**
+  (sub-groups as in the CLMS portfolio: bio-geophysical parameters, HR-VPP phenology and productivity, MR-VPP/LPD long series, land cover,
+  High Resolution Layers for grasslands, trees and water), **Soil**, **Cadastre** (`MAP_SECTIONS` in `layers.js`).
+- **Layer window**: a movable window on the map lists the layers that are on (top first: hide/show, up/down, drag and drop, remove) and the
+  selected fields (show in the panel, zoom, remove, dim the rest of the map on/off). The order works within the raster pane; the cadastre stays on top.
 - **Style** (`mapstyle.js`, ported from Prognostica): colour ramp, invert, min/max (default, field min–max, percentiles 2–98 %,
   mean ± 2 std. dev., manual), continuous / equal-interval / quantile classes, opacity, no-data colour, histogram of the field values and a
   live legend; saved per layer in the browser (`columella.style.<layer id>`). Sentinel-2 period mosaics are coloured by the server
