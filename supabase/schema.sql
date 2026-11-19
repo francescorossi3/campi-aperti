@@ -75,10 +75,21 @@ alter table public.editori enable row level security;
 drop policy if exists "editori: vedo solo me" on public.editori;
 create policy "editori: vedo solo me" on public.editori for select to authenticated using (user_id = (select auth.uid()));
 
--- vero se l'utente collegato è un editore (usata dalle regole qui sotto e dal sito)
+-- impostazioni private (nessuna regola: si modificano solo dal pannello Supabase).
+-- email_proprietario: l'account con questa email (confermata) è SEMPRE editore e può sempre rendere permanenti le mappe,
+-- anche se la sua riga in "editori" viene cancellata.
+create table if not exists public.impostazioni (
+  chiave text primary key,
+  valore text not null
+);
+alter table public.impostazioni enable row level security;
+
+-- vero se l'utente collegato è un editore o il proprietario (usata dalle regole qui sotto e dal sito)
 create or replace function public.sono_editore() returns boolean
 language sql stable security definer set search_path = '' as $$
-  select exists (select 1 from public.editori where user_id = (select auth.uid()));
+  select exists (select 1 from public.editori where user_id = (select auth.uid()))
+      or exists (select 1 from auth.users u join public.impostazioni i on i.chiave = 'email_proprietario' and lower(u.email) = lower(i.valore)
+                 where u.id = (select auth.uid()) and u.email_confirmed_at is not null);
 $$;
 revoke all on function public.sono_editore() from public, anon;
 grant execute on function public.sono_editore() to authenticated;
