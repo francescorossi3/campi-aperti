@@ -17,7 +17,7 @@ const Delineate = (() => {
   const PC = "https://planetarycomputer.microsoft.com/api";
   const MODEL = "https://huggingface.co/datasets/Bradipo92/campi-aperti-data/resolve/main/modelli/delineate_anything_s.onnx";
   const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
-  const SZ = 512, TILE_M = 2560, CONF = 0.1, IOU = 0.5, MAX_TILES = 9;
+  const SZ = 512, TILE_M = 2560, CONF = 0.1, IOU = 0.5, MAX_TILES = 36, BLOCK = 3;   // fino a ~15 × 15 km
   let session = null, loading = null;
 
   // SRI: il browser rifiuta ort.min.js se il file sul CDN non è identico a quello della versione 1.20.1
@@ -217,37 +217,44 @@ const Delineate = (() => {
     return nSplit;
   }
 
+  // aree grandi: blocchi di al massimo BLOCK × BLOCK tasselli, ciascuno con le sue immagini e il suo controllo NDVI
+  // (richieste e memoria restano quelle di un'area di ~7,7 × 7,7 km); le etichette si sommano in un'unica griglia
   async function run(bounds, endDate, onProgress) {
-    const [w, s, e, n] = bounds;
+    const [w, s, e, n] = bounds, end = endDate || new Date();
     const cosl = Math.cos((((s + n) / 2) * Math.PI) / 180), T = TILE_M / cosl;          // lato del tassello in metri Mercatore
     const X0 = mx(w), X1 = mx(e), Y0 = my(s), Y1 = my(n);
     const nx = Math.max(1, Math.ceil((X1 - X0) / T)), ny = Math.max(1, Math.ceil((Y1 - Y0) / T));
     if (nx * ny > MAX_TILES) throw new Error("area troppo grande per il modello");
     const cx = (X0 + X1) / 2, cy = (Y0 + Y1) / 2, gx0 = cx - (nx * T) / 2, gy1 = cy + (ny * T) / 2;
-    const W = nx * SZ, H = ny * SZ, labels = new Int32Array(W * H);
-    onProgress && onProgress(0, nx * ny);
-    const [items] = await Promise.all([candidates([lon(gx0), lat(gy1 - ny * T), lon(gx0 + nx * T), lat(gy1)], endDate || new Date()), getSession()]);
-    if (!items.length) throw new Error("nessuna immagine serena");
+    const W = nx * SZ, H = ny * SZ, labels = new Int32Array(W * H), tot = nx * ny;
     let off = 0, done = 0;
     const dates = new Set();
-    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-      const tx0 = gx0 + i * T, ty1 = gy1 - j * T;
-      const img = await tileImage(tx0, ty1 - T, tx0 + T, ty1, items);
-      onProgress && onProgress(++done, nx * ny);
-      if (!img) continue;
-      dates.add(img.date);
-      const { lab, n: k } = await infer(img.data);
-      for (let y = 0; y < SZ; y++) for (let x = 0; x < SZ; x++) { const l = lab[y * SZ + x]; if (l) labels[(j * SZ + y) * W + i * SZ + x] = l + off; }
-      off += k + 1;
+    onProgress && onProgress(0, tot);
+    await getSession();
+    for (let by = 0; by < ny; by += BLOCK) for (let bx = 0; bx < nx; bx += BLOCK) {
+      const bw = Math.min(BLOCK, nx - bx), bh = Math.min(BLOCK, ny - by);
+      const bx0 = gx0 + bx * T, by1 = gy1 - by * T, bx1 = bx0 + bw * T, by0 = by1 - bh * T;
+      const Wb = bw * SZ, Hb = bh * SZ, lb = new Int32Array(Wb * Hb);
+      const items = await candidates([lon(bx0), lat(by0), lon(bx1), lat(by1)], end);
+      for (let j = 0; j < bh; j++) for (let i = 0; i < bw; i++) {
+        const img = items.length ? await tileImage(bx0 + i * T, by1 - (j + 1) * T, bx0 + (i + 1) * T, by1 - j * T, items) : null;
+        onProgress && onProgress(++done, tot);
+        if (!img) continue;
+        dates.add(img.date);
+        const { lab, n: k } = await infer(img.data);
+        for (let y = 0; y < SZ; y++) for (let x = 0; x < SZ; x++) { const l = lab[y * SZ + x]; if (l) lb[(j * SZ + y) * Wb + i * SZ + x] = l + off; }
+        off += k + 1;
+      }
+      // controllo con le curve NDVI dell'anno: divide i campi con colture diverse
+      try {
+        const f = 2, stack = await ndviStack(bx0, by0, bx1, by1, Math.round(Wb / f), Math.round(Hb / f), end);
+        const ns = splitByNdvi(lb, Wb, Hb, stack, f);
+        if (ns) console.info("Campi divisi per colture diverse:", ns);
+      } catch (err) { console.warn("controllo NDVI non riuscito", err); }
+      for (let y = 0; y < Hb; y++) labels.set(lb.subarray(y * Wb, (y + 1) * Wb), (by * SZ + y) * W + bx * SZ);
+      for (let i = 0; i < lb.length; i++) if (lb[i] >= off) off = lb[i] + 1;     // nuovi id creati dalla divisione NDVI
     }
     if (!dates.size) throw new Error("immagini non disponibili");
-    // controllo con le curve NDVI dell'anno: divide i campi con colture diverse
-    try {
-      const f = 2, W2 = Math.round(W / f), H2 = Math.round(H / f);
-      const stack = await ndviStack(gx0, gy1 - ny * T, gx0 + nx * T, gy1, W2, H2, endDate || new Date());
-      const ns = splitByNdvi(labels, W, H, stack, f);
-      if (ns) console.info("Campi divisi per colture diverse:", ns);
-    } catch (e) { console.warn("controllo NDVI non riuscito", e); }
     const b = [lon(gx0), lat(gy1 - ny * T), lon(gx0 + nx * T), lat(gy1)];
     return Segment.useLabels(b, W, H, labels, { dates: [...dates].sort(), n: off, method: "ai" });
   }

@@ -293,7 +293,12 @@ const Segment = (() => {
   async function smart(bounds, endDate, onProgress) {
     if (typeof Delineate !== "undefined") {
       try { return await Delineate.run(bounds, endDate, onProgress); }
-      catch (e) { console.warn("Delineate Anything non disponibile, uso Felzenszwalb:", e.message || e); }
+      catch (e) {
+        // il metodo di riserva legge tutta la serie NDVI in memoria: solo per aree fino a ~6 × 6 km
+        const [w, s, ea, n] = bounds, km = Math.max((ea - w) * 111.32 * Math.cos((((s + n) / 2) * Math.PI) / 180), (n - s) * 110.54);
+        if (km > 6.2) throw e;
+        console.warn("Delineate Anything non disponibile, uso Felzenszwalb:", e.message || e);
+      }
     }
     return run(bounds, endDate, onProgress);
   }

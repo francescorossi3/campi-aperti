@@ -51,7 +51,7 @@ flowchart LR
   soil…); the id chips switch the panel between fields without downloading again.
 - **Compare fields**: one variable over time with one line per field id; pixel **scatter plot** of two maps (e.g. LAI vs NDVI) from the
   closest cloud-free Sentinel-2 image, coloured by field id, with correlation; both downloadable as CSV.
-- **Detect fields and crops** in the visible area (≤ about 6 × 6 km) or in a drawn rectangle: segmentation + Copernicus crop per field,
+- **Detect fields and crops** in the visible area (≤ about 15 × 15 km, processed in blocks of ~7.7 × 7.7 km) or in a drawn rectangle: segmentation + Copernicus crop per field,
   fields coloured by crop; clicking one selects it.
 - **Maps tab**, in this order: base map (can be switched off or shown in greyscale by brightness), **Fields and crops** (crop map and the
   product used for field crops: Copernicus Crop Types of a year, or the Columella model applied to a chosen season), **Sentinel-2**, **CLMS**

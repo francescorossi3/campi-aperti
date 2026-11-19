@@ -48,8 +48,8 @@ const LT = {
     live_note: "Settimana: immagine più recente. Periodi più lunghi: mediana di tutte le immagini con poche nuvole (toglie nuvole residue). Visibile da zoom 10.",
     seg_btn: "Dividi in campi la zona visibile",
     seg_hint: "Usa 8 immagini Sentinel-2 serene degli ultimi 12 mesi: pixel vicini con la stessa curva di crescita formano un campo. Ingrandisci almeno a zoom 14.",
-    seg_zoom: "Ingrandisci almeno a zoom 14 e riprova.",
-    seg_draw: "Dividi in campi un'area che disegno", seg_big: "L'area disegnata è troppo grande (al massimo circa 40 km²): disegnane una più piccola.",
+    seg_zoom: "L'area visibile è troppo grande (al massimo circa 15 × 15 km): avvicinati e riprova.",
+    seg_draw: "Dividi in campi un'area che disegno", seg_big: "L'area disegnata è troppo grande (al massimo circa 15 × 15 km): disegnane una più piccola.",
     seg_prog: "Scarico le immagini: {n}/{t}…",
     seg_done: "{n} campi individuati da {d} date ({a} → {b}). Clicca su un campo.",
     crop: "Coltura stimata",
@@ -170,8 +170,8 @@ const LT = {
     live_note: "Week: most recent image. Longer periods: median of all low-cloud images (removes residual clouds). Visible from zoom 10.",
     seg_btn: "Split the visible area into fields",
     seg_hint: "Uses 8 clear Sentinel-2 images from the last 12 months: neighbouring pixels with the same growth curve form a field. Zoom in to at least 14.",
-    seg_zoom: "Zoom in to at least level 14 and try again.",
-    seg_draw: "Split an area I draw into fields", seg_big: "The drawn area is too large (about 40 km² at most): draw a smaller one.",
+    seg_zoom: "The visible area is too large (about 15 × 15 km at most): zoom in and try again.",
+    seg_draw: "Split an area I draw into fields", seg_big: "The drawn area is too large (about 15 × 15 km at most): draw a smaller one.",
     seg_prog: "Downloading images: {n}/{t}…",
     seg_done: "{n} fields found from {d} dates ({a} → {b}). Click a field.",
     crop: "Estimated crop",
@@ -408,10 +408,9 @@ const Live = (() => {
   // area = rettangolo disegnato (L.LatLngBounds); senza area si usa la zona visibile
   async function runSegmentation(area) {
     const msg = document.getElementById("segMsg");
-    if (!area && map.getZoom() < 14) { if (msg) msg.textContent = lt("seg_zoom"); return; }
     const b = area || map.getBounds();
-    const km = (b.getEast() - b.getWest()) * 111.32 * Math.cos((b.getCenter().lat * Math.PI) / 180) * (b.getNorth() - b.getSouth()) * 110.54;
-    if (area && km > 40) { if (msg) msg.textContent = lt("seg_big"); return; }
+    const wKm = (b.getEast() - b.getWest()) * 111.32 * Math.cos((b.getCenter().lat * Math.PI) / 180), hKm = (b.getNorth() - b.getSouth()) * 110.54;
+    if (wKm > 15.3 || hKm > 15.3) { if (msg) msg.textContent = lt(area ? "seg_big" : "seg_zoom"); return; }   // 6 × 6 tasselli del modello
     const bounds = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
     const btn = document.getElementById("segBtn");
     if (btn) btn.disabled = true;

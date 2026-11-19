@@ -51,7 +51,7 @@ flowchart LR
   (`live.js`: serie, meteo, suolo…); gli id passano da un campo all'altro senza riscaricare.
 - **Confronto tra campi**: una variabile nel tempo con una linea per id; **grafico a dispersione** dei pixel di due mappe (es. LAI contro
   NDVI) dall'immagine Sentinel-2 serena più vicina, colorato per id, con la correlazione; tutto scaricabile in CSV.
-- **Rileva campi e colture** nell'area visibile (al massimo circa 6 × 6 km) o in un rettangolo disegnato: segmentazione + coltura
+- **Rileva campi e colture** nell'area visibile (al massimo circa 15 × 15 km, elaborata a blocchi di ~7,7 × 7,7 km) o in un rettangolo disegnato: segmentazione + coltura
   Copernicus per campo, campi colorati per coltura; il clic su un campo lo seleziona.
 - **Tab Mappe**, in quest'ordine: mappa di base (si può spegnere o mostrare in scala di grigi secondo la luminosità), **Campi e colture**
   (mappa delle colture e prodotto con cui dare la coltura ai campi: Copernicus Crop Types di un anno, oppure il modello Columella su un'annata

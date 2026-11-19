@@ -85,9 +85,17 @@ async def main():
         print("resa annate:", rep["resa_annate"].replace("\n", " | "))
         await pg.screenshot(path=os.path.join(OUT, "browser_resa_annate.png"))
         # rilevamento di campi e colture nell'area visibile
-        await pg.evaluate("map.setView([45.25, 9.55], 15); openSection('fields'); Tools.detectView()")
-        await pg.wait_for_timeout(90000)
+        # zoom 13: area di circa 13 × 12 km, elaborata a blocchi di 3 × 3 tasselli
+        await pg.evaluate("map.setView([45.25, 9.55], 13); openSection('fields'); Tools.detectView()")
+        t0 = asyncio.get_event_loop().time()
+        while asyncio.get_event_loop().time() - t0 < 900:
+            await pg.wait_for_timeout(10000)
+            txt = await pg.locator("#toolArea").inner_text()
+            if "GeoJSON" in txt or "non riuscit" in txt or "troppo grande" in txt: break
         rep["rilevamento"] = (await pg.locator("#toolArea").inner_text())[:300]
+        rep["rilevamento_s"] = round(asyncio.get_event_loop().time() - t0)
+        rep["rilevamento_area_km"] = await pg.evaluate("(() => { const b = map.getBounds(); return [(b.getEast()-b.getWest())*111.32*Math.cos(b.getCenter().lat*Math.PI/180), (b.getNorth()-b.getSouth())*110.54].map(x => +x.toFixed(1)); })()")
+        print("rilevamento:", rep["rilevamento_s"], "s", rep["rilevamento_area_km"], "km", rep["rilevamento"].replace("\n", " | "))
         print("rilevamento:", rep["rilevamento"].replace("\n", " | "))
         await pg.screenshot(path=os.path.join(OUT, "browser_rilevamento.png"))
         # PAW, finestra dei livelli, province e regioni

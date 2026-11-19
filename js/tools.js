@@ -19,7 +19,7 @@ const Tools = (() => {
     it: {
       draw: "Disegna un campo", rect: "Scarica i campi di un'area", upload: "Carica una tua mappa", lawn: "Il mio prato", mine: "I miei campi",
       h_poly: "Clicca sulla mappa per mettere i vertici del campo. Doppio clic (o clic sul primo punto) per chiudere · Canc toglie l'ultimo punto · Esc annulla.",
-      h_rect: "Clicca due angoli opposti dell'area (al massimo 6 × 6 km) · Esc annulla.",
+      h_rect: "Clicca due angoli opposti dell'area (al massimo circa 15 × 15 km) · Esc annulla.",
       h_lawn: "Disegna il contorno del prato: clic per i vertici, doppio clic per chiudere · Esc annulla.",
       cancel: "Annulla",
       f_title: "Il tuo campo", f_name: "Nome", f_crop: "Coltura", f_var: "Varietà", f_year: "Anno d'impianto (colture permanenti)",
@@ -33,7 +33,7 @@ const Tools = (() => {
       saved: "Salvato nel browser (solo su questo computer).", analyze: "Analizza con il satellite",
       too_long: "Il campo ha troppi vertici per l'invio automatico: ho scaricato il file, allegalo al messaggio su GitHub.",
       mine_empty: "Nessun campo salvato. Usa «Disegna un campo».", del: "Elimina", open: "Apri", export_all: "Scarica tutti (GeoJSON)",
-      r_big: "Area troppo grande: al massimo 6 × 6 km.", r_seg: "Divido l'area in campi… {n}/{t} immagini", r_crop: "Coltura dei campi… {n}/{t}",
+      r_big: "Area troppo grande: al massimo circa 15 × 15 km.", r_seg: "Divido l'area in campi… {n}/{t} immagini", r_crop: "Coltura dei campi… {n}/{t}",
       r_done: "{n} campi trovati nell'area ({a} ha).", r_title: "Campi dell'area", r_fail: "Divisione in campi non riuscita (poche immagini serene?).",
       r_note: "Confini stimati automaticamente da Sentinel-2 (10 m): NDVI medio per data, coltura Copernicus dell'anno scelto in Mappe → Campi e colture. Licenza dei dati: CC BY-NC 4.0, citare Columella, Copernicus, ESA.",
       kml: "Scarica KML", csv: "Scarica tabella CSV",
@@ -72,7 +72,7 @@ const Tools = (() => {
     en: {
       draw: "Draw a field", rect: "Download fields of an area", upload: "Upload your own map", lawn: "My lawn", mine: "My fields",
       h_poly: "Click on the map to place the field vertices. Double-click (or click the first point) to close · Delete removes the last point · Esc cancels.",
-      h_rect: "Click two opposite corners of the area (max 6 × 6 km) · Esc cancels.",
+      h_rect: "Click two opposite corners of the area (about 15 × 15 km at most) · Esc cancels.",
       h_lawn: "Draw the lawn outline: click for vertices, double-click to close · Esc cancels.",
       cancel: "Cancel",
       f_title: "Your field", f_name: "Name", f_crop: "Crop", f_var: "Variety", f_year: "Planting year (permanent crops)",
@@ -86,7 +86,7 @@ const Tools = (() => {
       saved: "Saved in the browser (this computer only).", analyze: "Analyse with the satellite",
       too_long: "The field has too many vertices for automatic sending: the file has been downloaded, attach it to the GitHub message.",
       mine_empty: "No saved fields. Use “Draw a field”.", del: "Delete", open: "Open", export_all: "Download all (GeoJSON)",
-      r_big: "Area too large: max 6 × 6 km.", r_seg: "Splitting the area into fields… {n}/{t} images", r_crop: "Crop of the fields… {n}/{t}",
+      r_big: "Area too large: about 15 × 15 km at most.", r_seg: "Splitting the area into fields… {n}/{t} images", r_crop: "Crop of the fields… {n}/{t}",
       r_done: "{n} fields found in the area ({a} ha).", r_title: "Fields of the area", r_fail: "Field splitting failed (too few clear images?).",
       r_note: "Boundaries estimated automatically from Sentinel-2 (10 m): mean NDVI per date, Copernicus crop of the year chosen in Maps → Fields and crops. Data licence: CC BY-NC 4.0, credit Columella, Copernicus, ESA.",
       kml: "Download KML", csv: "Download CSV table",
@@ -402,22 +402,23 @@ const Tools = (() => {
   }
 
   // ================================================================== ▭ campi di un'area
+  const MAX_SIDE = 15300;   // lato massimo in metri: 6 × 6 tasselli da 2,56 km del modello (delineate.js)
   async function areaFields(b) {
     const w = b.getWest(), s = b.getSouth(), e = b.getEast(), n = b.getNorth();
     const wM = (e - w) * 111320 * Math.cos(((s + n) / 2) * Math.PI / 180), hM = (n - s) * 110540;
     const el = card("toolArea", tt("r_title"), `<p class="hint" id="raMsg"></p>`);
     const msg = (text) => (el.querySelector("#raMsg").textContent = text);
-    if (wM > 6100 || hM > 6100) { msg(tt("r_big")); return; }  // 6 × 6 km più un piccolo margine
+    if (wM > MAX_SIDE || hM > MAX_SIDE) { msg(tt("r_big")); return; }
     try { await Segment.smart([w, s, e, n], Live.periodRange().end, (k, t) => msg(tt("r_seg", { n: k, t }))); }
     catch (err) { msg(tt("r_fail")); return; }
     const fc = Segment.allFields();
     if (!fc || !fc.features.length) { msg(tt("r_fail")); return; }
     const nomi = Live.CTY_NOMI();
     const cropY = (typeof cropYearForFields === "function" && cropYearForFields()) || ctyYear;   // anno scelto in Mappe → Campi e colture
-    // coltura Copernicus 2024 di ogni campo, 4 richieste alla volta
+    // coltura Copernicus di ogni campo, 8 richieste alla volta
     let k = 0;
     const queue = fc.features.slice();
-    await Promise.all(Array.from({ length: 4 }, async () => {
+    await Promise.all(Array.from({ length: 8 }, async () => {
       while (queue.length) {
         const f = queue.shift();
         f.properties.superficie_ha = +areaHa(f.geometry).toFixed(3);
@@ -457,7 +458,7 @@ const Tools = (() => {
   // rilevamento di campi e colture nell'area visibile della mappa o in un rettangolo disegnato
   function detectView() {
     const b = map.getBounds(), wM = (b.getEast() - b.getWest()) * 111320 * Math.cos((b.getCenter().lat * Math.PI) / 180), hM = (b.getNorth() - b.getSouth()) * 110540;
-    if (wM > 6100 || hM > 6100) { card("toolArea", tt("r_title"), `<p class="hint">${t("det_big")}</p>`); return; }
+    if (wM > MAX_SIDE || hM > MAX_SIDE) { card("toolArea", tt("r_title"), `<p class="hint">${t("det_big")}</p>`); return; }
     areaFields(b);
   }
   const detectDraw = () => startDraw("rect", (b) => areaFields(b), "h_rect");

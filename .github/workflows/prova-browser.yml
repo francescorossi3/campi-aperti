@@ -8,7 +8,7 @@ permissions:
 jobs:
   prova:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v5
       # se i mirror Ubuntu non rispondono, Chromium senza pacchetti di sistema (sul runner ci sono quasi tutti)
