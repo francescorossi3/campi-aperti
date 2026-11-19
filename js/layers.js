@@ -154,6 +154,10 @@ const LAYERS = [
     it: { name: Suolo.P.ph[3], desc: "pH in acqua nei primi 30 cm. Stima ISRIC SoilGrids 2.0 a 250 m, media pesata 0–30 cm." },
     en: { name: Suolo.P.ph[4], desc: "pH in water in the top 30 cm. ISRIC SoilGrids 2.0 estimate at 250 m, weighted mean 0–30 cm." },
     source: SOILGRIDS_SRC, link: SOILGRIDS_LINK },
+  { id: "so_paw", group: "soil", type: "soil", soil: "paw", minZoom: 5, opacity: 0.85,
+    it: { name: Suolo.P.paw[3], desc: "Acqua che il suolo trattiene tra capacità di campo (−33 kPa) e punto di appassimento (−1500 kPa), in mm per metro di suolo. Calcolata nel browser con le funzioni di pedotrasferimento di Saxton & Rawls (2006) da sabbia, argilla e carbonio organico SoilGrids (0–30 cm)." },
+    en: { name: Suolo.P.paw[4], desc: "Water held by the soil between field capacity (−33 kPa) and wilting point (−1500 kPa), in mm per metre of soil. Computed in the browser with the Saxton & Rawls (2006) pedotransfer functions from SoilGrids sand, clay and organic carbon (0–30 cm)." },
+    source: SOILGRIDS_SRC + " · Saxton & Rawls (2006)", link: SOILGRIDS_LINK },
   // ---------------- TEMPO REALE / REAL TIME ----------------
   {
     id: "s2_rgb", group: "live", type: "s2live", minZoom: 10, opacity: 1,
