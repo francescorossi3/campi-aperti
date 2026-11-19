@@ -7,7 +7,7 @@
 //     map click, place search, tabs/language switch, start-up.
 //
 // Globali usati da altri file / globals used elsewhere: LANG, t(), map, openSection(), escapeHtml().
-// Dipende da / depends on: Leaflet (L), i18n.js (I18N, CATALOG_EXTRA, CLC_IT, CLC_EN),
+// Dipende da / depends on: Leaflet (L), i18n.js (I18N, CATALOG_EXTRA),
 //   layers.js (LAYERS, LAYER_GROUPS, ARCHIVE_GROUPS, CATASTO_WMS), mapstyle.js (MapStyle), clip.js (Clip), croplayer.js (COLORMAPS, fieldValues,
 //   Clms, Suolo, CropLayer), live.js (Live), regions.js (Regions), account.js (Account), tools.js (Tools),
 //   data/comuni.json.
@@ -54,7 +54,12 @@ const BASEMAPS = {
   ]),
   topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
     maxZoom: 17, attribution: "© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)" }),
+  none: L.layerGroup([]),                       // mappa di base spenta
 };
+// mappa di base in scala di grigi (luminanza): filtro CSS sul riquadro delle mappe di base e delle etichette
+let baseGray = false;
+try { baseGray = localStorage.getItem("columella.baseGray") === "1"; } catch (e) { /* */ }
+document.body.classList.toggle("bm-gray", baseGray);
 let currentBase = "hybrid";
 
 // --- base comune: tile layer che costruisce l'URL di ogni tassello dalla definizione del layer (def)
@@ -214,8 +219,24 @@ function renderLayerWin() {
       <button type="button" data-a="down" title="${t("lw_down")}" aria-label="${t("lw_down")}"${i < layerOrder.length - 1 ? "" : " disabled"}>▼</button>
       <button type="button" data-a="off" title="${t("lw_off")}" aria-label="${t("lw_off")}">×</button></li>`).join("")}</ol>`
     : `<p class="hint small">${t("lw_empty")}</p>`;
+  // campi selezionati: id e colore, mostra nel pannello, vai, togli; velo sul resto della mappa
+  const fi = Live.fieldsInfo();
+  w.querySelector(".lw-body").insertAdjacentHTML("beforeend", `<h4 class="lw-sub">${t("lw_fields")}</h4>` + (fi.length ? `<ol class="lw-list lw-fields">${fi.map((f) => `
+    <li data-f="${f.id}"><i class="lw-dot" style="background:${Clip.colorOf(f.id)}"></i>
+      <button type="button" class="lw-fid${f.active ? " active" : ""}" data-a="show">${f.id}</button><small>${f.ha.toFixed(2)} ha</small>
+      <button type="button" data-a="zoom">${t("lw_zoom")}</button><button type="button" data-a="off" aria-label="${t("lw_off")}">×</button></li>`).join("")}</ol>
+    <label class="chk lw-veil"><input type="checkbox" id="lwVeil" ${Clip.veil() ? "checked" : ""}> ${t("lw_veil")}</label>`
+    : `<p class="hint small">${t("lw_nofields")}</p>`));
+  w.querySelectorAll(".lw-fields li").forEach((li) => {
+    const id = li.dataset.f;
+    li.querySelector('[data-a="show"]').onclick = () => { Live.activate(id); openSection("series"); };
+    li.querySelector('[data-a="zoom"]').onclick = () => Clip.zoomTo(id);
+    li.querySelector('[data-a="off"]').onclick = () => Live.removeField(id);
+  });
+  const veil = w.querySelector("#lwVeil");
+  if (veil) veil.onchange = (e) => Clip.setVeil(e.target.checked);
   const move = (id, to) => { const i = layerOrder.indexOf(id); layerOrder.splice(i, 1); layerOrder.splice(Math.max(0, Math.min(layerOrder.length, to)), 0, id); applyOrder(); renderLayerWin(); };
-  w.querySelectorAll(".lw-list li").forEach((li) => {
+  w.querySelectorAll(".lw-list li[data-id]").forEach((li) => {
     const id = li.dataset.id;
     li.querySelector('[data-a="vis"]').onchange = (e) => { setHidden(id, !e.target.checked); renderLayerWin(); };
     li.querySelector('[data-a="up"]').onclick = () => move(id, layerOrder.indexOf(id) - 1);
@@ -411,6 +432,17 @@ function yearSelect(id, label, current) {
   const years = [2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017];
   return `<div class="cty-year">${t(label)} <select id="${id}">${years.map((y) => `<option ${y === current ? "selected" : ""}>${y}</option>`).join("")}</select></div>`;
 }
+// "Campi e colture": prodotto con cui dare la coltura ai campi (mappa Copernicus di un anno o modello Columella su un'annata)
+let cropProduct = "copernicus";
+function cropProductControls() {
+  const anni = Array.from({ length: new Date().getUTCFullYear() - 2017 + 1 }, (_, i) => new Date().getUTCFullYear() + 1 - i).filter((y) => y >= 2018);
+  return `<div class="crop-product">
+    <label>${t("cp_product")} <select id="cpProduct">
+      <option value="copernicus"${cropProduct === "copernicus" ? " selected" : ""}>${t("cp_copernicus")}</option>
+      <option value="model"${cropProduct === "model" ? " selected" : ""}>${t("cp_model")}</option></select></label>
+    ${cropProduct === "model" ? `<label>${t("cp_season")} <select id="cpSeason">${anni.map((y) => `<option value="${y}"${y === Live.season() ? " selected" : ""}>${y - 1}/${String(y).slice(2)}</option>`).join("")}</select></label>` : ""}
+    <p class="hint small">${t(cropProduct === "model" ? "cp_model_note" : "cp_cop_note")}</p></div>`;
+}
 // controlli in testa a un gruppo (finestra temporale, data Copernicus, anno HR-VPP, segmentazione + anno colture)
 function groupControls(g) {
   switch (g.id) {
@@ -424,18 +456,8 @@ function groupControls(g) {
     default: return "";
   }
 }
-function renderLayerPanel() {
-  const bm = document.getElementById("basemaps");
-  bm.innerHTML = Object.keys(BASEMAPS).map((k) =>
-    `<button data-key="${k}" class="${k === currentBase ? "active" : ""}">${t("bm_" + k)}</button>`).join("");
-  bm.querySelectorAll("button").forEach((b) => b.onclick = () => setBase(b.dataset.key));
-
-  const list = document.getElementById("layerList");
-  list.innerHTML = LAYER_GROUPS.map((g, gi) => {
-    const items = LAYERS.filter((l) => l.group === g.id);
-    return `<details class="group" data-group="${g.id}" ${gi < 3 || items.some((l) => state.on.has(l.id)) ? "open" : ""}>
-      <summary>${g[LANG]}</summary>${groupControls(g)}
-      ${items.map((l) => `
+// riga di un livello (casella, nome, pulsante info/stile, descrizione, trasparenza o stile, legenda, fonte)
+const layerRow = (l) => `
         <div class="layer ${state.on.has(l.id) ? "on" : ""}" data-id="${l.id}">
           <div class="layer-head">
             <input type="checkbox" id="chk_${l.id}" ${state.on.has(l.id) ? "checked" : ""}>
@@ -450,10 +472,35 @@ function renderLayerPanel() {
             <div class="legend"></div>
             <div class="src">${t("source")}: ${l.source} · <a href="${l.link}" target="_blank" rel="noopener">${t("more")} ↗</a></div>
           </div>
-        </div>`).join("")}
-    </details>`;
-  }).join("");
+        </div>`;
+function renderLayerPanel() {
+  const bm = document.getElementById("basemaps");
+  bm.innerHTML = Object.keys(BASEMAPS).map((k) =>
+    `<button data-key="${k}" class="${k === currentBase ? "active" : ""}">${t("bm_" + k)}</button>`).join("") +
+    `<label class="chk bm-gray-chk"><input type="checkbox" id="bmGray" ${baseGray ? "checked" : ""}> ${t("bm_gray")}</label>`;
+  bm.querySelectorAll("button").forEach((b) => b.onclick = () => setBase(b.dataset.key));
+  document.getElementById("bmGray").onchange = (e) => {
+    baseGray = e.target.checked;
+    document.body.classList.toggle("bm-gray", baseGray);
+    try { localStorage.setItem("columella.baseGray", baseGray ? "1" : "0"); } catch (err) { /* */ }
+  };
 
+  // sezioni della tab Mappe (MAP_SECTIONS); dentro la sezione CLMS un gruppo a scomparsa per ogni famiglia di prodotti
+  const list = document.getElementById("layerList");
+  const group = (gid, nested) => {
+    const g = LAYER_GROUPS.find((x) => x.id === gid), items = LAYERS.filter((l) => l.group === gid);
+    const body = groupControls(g) + items.map(layerRow).join("");
+    return nested ? `<details class="group" data-group="${gid}" ${items.some((l) => state.on.has(l.id)) ? "open" : ""}><summary>${g[LANG]}</summary>${body}</details>`
+      : `<div class="group" data-group="${gid}">${body}</div>`;
+  };
+  const wasOpen = new Set([...list.querySelectorAll("details.sec[open]")].map((d) => d.id));
+  list.innerHTML = MAP_SECTIONS.map((sec) => {
+    const on = sec.groups.some((gid) => LAYERS.some((l) => l.group === gid && state.on.has(l.id)));
+    return `<details class="sec" id="sec-map-${sec.id}" ${on || wasOpen.has("sec-map-" + sec.id) ? "open" : ""}>
+      <summary><span class="sec-t">${sec[LANG]}</span><span class="sec-s" id="sum-map-${sec.id}"></span></summary>
+      <div class="sec-body">${sec.id === "crops" ? cropProductControls() : ""}${sec.groups.map((gid) => group(gid, sec.groups.length > 1)).join("")}</div></details>`;
+  }).join("");
+  list.querySelectorAll("details.sec").forEach((d) => d.addEventListener("toggle", updateWide));
   list.querySelectorAll(".layer").forEach((el) => {
     const id = el.dataset.id, def = LAYERS.find((l) => l.id === id);
     el.querySelector("input[type=checkbox]").onchange = (e) => {
@@ -485,8 +532,14 @@ function renderLayerPanel() {
   };
   const ctySel = document.getElementById("ctyYear");
   if (ctySel) ctySel.onchange = () => { ctyYear = +ctySel.value; if (leafletLayers.cty) leafletLayers.cty.setYear(ctyYear); };
+  document.getElementById("cpProduct").onchange = (e) => { cropProduct = e.target.value; renderLayerPanel(); };
+  const cpSeason = document.getElementById("cpSeason");
+  if (cpSeason) cpSeason.onchange = () => Live.setSeason(+cpSeason.value);
   updateZoomNotes();
+  updateSummaries();
 }
+// anno della mappa colture Copernicus da usare per i campi rilevati (null = prodotto "modello")
+const cropYearForFields = () => (cropProduct === "copernicus" ? ctyYear : null);
 
 // ------------------------------------------------------------------ catalogo / about
 function renderCatalog() {
@@ -503,91 +556,13 @@ function renderCatalog() {
   document.getElementById("about").innerHTML = t("about_html");
 }
 
-// ------------------------------------------------------------------ clic sulla mappa / point query
-let clickMarker = null;
+// ------------------------------------------------------------------ clic sulla mappa
 // clic: seleziona il campo; con Ctrl/Maiusc/⌘ o con "aggiungi campi" attivo lo aggiunge ai campi selezionati
 map.on("click", (e) => {
   if (Tools.busy()) return;
   const add = !!(e.originalEvent && (e.originalEvent.ctrlKey || e.originalEvent.shiftKey || e.originalEvent.metaKey)) || document.getElementById("addMode").checked;
-  queryPoint(e.latlng);
   Live.onMapClick(e.latlng, add);
 });
-
-const ratCache = {};
-async function getRAT(def) {
-  try {
-    return ratCache[def.url] || (ratCache[def.url] = await fetch(`${def.url}/rasterAttributeTable?f=json`).then((r) => r.json()));
-  } catch (e) { return null; }
-}
-async function rasterLabel(def, value) {
-  // prova a tradurre il valore del pixel in una classe tramite la raster attribute table
-  try {
-    const rat = await getRAT(def);
-    if (!rat || !rat.features) return null;
-    const f = rat.features.find((x) => String(x.attributes.Value ?? x.attributes.VALUE) === String(value));
-    if (!f) return null;
-    const key = Object.keys(f.attributes).find((k) => /class|label|name|descr/i.test(k) && typeof f.attributes[k] === "string");
-    return key ? f.attributes[key] : null;
-  } catch (e) { return null; }
-}
-
-// NB: identify() (e quindi rasterLabel()) al momento non è chiamata da nessuna parte: queryPoint non interroga
-// più i layer. Lasciata per una futura riattivazione (usa CLC_IT/CLC_EN di i18n.js).
-async function identify(def, ll, clc = false) {
-  const geom = encodeURIComponent(JSON.stringify({ x: ll.lng, y: ll.lat, spatialReference: { wkid: 4326 } }));
-  if (def.type === "arcgis-image") {
-    const j = await fetch(`${def.url}/identify?geometry=${geom}&geometryType=esriGeometryPoint&returnGeometry=false&returnCatalogItems=false&f=json`).then((r) => r.json());
-    const v = j.value;
-    if (v == null || v === "NoData") return t("info_nodata");
-    const lab = await rasterLabel(def, v);
-    return lab ? `${lab} (${v})` : v;
-  }
-  const b = map.getBounds(), s = map.getSize();
-  const ext = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].join(",");
-  const lyr = def.identifyLayers ? `all:${def.identifyLayers}` : "visible";
-  const j = await fetch(`${def.url}/identify?geometry=${geom}&geometryType=esriGeometryPoint&sr=4326&layers=${lyr}` +
-    `&tolerance=3&mapExtent=${ext}&imageDisplay=${s.x},${s.y},96&returnGeometry=false&f=json`).then((r) => r.json());
-  const r = (j.results || [])[0];
-  if (!r) return t("info_nodata");
-  const a = r.attributes || {};
-  if (clc) { // CORINE: codice a 3 cifre + nome della classe nella lingua scelta
-    const code = a.Code_18 || r.value;
-    return `${LANG === "it" && CLC_IT[code] ? CLC_IT[code] : (CLC_EN[code] || "")} (${code})`;
-  }
-  const labKey = Object.keys(a).find((k) => /label3|label|class|name|descr/i.test(k) && !/shape|objectid|fid/i.test(k));
-  return labKey ? `${a[labKey]}${r.value && r.value !== a[labKey] ? ` (${r.value})` : ""}` : (r.value ?? t("info_nodata"));
-}
-
-function parcelUrl(ll) {
-  const d = 0.00005;
-  return `${CATASTO_WMS}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&LAYERS=CP.CadastralParcel&QUERY_LAYERS=CP.CadastralParcel` +
-    `&SRS=EPSG:4258&BBOX=${ll.lng - d},${ll.lat - d},${ll.lng + d},${ll.lat + d}&WIDTH=101&HEIGHT=101&X=50&Y=50` +
-    `&INFO_FORMAT=text/html&STYLES=&FORMAT=image/png`;
-}
-
-async function queryPoint(ll) {
-  if (clickMarker) map.removeLayer(clickMarker);
-  clickMarker = L.marker(ll, { icon: L.divIcon({ className: "", html: '<div class="click-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map);
-
-  const lat = ll.lat.toFixed(6), lng = ll.lng.toFixed(6);
-  const panel = document.getElementById("infoPanel");
-  panel.innerHTML = `
-    <div class="info-block"><h4>${t("info_coords")}</h4>
-      <div class="kv"><span>lat, lon</span><span>${lat}, ${lng} <button class="small-btn" id="copyBtn">${t("copy_coords")}</button></span></div>
-      <div class="ext-links">${t("links_ext")}:
-        <a href="https://browser.dataspace.copernicus.eu/?zoom=15&lat=${lat}&lng=${lng}" target="_blank" rel="noopener">Copernicus Browser ↗</a>
-        <a href="https://www.google.com/maps/@${lat},${lng},500m/data=!3m1!1e3" target="_blank" rel="noopener">Google Maps ↗</a>
-        <a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}" target="_blank" rel="noopener">OSM ↗</a>
-      </div></div>
-    <div class="info-block"><h4>${t("info_parcel")}</h4>
-      <p class="hint" style="margin:0 0 6px">${t("info_parcel_how")}</p>
-      <a class="small-btn" style="display:inline-block;text-decoration:none;color:inherit" href="${parcelUrl(ll)}" target="_blank" rel="noopener">${t("info_parcel_open")} ↗</a>
-    </div>
-    <p class="hint">${t("info_field")}</p>`;
-  document.getElementById("copyBtn").onclick = async (ev) => {
-    try { await navigator.clipboard.writeText(`${lat}, ${lng}`); ev.target.textContent = t("copied"); } catch (e) {}
-  };
-}
 
 // ------------------------------------------------------------------ ricerca luoghi
 // 1) coordinate incollate ("41.86, 12.23" o "41°51'N 12°14'E"); 2) Photon (komoot, suggerimenti mentre si scrive,
@@ -812,7 +787,10 @@ document.querySelectorAll("details.sec").forEach((d) => d.addEventListener("togg
 // riepilogo accanto al titolo delle sezioni
 function updateSummaries() {
   const set = (id, txt) => { const el = document.getElementById("sum-" + id); if (el) el.textContent = txt; };
-  set("layers", state.on.size ? t("sum_on").replace("{n}", state.on.size) : "");
+  MAP_SECTIONS.forEach((sec) => {
+    const n = LAYERS.filter((l) => sec.groups.includes(l.group) && state.on.has(l.id)).length;
+    set("map-" + sec.id, n ? t("sum_on").replace("{n}", n) : "");
+  });
   const n = Clip.features().length;
   set("selected", n ? t("sum_n_fields").replace("{n}", n) : t("sum_nofield"));
   set("series", n ? t("sum_field") : t("sum_nofield"));
@@ -843,9 +821,6 @@ function applyLang() {
   Tools.refreshLang();
   Account.render();
   Regions.render();
-  const info = document.getElementById("infoPanel");
-  if (!clickMarker) info.innerHTML = `<p class="hint">${t("info_hint")}</p>`;
-  else queryPoint(clickMarker.getLatLng());
 }
 document.querySelectorAll(".lang button").forEach((b) => b.onclick = () => {
   LANG = b.dataset.lang;
