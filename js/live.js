@@ -742,13 +742,14 @@ const Live = (() => {
       <select data-k="lav${s}">${opt({ arata: 1, minima: 1, sodo: 1 }, carb["lav" + s])}</select>
       <select data-k="inp${s}">${opt(IPCC.fi, carb["inp" + s])}</select>`;
     const f1 = (x) => x.toLocaleString(locale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+    const neg = (x) => (x < 0 ? ' class="neg"' : "");          // valori negativi (carbonio perso) in rosso
     el.innerHTML = `<b>${lt("cb_title")}</b>
       <div class="cb-grid"><span>${lt("cb_now")}</span><div>${row(0)}</div><span>${lt("cb_new")}</span><div>${row(1)}</div></div>
       <div class="cb-res">${lt("cb_stock", { s: f1(S0), c: lt(umido ? "cb_umido" : "cb_secco"), p: Math.round(P), e: Math.round(E) })}<br>
-        <span class="big">${f1(co2)} t CO₂e/ha/${lt("cb_anno")}</span> · ${lt("cb_campo", { t: f1(co2 * ha), h: f1(ha) })}<br>
-        ${lt("cb_netto")} <input type="number" min="0" max="60" id="cbTr" value="${carb.tratt}" style="width:52px">%: <b>${f1(netto * ha)} ${lt("cb_crediti")}</b>
+        <span class="big"${neg(co2)}>${f1(co2)} t CO₂e/ha/${lt("cb_anno")}</span> · <span${neg(co2)}>${lt("cb_campo", { t: f1(co2 * ha), h: f1(ha) })}</span><br>
+        ${lt("cb_netto")} <input type="number" min="0" max="60" id="cbTr" value="${carb.tratt}" style="width:52px">%: <b${neg(netto)}>${f1(netto * ha)} ${lt("cb_crediti")}</b>
         · ${lt("cb_prezzo")} <input type="number" min="0" step="1" id="cbPr" value="${carb.prezzo}" placeholder="€/t" style="width:64px"> €/t
-        ${carb.prezzo ? `→ <b>${Math.round(netto * ha * carb.prezzo).toLocaleString()} €/${lt("cb_anno")}</b>` : ""}</div>
+        ${carb.prezzo ? `→ <b${neg(netto)}>${Math.round(netto * ha * carb.prezzo).toLocaleString()} €/${lt("cb_anno")}</b>` : ""}</div>
       <p class="hint small">${lt("cb_note")}</p>`;
     el.querySelectorAll("select").forEach((s_) => (s_.onchange = () => { carb[s_.dataset.k] = s_.value; drawCarbon(); }));
     el.querySelector("#cbTr").onchange = (e) => { carb.tratt = Math.max(0, Math.min(60, +e.target.value || 0)); drawCarbon(); };

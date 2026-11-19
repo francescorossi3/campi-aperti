@@ -414,3 +414,4 @@ table.mini td:first-child, table.mini th:first-child { text-align: left; }
 .lw-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 .lw-fid { font-weight: 700; } .lw-fid.active { background: var(--ochre-soft) !important; }
 .lw-veil { display: flex; gap: 6px; align-items: center; margin: 6px 2px; }
+.fp-carbon .neg, .cb-res .neg { color: #c53030; }
