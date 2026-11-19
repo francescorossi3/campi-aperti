@@ -147,7 +147,17 @@ sequenceDiagram
   DB-->>U: solo le righe con user_id = auth.uid()
   U->>DB: rpc elimina_il_mio_account()
   Note over DB: vista campi_condivisi leggibile solo con la chiave di servizio (GitHub Secrets)
+  participant ST as Storage (bucket "mappe", lettura pubblica)
+  U->>DB: rpc sono_editore()
+  U->>ST: carica la mappa (solo editori, nella propria cartella)
+  U->>DB: insert mappe_pubbliche (solo editori)
+  DB-->>U: tutti (anche senza account) vedono le mappe pubbliche
 ```
+
+**Mappe pubbliche**: gli utenti che il proprietario segna come *editori* (tabella `editori`, modificabile solo dal pannello Supabase) caricano
+mappe GeoTIFF / GeoJSON / KML (al massimo 50 MB) con titolo, fonte e licenza; tutti le vedono in **Mappe → Mappe pubbliche** e le aprono nel
+browser. RLS: tutti leggono `mappe_pubbliche`; inserimento, modifica e cancellazione solo per gli editori e solo sulle proprie righe; scrittura
+nello storage solo nella cartella dell'editore.
 
 - `js/config.js` contiene solo URL e chiave anon **pubblici**; se è vuoto gli account sono spenti e i campi restano in `localStorage`.
 - La sicurezza sta in `supabase/schema.sql` (Row Level Security, al massimo 500 campi per utente). Attivazione: `SUPABASE.md`. Informativa: `privacy.html`.
@@ -174,8 +184,8 @@ sequenceDiagram
 | `js/advice.js` | Avvisi agronomici per coltura dal meteo orario |
 | `js/regions.js` | Tab "Province" e "Regioni": Monteith contro ISTAT per provincia e regione; acqua per regione, coltura e periodo |
 | `js/tools.js` | Rilevamento di campi e colture (area visibile o disegnata), disegno/caricamento di campi e mappe, "i miei campi", prato, benvenuto |
-| `js/account.js` | Account Supabase, campi salvati, esportazione e cancellazione |
-| `supabase/schema.sql` | Tabella `campi`, regole RLS, massimo 500 campi per utente, cancellazione account, vista condivisa |
+| `js/account.js` | Account Supabase, campi salvati, esportazione e cancellazione; mappe pubbliche (elenco, pubblicazione, rimozione) |
+| `supabase/schema.sql` | Tabella `campi`, regole RLS, massimo 500 campi per utente, cancellazione account, vista condivisa; editori, mappe pubbliche e bucket `mappe` |
 | `pipeline/00`–`02` | Crop Types: download da CDSE, COG Italia, caricamento su HF |
 | `pipeline/03`–`05` | Superfici per blocco di 1 km, celle meteo, bilanci regionali → `data/riepiloghi.json` |
 | `pipeline/06` | ET reale Copernicus per regione e coltura |

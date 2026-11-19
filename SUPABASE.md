@@ -37,3 +37,11 @@ Le password non passano mai dal codice di Campi Aperti verso altri servizi: Supa
 - Gli utenti possono scaricare i propri dati e cancellare l'account dal sito (pulsante 👤).
 - I campi che un utente segna come "condivisi" sono leggibili in forma anonima (senza utente né nome) solo con la
   chiave di servizio, che va messa nei **Secrets** di GitHub come `SUPABASE_SERVICE_KEY` se si vuole usarli per addestrare i modelli.
+
+## Mappe pubbliche ed editori
+
+- Rieseguire `supabase/schema.sql` nel SQL editor: crea le tabelle `editori` e `mappe_pubbliche` e il bucket pubblico `mappe` (50 MB per file).
+- **Dare il permesso di editore**: Authentication → Users → copiare lo *User UID*; poi Table editor → `editori` → Insert row con quel `user_id`
+  (e una nota). Per toglierlo, cancellare la riga. Nessun utente può aggiungersi da solo: la tabella non ha regole di scrittura.
+- Gli editori vedono nella tab **Mappe → Mappe pubbliche** il modulo "Pubblica una mappa" (GeoTIFF, GeoJSON o KML, titolo, fonte, licenza).
+  Tutti, anche senza account, vedono e aprono le mappe pubblicate; ogni editore può togliere solo le proprie.

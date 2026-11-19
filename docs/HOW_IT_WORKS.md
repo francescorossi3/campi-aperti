@@ -146,7 +146,16 @@ sequenceDiagram
   DB-->>U: only rows where user_id = auth.uid()
   U->>DB: rpc elimina_il_mio_account()
   Note over DB: view campi_condivisi readable only with the service key (GitHub Secrets)
+  participant ST as Storage (bucket "mappe", public read)
+  U->>DB: rpc sono_editore()
+  U->>ST: upload map (editors only, own folder)
+  U->>DB: insert mappe_pubbliche (editors only)
+  DB-->>U: everyone (also without account) lists public maps
 ```
+
+**Public maps**: users the owner marks as *editors* (table `editori`, edited only from the Supabase dashboard) can upload GeoTIFF / GeoJSON /
+KML maps (≤ 50 MB) with title, source and licence; everyone sees them in **Maps → Public maps** and opens them in the browser.
+RLS: anyone reads `mappe_pubbliche`; insert/update/delete only for editors on their own rows; storage writes only in the editor's folder.
 
 - `js/config.js` holds only the **public** URL and anon key; if empty, accounts are off and fields stay in `localStorage`.
 - Security is in `supabase/schema.sql` (Row Level Security, at most 500 fields per user). Setup: `SUPABASE.md`. Privacy notice: `privacy.html`.
@@ -173,8 +182,8 @@ sequenceDiagram
 | `js/advice.js` | Agronomic alerts per crop from hourly weather |
 | `js/regions.js` | "Provinces" and "Regions" tabs: Monteith vs ISTAT per province and region; water by region, crop and period |
 | `js/tools.js` | Detect fields and crops (visible or drawn area), draw/upload fields and maps, "my fields", lawn tool, welcome |
-| `js/account.js` | Supabase accounts, saved fields, export and deletion |
-| `supabase/schema.sql` | Table `campi`, RLS policies, max 500 fields per user, account deletion, shared view |
+| `js/account.js` | Supabase accounts, saved fields, export and deletion; public maps (list, publish, unpublish) |
+| `supabase/schema.sql` | Table `campi`, RLS policies, max 500 fields per user, account deletion, shared view; editors, public maps and bucket `mappe` |
 | `pipeline/00`–`02` | Crop Types: download from CDSE, Italy COG, upload to HF |
 | `pipeline/03`–`05` | Crop areas per 1 km block, weather cells, regional balances → `data/riepiloghi.json` |
 | `pipeline/06` | Copernicus actual ET per region and crop |
