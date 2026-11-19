@@ -1,0 +1,45 @@
+name: Rese per provincia con il classificatore delle colture (Monteith vs ISTAT)
+
+# I campi di ogni coltura sono individuati dal classificatore delle colture (script 20) invece che dalla mappa
+# Copernicus; poi modello di Monteith e confronto con ISTAT (script 12, FONTE=classificatore).
+# Le province già calcolate restano: ogni esecuzione aggiunge o rifà solo quelle indicate.
+
+on:
+  workflow_dispatch:
+    inputs:
+      anno:
+        description: "Annata (anno di fine, es. 2024 = 2023/24)"
+        default: "2024"
+      province:
+        description: "Sigle delle province separate da virgole (es. RM,LT,VT); vuoto = tutta Italia (molte ore)"
+        default: "RM"
+
+permissions:
+  contents: write
+
+jobs:
+  classifica:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    env:
+      ANNO: ${{ inputs.anno }}
+      PROVINCE: ${{ inputs.province }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATA_REPO: Bradipo92/campi-aperti-data
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests pandas pyarrow numpy rasterio geopandas pyproj huggingface_hub
+      - name: scarica risultati precedenti e cache della radiazione
+        run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && MODO=giu CARTELLE=province_ndvi_cls,province_ndvi python hf_sync.py || true
+      - name: 20 classificatore e NDVI per provincia
+        run: cd pipeline && python -u 20_ndvi_province_classificatore.py
+      - name: 12 modello Monteith e confronto ISTAT
+        run: cd pipeline && FONTE=classificatore python -u 12_monteith_province.py
+      - name: carica su Hugging Face
+        run: cd pipeline && MODO=su CARTELLE=province_ndvi_cls python hf_sync.py
+      - name: pubblica
+        run: |
+          git config user.name "campi-aperti-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f data/monteith_province_cls.json
+          git diff --cached --quiet || (git commit -m "Aggiorna rese Monteith / ISTAT con il classificatore delle colture" && git pull --rebase && git push)
