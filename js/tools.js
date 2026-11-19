@@ -444,6 +444,7 @@ const Tools = (() => {
     if (detLayer) map.removeLayer(detLayer);
     const col = (f) => (typeof CROP_COLORS !== "undefined" && CROP_COLORS[f.properties.cls]) || "#9aa58f";
     detLayer = L.geoJSON({ type: "FeatureCollection", features: feats }, {
+      renderer: feats.length > 300 ? L.canvas({ padding: 0.3 }) : undefined,   // migliaia di campi: canvas, molto più leggero dell'SVG
       style: (f) => ({ color: "#ffffff", weight: 1, fillColor: col(f), fillOpacity: 0.55 }),
       onEachFeature: (f, l) => {
         l.bindTooltip(`${esc(f.properties.coltura_copernicus || "—")} ${f.properties.anno_coltura || ""} · ${f.properties.superficie_ha} ha`, { sticky: true });
