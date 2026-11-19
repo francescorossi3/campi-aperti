@@ -3,7 +3,7 @@
 //     salvataggio dei campi dell'utente e mappe pubbliche: gli "editori" (utenti con permesso speciale, tabella
 //     editori gestita dal pannello Supabase) caricano mappe nel bucket pubblico "mappe", visibili a tutti.
 //     Espone il globale Account { init, render, attivo, utente, onChange, list, save, remove, at, isEditor,
-//     publicMaps, publishMap, unpublishMap } (usato da app.js e tools.js). Dipendenze: window.CAMPI_APERTI
+//     publicMaps, publishMap, saveMapStyle, unpublishMap } (usato da app.js e tools.js). Dipendenze: window.CAMPI_APERTI
 //     (config.js), LANG (app.js), supabase-js v2 (copia locale js/vendor/supabase.js caricata in init()),
 //     elementi #accountBtn e #accountBox (in alto a destra), privacy.html.
 // EN: optional user accounts (Supabase Auth), per-user saved fields and public maps uploaded by editors.
@@ -172,7 +172,7 @@ const Account = (() => {
   }
   async function publicMaps() {
     if (!sb) return [];
-    const { data, error } = await sb.from("mappe_pubbliche").select("id,user_id,titolo,descrizione,fonte,licenza,percorso,tipo,bbox,creato").order("creato", { ascending: false });
+    const { data, error } = await sb.from("mappe_pubbliche").select("id,user_id,titolo,descrizione,fonte,licenza,percorso,tipo,bbox,stile,creato").order("creato", { ascending: false });
     if (error) throw error;
     return data.map((r) => ({ ...r, url: sb.storage.from("mappe").getPublicUrl(r.percorso).data.publicUrl, mine: !!user && r.user_id === user.id }));
   }
@@ -189,8 +189,14 @@ const Account = (() => {
     const up = await sb.storage.from("mappe").upload(percorso, file, { contentType: type, upsert: false });
     if (up.error) throw up.error;
     const { error } = await sb.from("mappe_pubbliche").insert({ titolo: meta.titolo, descrizione: meta.descrizione || null, fonte: meta.fonte || null,
-      licenza: meta.licenza, percorso, tipo, bbox: meta.bbox || null });
+      licenza: meta.licenza, percorso, tipo, bbox: meta.bbox || null, stile: meta.stile || null });
     if (error) { await sb.storage.from("mappe").remove([percorso]); throw error; }
+  }
+  // aspetto (scala colori, limiti, trasparenza…) di una mappa pubblica: lo può cambiare ogni editore, per tutti
+  async function saveMapStyle(id, stile) {
+    if (!sb || !user) throw new Error(at("err", { m: "login" }));
+    const { error } = await sb.rpc("salva_stile_mappa", { p_id: id, p_stile: stile });
+    if (error) throw error;
   }
   async function unpublishMap(row) {
     if (!sb || !user) return;
@@ -204,5 +210,5 @@ const Account = (() => {
     if (data && data.length) await sb.storage.from("mappe").remove(data.map((f) => `${user.id}/${f.name}`));
   }
   return { init, render: () => panel(user ? "me" : "login"), attivo: () => attivo, utente: () => user, onChange: (f) => listeners.push(f), list, save, remove, at,
-    isEditor, publicMaps, publishMap, unpublishMap };
+    isEditor, publicMaps, publishMap, saveMapStyle, unpublishMap };
 })();

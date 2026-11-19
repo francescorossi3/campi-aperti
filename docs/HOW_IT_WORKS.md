@@ -198,7 +198,7 @@ The owner's account (email in the private table `impostazioni`, key `email_propr
 | `js/advice.js` | Agronomic alerts per crop from hourly weather |
 | `js/regions.js` | "Provinces" and "Regions" tabs: Monteith vs ISTAT per province and region; water by region, crop and period |
 | `js/tools.js` | Detect fields and crops (visible or drawn area), draw/upload fields and maps, "my fields", lawn tool, welcome |
-| `js/account.js` | Supabase accounts (👤 button top right: sign in, sign up, sign out), saved fields, export and deletion; public maps (list, publish, unpublish) |
+| `js/account.js` | Supabase accounts (👤 button top right: sign in, sign up, sign out), saved fields, export and deletion; public maps (list, publish, unpublish, appearance saved by editors) |
 | `supabase/schema.sql` | Table `campi`, RLS policies, max 500 fields per user, account deletion, shared view; editors, public maps and bucket `mappe` |
 | `pipeline/00`–`02` | Crop Types: download from CDSE, Italy COG, upload to HF |
 | `pipeline/03`–`05` | Crop areas per 1 km block, weather cells, regional balances → `data/riepiloghi.json` |

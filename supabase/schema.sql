@@ -119,6 +119,20 @@ drop policy if exists "mappe: editori cancellano le proprie" on public.mappe_pub
 create policy "mappe: editori cancellano le proprie" on public.mappe_pubbliche for delete to authenticated
   using (user_id = (select auth.uid()) and public.sono_editore());
 
+-- aspetto della mappa (scala colori, limiti, trasparenza, colori dei vettori), uguale per tutti i visitatori.
+-- Ogni editore può cambiarlo, anche per mappe caricate da altri, ma SOLO questo campo (funzione qui sotto).
+alter table public.mappe_pubbliche add column if not exists stile jsonb check (stile is null or pg_column_size(stile) < 20000);
+create or replace function public.salva_stile_mappa(p_id uuid, p_stile jsonb) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.sono_editore() then raise exception 'solo gli editori possono cambiare l''aspetto delle mappe'; end if;
+  if p_stile is not null and (jsonb_typeof(p_stile) <> 'object' or pg_column_size(p_stile) >= 20000) then raise exception 'stile non valido'; end if;
+  update public.mappe_pubbliche set stile = p_stile where id = p_id;
+  if not found then raise exception 'mappa non trovata'; end if;
+end; $$;
+revoke all on function public.salva_stile_mappa(uuid, jsonb) from public, anon;
+grant execute on function public.salva_stile_mappa(uuid, jsonb) to authenticated;
+
 -- file delle mappe: bucket pubblico in lettura (50 MB per file); scrittura solo editori, nella cartella col proprio id
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('mappe', 'mappe', true, 52428800, array['image/tiff', 'application/geo+json', 'application/json', 'application/vnd.google-earth.kml+xml'])

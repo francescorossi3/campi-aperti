@@ -43,7 +43,8 @@ const Tools = (() => {
       pm_src: "Fonte / autori", pm_lic: "Licenza", pm_go: "Pubblica per tutti", pm_busy: "Carico…", pm_busy_n: "Carico {i} di {n}…", pm_ok: "Mappa pubblicata.", pm_ok_n: "{n} mappe pubblicate.", pm_err: "Pubblicazione non riuscita: {e}",
       pm_need: "Servono i file e, per un solo file, il titolo. Con più file il titolo è facoltativo: si usa il nome del file.", pm_note: "Le mappe pubbliche sono visibili a chiunque, con titolo, fonte e licenza. Pubblica solo dati che hai il diritto di condividere.",
       pm_loaded: "Mappa aperta: la trovi sulla mappa e in Campi → Le mie mappe per lo stile.",
-      pm_make: "Rendi permanente (pubblica)",
+      pm_make: "Rendi permanente (pubblica)", pm_style: "🎨 Modifica aspetto", pm_save_style: "💾 Salva aspetto per tutti", pm_style_ok: "Aspetto salvato per tutti.",
+      v_color: "Colore", v_weight: "Spessore bordo", v_fill: "Riempimento",
       u_title: "Le mie mappe", u_hint: "GeoTIFF (anche PRISMA, EnMAP, droni, mappe di prescrizione), GeoJSON o KML. Il file resta sul tuo computer: non viene caricato su nessun server.",
       u_band: "Banda", u_rgb: "Composizione RGB (R, G, B)", u_cmap: "Scala colori", u_min: "Min", u_max: "Max", u_auto: "Automatico (2–98%)",
       u_op: "Trasparenza", u_name: "Titolo legenda", u_unit: "Unità", u_classes: "Classi (una per riga: valore o min-max = colore = etichetta)",
@@ -95,7 +96,8 @@ const Tools = (() => {
       pm_src: "Source / authors", pm_lic: "Licence", pm_go: "Publish for everyone", pm_busy: "Uploading…", pm_busy_n: "Uploading {i} of {n}…", pm_ok: "Map published.", pm_ok_n: "{n} maps published.", pm_err: "Publishing failed: {e}",
       pm_need: "Choose the files and, for a single file, a title. With several files the title is optional: the file name is used.", pm_note: "Public maps are visible to anyone, with title, source and licence. Only publish data you have the right to share.",
       pm_loaded: "Map opened: it is on the map and in Fields → My maps for styling.",
-      pm_make: "Make permanent (publish)",
+      pm_make: "Make permanent (publish)", pm_style: "🎨 Edit appearance", pm_save_style: "💾 Save appearance for everyone", pm_style_ok: "Appearance saved for everyone.",
+      v_color: "Colour", v_weight: "Outline width", v_fill: "Fill",
       u_title: "My maps", u_hint: "GeoTIFF (including PRISMA, EnMAP, drones, prescription maps), GeoJSON or KML. The file stays on your computer: it is not uploaded to any server.",
       u_band: "Band", u_rgb: "RGB composite (R, G, B)", u_cmap: "Colour scale", u_min: "Min", u_max: "Max", u_auto: "Automatic (2–98%)",
       u_op: "Opacity", u_name: "Legend title", u_unit: "Unit", u_classes: "Classes (one per line: value or min-max = colour = label)",
@@ -473,6 +475,7 @@ const Tools = (() => {
         <b>${esc(r.titolo)}</b> <small>${esc(r.tipo)} · ${esc(r.licenza)}${r.fonte ? " · " + esc(r.fonte) : ""}</small>
         ${r.descrizione ? `<div class="hint small">${esc(r.descrizione)}</div>` : ""}
         <div class="tc-actions"><button class="small-btn" data-show="${i}">${tt("pm_show")}</button>
+          ${editor ? `<button class="small-btn" data-style="${i}">${tt("pm_style")}</button>` : ""}
           ${r.mine ? `<button class="small-btn danger" data-del="${i}">${tt("pm_del")}</button>` : ""}</div></li>`).join("")}</ul>`
       : `<p class="hint small">${tt("pm_none")}</p>`) +
       (editor ? `<div class="pm-form"><h4>⬆ ${tt("pm_pub")}</h4>
@@ -483,16 +486,30 @@ const Tools = (() => {
         <label>${tt("pm_lic")} <select id="pmLic">${LICENZE.map((l) => `<option${l === "CC BY-NC 4.0" ? " selected" : ""}>${l}</option>`).join("")}</select></label>
         <button class="btn-primary" id="pmGo">${tt("pm_go")}</button> <span class="hint small" id="pmMsg"></span>
         <p class="hint small">${tt("pm_note")}</p></div>` : "");
-    box.querySelectorAll("[data-show]").forEach((b) => (b.onclick = async () => {
-      const r = rows[+b.dataset.show];
-      b.disabled = true;
-      try {
-        const blob = await fetch(r.url).then((x) => { if (!x.ok) throw new Error(x.status); return x.blob(); });
-        silent = true;
-        await loadFile(new File([blob], r.titolo.replace(/[^\w.-]+/g, "_") + "." + ({ geotiff: "tif", geojson: "geojson", kml: "kml" }[r.tipo]), { type: blob.type }));
-        b.textContent = "✓ " + tt("pm_show");
-      } catch (e) { b.disabled = false; alert(esc(e.message || e)); }
+    // apre la mappa pubblica (una volta sola) con l'aspetto salvato; restituisce la mappa caricata
+    const showPublic = async (r) => {
+      const gia = userMaps.find((m) => m.pub && m.pub.id === r.id);
+      if (gia) return gia;
+      const blob = await fetch(r.url).then((x) => { if (!x.ok) throw new Error(x.status); return x.blob(); });
+      const n0 = userMaps.length;
+      silent = true;
+      try { await loadFile(new File([blob], r.titolo.replace(/[^\w.-]+/g, "_") + "." + ({ geotiff: "tif", geojson: "geojson", kml: "kml" }[r.tipo]), { type: blob.type })); }
       finally { silent = false; }
+      const m = userMaps[userMaps.length - 1];
+      if (userMaps.length === n0) throw new Error(tt("u_err", { e: r.titolo }));
+      m.pub = r; m.permanent = true;
+      await applyStyle(m, r.stile);
+      return m;
+    };
+    box.querySelectorAll("[data-show]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try { await showPublic(rows[+b.dataset.show]); b.textContent = "✓ " + tt("pm_show"); }
+      catch (e) { b.disabled = false; alert(e.message || e); }
+    }));
+    box.querySelectorAll("[data-style]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try { await showPublic(rows[+b.dataset.style]); renderMaps(); } catch (e) { alert(e.message || e); }
+      b.disabled = false;
     }));
     box.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
       if (!confirm(tt("pm_del_q"))) return;
@@ -518,7 +535,7 @@ const Tools = (() => {
           const b = m && (m.kind === "vector" ? m.layer.getBounds() : L.latLngBounds(m.bounds));
           const bbox = b && b.isValid() ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((x) => +x.toFixed(6)) : null;
           const t = files.length === 1 ? titolo : (titolo ? titolo + " – " + nome : nome);
-          await Account.publishMap(file, { ...meta, titolo: t.slice(0, 120), bbox });
+          await Account.publishMap(file, { ...meta, titolo: t.slice(0, 120), bbox, stile: m ? styleOf(m) : null });
           if (m) m.permanent = true;
         } catch (e) { silent = false; errori.push(file.name + ": " + (e.message || e)); }
       }
@@ -618,7 +635,7 @@ const Tools = (() => {
     }).addTo(map);
     layer.on("popupopen", (e) => { const b = e.popup.getElement().querySelector(".tf-an"); if (b) b.onclick = () => { map.closePopup(); fieldForm(e.layer.feature); }; });
     map.fitBounds(layer.getBounds(), { maxZoom: 17 });
-    userMaps.push({ name, kind: "vector", layer });
+    userMaps.push({ name, kind: "vector", layer, vst: { color: "#d0572b", weight: 2, fillOpacity: 0.08 } });
   }
 
   async function addRaster(name, file) {
@@ -736,6 +753,23 @@ const Tools = (() => {
     m.layer = L.imageOverlay(cv.toDataURL(), m.bounds, { opacity: c.op, className: "seg-overlay", interactive: false, zIndex: 460 }).addTo(map);
     drawLegend();
   }
+  // aspetto di una mappa caricata (salvato per le mappe pubbliche): cfg per i raster, vst per i vettori
+  const RASTER_KEYS = ["mode", "band", "rgb", "cmap", "auto", "min", "max", "op", "title", "unit", "classes", "nodata"];
+  const styleOf = (m) => m.kind === "vector" ? { ...m.vst } : Object.fromEntries(RASTER_KEYS.map((k) => [k, m.cfg[k]]));
+  async function applyStyle(m, st) {
+    if (!st || typeof st !== "object") return;
+    if (m.kind === "vector") {
+      if (/^#[0-9a-f]{6}$/i.test(st.color)) m.vst.color = st.color;
+      if (isFinite(st.weight)) m.vst.weight = Math.max(0, Math.min(10, +st.weight));
+      if (isFinite(st.fillOpacity)) m.vst.fillOpacity = Math.max(0, Math.min(1, +st.fillOpacity));
+      m.layer.setStyle(m.vst);
+      return;
+    }
+    RASTER_KEYS.forEach((k) => { if (k in st && typeof st[k] === typeof m.cfg[k]) m.cfg[k] = st[k]; });
+    m.cfg.band = Math.max(0, Math.min(m.nb - 1, m.cfg.band | 0));
+    m.cfg.rgb = (Array.isArray(st.rgb) ? st.rgb : m.cfg.rgb).slice(0, 3).map((x) => Math.max(0, Math.min(m.nb - 1, x | 0)));
+    await drawRaster(m);
+  }
   function drawLegend() {
     if (!legendCtl) {
       legendCtl = L.control({ position: "bottomleft" });
@@ -764,8 +798,14 @@ const Tools = (() => {
     const el = card("toolMaps", tt("u_title"), `
       <p class="hint small">${tt("u_hint")}</p>
       <label class="file-drop"><input type="file" id="umFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml" multiple> 📂 ${tt("upload")}</label>
-      <div id="umList">${userMaps.map((m, i) => m.kind === "vector" ? `<div class="um"><b>${esc(m.name)}</b> <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>${editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : ""}</div>` : `
-        <div class="um" data-i="${i}"><b>${esc(m.name)}</b> <small>${m.W}×${m.H} px · ${m.nb} ${LANG === "it" ? "bande" : "bands"} · ${esc(m.crs)}</small>
+      <div id="umList">${userMaps.map((m, i) => m.kind === "vector" ? `<div class="um" data-v="${i}"><b>${esc(m.pub ? m.pub.titolo : m.name)}</b>
+          <div class="um-grid">
+            <label>${tt("v_color")} <input type="color" class="uv-color" value="${m.vst.color}"></label>
+            <label>${tt("v_weight")} <input type="number" class="uv-weight" min="0" max="10" step="0.5" value="${m.vst.weight}"></label>
+            <label>${tt("v_fill")} <input type="range" class="uv-fill" min="0" max="1" step="0.05" value="${m.vst.fillOpacity}"></label>
+          </div>
+          <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>${editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : ""}${editor && m.pub ? ` <button class="small-btn" data-savest="${i}">${tt("pm_save_style")}</button>` : ""}</div>` : `
+        <div class="um" data-i="${i}"><b>${esc(m.pub ? m.pub.titolo : m.name)}</b> <small>${m.W}×${m.H} px · ${m.nb} ${LANG === "it" ? "bande" : "bands"} · ${esc(m.crs)}</small>
           <div class="um-grid">
             ${m.nb >= 3 ? `<label><input type="radio" name="md${i}" value="rgb" ${m.cfg.mode === "rgb" ? "checked" : ""}> ${tt("u_rgb")}
               ${[0, 1, 2].map((j) => `<input type="number" class="um-rgb" data-j="${j}" min="1" max="${m.nb}" value="${m.cfg.rgb[j] + 1}">`).join("")}</label>
@@ -781,12 +821,24 @@ const Tools = (() => {
             <label>${tt("u_unit")} <input class="um-unit" value="${esc(m.cfg.unit)}"></label>
             <label class="wide" ${m.cfg.cmap === "classes" ? "" : "hidden"}>${tt("u_classes")}<textarea class="um-cls" rows="4" placeholder="0-0.3 = #d73027 = basso&#10;0.3-0.6 = #fee08b = medio&#10;0.6-1 = #1a9850 = alto">${esc(m.cfg.classes)}</textarea></label>
           </div>
-          <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>${editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : ""}
-        </div>`).join("")}</div>`);
+          <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>${editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : ""}${editor && m.pub ? ` <button class="small-btn" data-savest="${i}">${tt("pm_save_style")}</button>` : ""}
+        </div>`).join("")}</div><p class="hint small" id="umMsg"></p>`);
     el.querySelector("#umFile").onchange = (e) => [...e.target.files].forEach(loadFile);
     el.querySelectorAll("[data-perm]").forEach((b) => (b.onclick = () => { pendingMap = userMaps[+b.dataset.perm]; openSection("community"); renderCommunity(); }));
     el.querySelectorAll("[data-z]").forEach((b) => (b.onclick = () => { const m = userMaps[+b.dataset.z]; map.fitBounds(m.kind === "vector" ? m.layer.getBounds() : m.bounds); }));
     el.querySelectorAll("[data-x]").forEach((b) => (b.onclick = () => { const m = userMaps.splice(+b.dataset.x, 1)[0]; map.removeLayer(m.layer); drawLegend(); renderMaps(); }));
+    el.querySelectorAll("[data-savest]").forEach((b) => (b.onclick = async () => {
+      const m = userMaps[+b.dataset.savest], msg = el.querySelector("#umMsg");
+      b.disabled = true;
+      try { await Account.saveMapStyle(m.pub.id, styleOf(m)); m.pub.stile = styleOf(m); msg.textContent = tt("pm_style_ok"); }
+      catch (e) { msg.textContent = tt("pm_err", { e: e.message || e }); }
+      b.disabled = false;
+    }));
+    el.querySelectorAll(".um[data-v]").forEach((box) => {
+      const m = userMaps[+box.dataset.v], q = (s) => box.querySelector(s);
+      box.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", () =>
+        applyStyle(m, { color: q(".uv-color").value, weight: +q(".uv-weight").value, fillOpacity: +q(".uv-fill").value })));
+    });
     el.querySelectorAll(".um[data-i]").forEach((box) => {
       const m = userMaps[+box.dataset.i], c = m.cfg, q = (s) => box.querySelector(s);
       const apply = async (full) => {
