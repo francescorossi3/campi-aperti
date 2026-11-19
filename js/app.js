@@ -452,7 +452,7 @@ function groupControls(g) {
       return `<div class="cty-year">${t("hv_date")} <select id="clmsDate">${dates.map((d) => `<option ${d === clmsDate ? "selected" : ""}>${d}</option>`).join("")}</select></div>`;
     }
     case "hrvpp": return yearSelect("hvYear", "hv_year", hvYear);
-    case "fields": return Live.segControl() + yearSelect("ctyYear", "cty_year", ctyYear);
+    case "fields": return Live.segControl() + (cropProduct === "copernicus" ? yearSelect("ctyYear", "cty_year", ctyYear) : "");
     default: return "";
   }
 }
@@ -488,7 +488,8 @@ function renderLayerPanel() {
   // sezioni della tab Mappe (MAP_SECTIONS); dentro la sezione CLMS un gruppo a scomparsa per ogni famiglia di prodotti
   const list = document.getElementById("layerList");
   const group = (gid, nested) => {
-    const g = LAYER_GROUPS.find((x) => x.id === gid), items = LAYERS.filter((l) => l.group === gid);
+    // la mappa Copernicus Crop Types compare solo se è il prodotto scelto in "Campi e colture"
+    const g = LAYER_GROUPS.find((x) => x.id === gid), items = LAYERS.filter((l) => l.group === gid && !(l.type === "cty" && cropProduct !== "copernicus"));
     const body = groupControls(g) + items.map(layerRow).join("");
     return nested ? `<details class="group" data-group="${gid}" ${items.some((l) => state.on.has(l.id)) ? "open" : ""}><summary>${g[LANG]}</summary>${body}</details>`
       : `<div class="group" data-group="${gid}">${body}</div>`;
@@ -532,7 +533,11 @@ function renderLayerPanel() {
   };
   const ctySel = document.getElementById("ctyYear");
   if (ctySel) ctySel.onchange = () => { ctyYear = +ctySel.value; if (leafletLayers.cty) leafletLayers.cty.setYear(ctyYear); };
-  document.getElementById("cpProduct").onchange = (e) => { cropProduct = e.target.value; renderLayerPanel(); };
+  document.getElementById("cpProduct").onchange = (e) => {
+    cropProduct = e.target.value;
+    if (cropProduct !== "copernicus") LAYERS.filter((l) => l.type === "cty" && state.on.has(l.id)).forEach((l) => setLayer(l.id, false));
+    renderLayerPanel();
+  };
   const cpSeason = document.getElementById("cpSeason");
   if (cpSeason) cpSeason.onchange = () => Live.setSeason(+cpSeason.value);
   updateZoomNotes();

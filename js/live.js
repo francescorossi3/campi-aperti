@@ -49,6 +49,7 @@ const LT = {
     seg_btn: "Dividi in campi la zona visibile",
     seg_hint: "Usa 8 immagini Sentinel-2 serene degli ultimi 12 mesi: pixel vicini con la stessa curva di crescita formano un campo. Ingrandisci almeno a zoom 14.",
     seg_zoom: "Ingrandisci almeno a zoom 14 e riprova.",
+    seg_draw: "Dividi in campi un'area che disegno", seg_big: "L'area disegnata è troppo grande (al massimo circa 40 km²): disegnane una più piccola.",
     seg_prog: "Scarico le immagini: {n}/{t}…",
     seg_done: "{n} campi individuati da {d} date ({a} → {b}). Clicca su un campo.",
     crop: "Coltura stimata",
@@ -170,6 +171,7 @@ const LT = {
     seg_btn: "Split the visible area into fields",
     seg_hint: "Uses 8 clear Sentinel-2 images from the last 12 months: neighbouring pixels with the same growth curve form a field. Zoom in to at least 14.",
     seg_zoom: "Zoom in to at least level 14 and try again.",
+    seg_draw: "Split an area I draw into fields", seg_big: "The drawn area is too large (about 40 km² at most): draw a smaller one.",
     seg_prog: "Downloading images: {n}/{t}…",
     seg_done: "{n} fields found from {d} dates ({a} → {b}). Click a field.",
     crop: "Estimated crop",
@@ -392,19 +394,24 @@ const Live = (() => {
     if (pv) pv.onclick = () => shiftPeriod(-1);
     if (nx) nx.onclick = () => shiftPeriod(1);
     if (di) di.onchange = () => { if (di.value) { anchor = new Date(di.value + "T12:00:00Z"); applyPeriod(); } };
-    const sb = document.getElementById("segBtn");
-    if (sb) sb.onclick = runSegmentation;
+    const sb = document.getElementById("segBtn"), sd = document.getElementById("segDraw");
+    if (sb) sb.onclick = () => runSegmentation();
+    if (sd) sd.onclick = () => Tools.startDraw("rect", (b) => runSegmentation(b), "h_rect");
   }
 
   // ================================================================== divisione in campi della zona visibile
   function segControl() {
     return `<div class="seg-box"><button id="segBtn" class="primary-btn">${lt("seg_btn")}</button>
+      <button id="segDraw" class="small-btn">${lt("seg_draw")}</button>
       <p class="hint small" id="segMsg">${lt("seg_hint")}</p></div>`;
   }
-  async function runSegmentation() {
+  // area = rettangolo disegnato (L.LatLngBounds); senza area si usa la zona visibile
+  async function runSegmentation(area) {
     const msg = document.getElementById("segMsg");
-    if (map.getZoom() < 14) { if (msg) msg.textContent = lt("seg_zoom"); return; }
-    const b = map.getBounds();
+    if (!area && map.getZoom() < 14) { if (msg) msg.textContent = lt("seg_zoom"); return; }
+    const b = area || map.getBounds();
+    const km = (b.getEast() - b.getWest()) * 111.32 * Math.cos((b.getCenter().lat * Math.PI) / 180) * (b.getNorth() - b.getSouth()) * 110.54;
+    if (area && km > 40) { if (msg) msg.textContent = lt("seg_big"); return; }
     const bounds = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
     const btn = document.getElementById("segBtn");
     if (btn) btn.disabled = true;

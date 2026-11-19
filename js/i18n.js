@@ -5,7 +5,7 @@
 const I18N = {
   it: {
     bm_none: "Nessuna", bm_gray: "Scala di grigi (luminosità)",
-    cp_product: "Coltura dei campi da", cp_copernicus: "Mappa Copernicus HRL Crop Types (anno sotto)", cp_model: "Modello di classificazione Columella",
+    cp_product: "Coltura dei campi da", cp_copernicus: "Mappa Copernicus HRL Crop Types (anno sotto)", cp_model: "Classificatore delle colture (3 reti neurali MLP addestrate sulle mappe Copernicus)",
     cp_season: "Annata a cui applicare il modello",
     cp_cop_note: "Per la mappa e per i campi rilevati si usa la mappa Copernicus dell'anno scelto (2017–2024).",
     cp_model_note: "Il modello riconosce la coltura dei campi selezionati nell'annata scelta (novembre–ottobre); i campi rilevati restano colorati con la mappa Copernicus.",
@@ -75,7 +75,7 @@ const I18N = {
   },
   en: {
     bm_none: "None", bm_gray: "Greyscale (brightness)",
-    cp_product: "Field crops from", cp_copernicus: "Copernicus HRL Crop Types map (year below)", cp_model: "Columella classification model",
+    cp_product: "Field crops from", cp_copernicus: "Copernicus HRL Crop Types map (year below)", cp_model: "Crop classifier (3 MLP neural networks trained on the Copernicus maps)",
     cp_season: "Season to apply the model to",
     cp_cop_note: "The map and the detected fields use the Copernicus map of the chosen year (2017–2024).",
     cp_model_note: "The model recognises the crop of the selected fields in the chosen season (November–October); detected fields stay coloured with the Copernicus map.",
