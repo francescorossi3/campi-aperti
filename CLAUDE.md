@@ -13,9 +13,11 @@ Privacy: `privacy.html` va aggiornata a ogni nuovo trattamento di dati.
   a ogni nuovo file, fonte di dati, livello, script della pipeline o modifica a Supabase, nello stesso commit o subito dopo.
 
 ## Interfaccia
-- Barra laterale a sezioni a scomparsa (Ricerca e campi · Livelli · Indici e serie temporali · Servizi · Account · Dati · Progetto);
-  su telefono diventa un foglio dal basso. **Nessun pannello sopra la mappa**: nuove schede e strumenti vanno in una sezione.
-- Ogni nuovo raster usa il riquadro `Clip.pane()` (così è ritagliato sul campo selezionato) e, se ha valori continui, lo stile di `mapstyle.js`
+- Barra laterale a **tab**: Mappe · Campi · Province · Regioni, con sezioni a scomparsa dentro le tab; su telefono diventa un foglio dal basso.
+  Sopra la mappa solo: finestra dei livelli (spostabile), legenda, controlli Leaflet. Nuove schede e strumenti vanno in una tab.
+- Più campi selezionabili (`clip.js`, id temporanei C1, C2…; Ctrl/Maiusc + clic). I dati di ogni campo stanno nel suo oggetto in `live.js`
+  (`fields`, `current` = campo mostrato): i caricamenti leggono `current` subito e poi usano solo il proprio campo.
+- Ogni nuovo raster usa il riquadro `Clip.pane()` (così è ritagliato sui campi selezionati) e, se ha valori continui, lo stile di `mapstyle.js`
   (statistiche sempre sull'intero campo). Ogni testo nuovo va in IT e EN.
 - Un nuovo servizio esterno va aggiunto alla Content-Security-Policy in `index.html`; librerie in copia locale in `js/vendor/` (o CDN con SRI).
 
