@@ -547,6 +547,17 @@ function renderLayerPanel() {
 const cropYearForFields = () => (cropProduct === "copernicus" ? ctyYear : null);
 
 // ------------------------------------------------------------------ catalogo / about
+// come citare il sito (stesso testo di CITATION.cff); l'anno è quello della versione consultata
+const SITE_URL = "https://francescorossi3.github.io/columella/";
+function citeHtml() {
+  const y = new Date().getFullYear(), oggi = new Date().toISOString().slice(0, 10);
+  const txt = `Rossi, F. (${y}). Columella: open data for Italian agriculture [web application]. CNR – Istituto di Metodologie Integrate per l'Osservazione della Terra (IMIOT). ${SITE_URL} (${LANG === "it" ? "consultato il" : "accessed"} ${oggi}).`;
+  const bib = `@misc{rossi_columella_${y},\n  author = {Rossi, Francesco},\n  title = {Columella: open data for Italian agriculture},\n  year = {${y}},\n  howpublished = {\\url{${SITE_URL}}},\n  organization = {CNR -- Istituto di Metodologie Integrate per l'Osservazione della Terra (IMIOT)},\n  note = {Web application, accessed ${oggi}}\n}`;
+  return `<h3>${t("cite_title")}</h3><p>${t("cite_text")}</p>
+    <div class="cite"><code>${escapeHtml(txt)}</code><button type="button" class="small-btn cite-copy">${t("cite_copy")}</button></div>
+    <div class="cite"><pre>${escapeHtml(bib)}</pre><button type="button" class="small-btn cite-copy">${t("cite_copy")}</button></div>
+    <p class="hint small">${t("cite_data")}</p>`;
+}
 function renderCatalog() {
   const onMap = LAYERS.map((l) => {
     const archived = ARCHIVE_GROUPS.includes(l.group);
@@ -558,7 +569,10 @@ function renderCatalog() {
     <div class="cat-item"><b>${d[LANG]}<span class="badge ${d.status === "on" ? "on" : "coming"}">${t(d.status === "on" ? "on_map" : "coming")}</span></b>
       <p>${LANG === "it" ? d.dit : d.den}</p><a href="${d.link}" target="_blank" rel="noopener">${d.link.replace(/^https?:\/\//, "").split("/")[0]} ↗</a></div>`).join("");
   document.getElementById("catalog").innerHTML = onMap + extra;
-  document.getElementById("about").innerHTML = t("about_html");
+  document.getElementById("about").innerHTML = t("about_html") + citeHtml();
+  document.querySelectorAll(".cite-copy").forEach((b) => (b.onclick = () => {
+    navigator.clipboard.writeText(b.previousElementSibling.textContent).then(() => { b.textContent = t("cite_copied"); setTimeout(() => (b.textContent = t("cite_copy")), 1500); });
+  }));
 }
 
 // ------------------------------------------------------------------ clic sulla mappa

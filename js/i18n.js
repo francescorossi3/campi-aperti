@@ -4,6 +4,10 @@
 // EN: UI strings (IT/EN) and lookup tables. Exposes I18N and CATALOG_EXTRA; no dependencies.
 const I18N = {
   it: {
+    cite_title: "Come citare Columella",
+    cite_text: "Se usi Columella, i suoi dati o le sue mappe in una pubblicazione, una tesi o una presentazione, cita così:",
+    cite_data: "Cita anche le fonti dei dati che usi (Copernicus, ESA, ISTAT, SoilGrids, ERA5/Open-Meteo…): sono indicate sotto ogni livello e nella sezione Dati.",
+    cite_copy: "Copia", cite_copied: "Copiato",
     bm_none: "Nessuna", bm_gray: "Scala di grigi (luminosità)",
     cp_product: "Coltura dei campi da", cp_copernicus: "Mappa Copernicus HRL Crop Types (anno sotto)", cp_model: "Classificatore delle colture (3 reti neurali MLP addestrate sulle mappe Copernicus)",
     cp_season: "Annata a cui applicare il modello",
@@ -74,6 +78,10 @@ const I18N = {
     credits: "Dati: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Agenzia delle Entrate (CC BY 4.0), ISTAT, ISRIC SoilGrids (CC BY 4.0), OpenStreetMap, EOX, Esri. Confini dei campi: modello Delineate Anything S (Lavreniuk et al. 2025, AGPL-3.0).",
   },
   en: {
+    cite_title: "How to cite Columella",
+    cite_text: "If you use Columella, its data or its maps in a paper, a thesis or a presentation, please cite:",
+    cite_data: "Please also cite the data sources you use (Copernicus, ESA, ISTAT, SoilGrids, ERA5/Open-Meteo…): they are listed under each layer and in the Data section.",
+    cite_copy: "Copy", cite_copied: "Copied",
     bm_none: "None", bm_gray: "Greyscale (brightness)",
     cp_product: "Field crops from", cp_copernicus: "Copernicus HRL Crop Types map (year below)", cp_model: "Crop classifier (3 MLP neural networks trained on the Copernicus maps)",
     cp_season: "Season to apply the model to",
