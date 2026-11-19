@@ -2,21 +2,27 @@ name: Modello campi (Delineate Anything -> ONNX)
 
 on:
   workflow_dispatch:
+    inputs:
+      script:
+        description: "11 = Delineate Anything S, 21 = Delineate Anything v2 (+ versione a 8 bit e prova)"
+        default: "21"
   push:
-    paths: ["pipeline/11_delineate_onnx.py"]
+    paths: ["pipeline/11_delineate_onnx.py", "pipeline/21_delineate_v2_onnx.py"]
 
 jobs:
   esporta:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_DATA_REPO: Bradipo92/campi-aperti-data
     steps:
       - uses: actions/checkout@v5
-      - run: pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision ultralytics onnx onnxslim onnxruntime huggingface_hub
-      - run: cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data && python 11_delineate_onnx.py
+      - run: pip install -q --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision ultralytics onnx onnxslim onnxruntime huggingface_hub requests pillow
+      - run: |
+          cd pipeline && ln -s ../data data 2>/dev/null; mkdir -p ../data
+          if [ "${{ inputs.script || '21' }}" = "11" ]; then python 11_delineate_onnx.py; else python 21_delineate_v2_onnx.py; fi
       - uses: actions/upload-artifact@v4
         with:
           name: delineate-onnx
-          path: data/modelli/delineate_anything_s.onnx
+          path: data/modelli/*.json
