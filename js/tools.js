@@ -35,11 +35,11 @@ const Tools = (() => {
       mine_empty: "Nessun campo salvato. Usa «Disegna un campo».", del: "Elimina", open: "Apri", export_all: "Scarica tutti (GeoJSON)",
       r_big: "Area troppo grande: al massimo 6 × 6 km.", r_seg: "Divido l'area in campi… {n}/{t} immagini", r_crop: "Coltura dei campi… {n}/{t}",
       r_done: "{n} campi trovati nell'area ({a} ha).", r_title: "Campi dell'area", r_fail: "Divisione in campi non riuscita (poche immagini serene?).",
-      r_note: "Confini stimati automaticamente da Sentinel-2 (10 m): NDVI medio per data, coltura Copernicus 2024. Licenza dei dati: CC BY-NC 4.0, citare Columella, Copernicus, ESA.",
+      r_note: "Confini stimati automaticamente da Sentinel-2 (10 m): NDVI medio per data, coltura Copernicus dell'anno scelto in Mappe → Campi e colture. Licenza dei dati: CC BY-NC 4.0, citare Columella, Copernicus, ESA.",
       kml: "Scarica KML", csv: "Scarica tabella CSV",
       pm_off: "Le mappe pubbliche saranno disponibili quando gli account saranno attivi.", pm_none: "Nessuna mappa pubblica per ora.",
       pm_show: "Mostra", pm_zoom: "Vai", pm_del: "Togli dalla pubblicazione", pm_del_q: "Togliere questa mappa per tutti?",
-      pm_pub: "Pubblica una mappa (sei un editore)", pm_file: "File (GeoTIFF, GeoJSON o KML, al massimo 50 MB)", pm_title: "Titolo", pm_desc: "Descrizione",
+      pm_pub: "Carica una mappa per tutti", pm_file: "File (GeoTIFF, GeoJSON o KML, al massimo 50 MB)", pm_title: "Titolo", pm_desc: "Descrizione",
       pm_src: "Fonte / autori", pm_lic: "Licenza", pm_go: "Pubblica per tutti", pm_busy: "Carico…", pm_ok: "Mappa pubblicata.", pm_err: "Pubblicazione non riuscita: {e}",
       pm_need: "Servono file, titolo e licenza.", pm_note: "Le mappe pubbliche sono visibili a chiunque, con titolo, fonte e licenza. Pubblica solo dati che hai il diritto di condividere.",
       pm_loaded: "Mappa aperta: la trovi sulla mappa e in Campi → Le mie mappe per lo stile.",
@@ -87,11 +87,11 @@ const Tools = (() => {
       mine_empty: "No saved fields. Use “Draw a field”.", del: "Delete", open: "Open", export_all: "Download all (GeoJSON)",
       r_big: "Area too large: max 6 × 6 km.", r_seg: "Splitting the area into fields… {n}/{t} images", r_crop: "Crop of the fields… {n}/{t}",
       r_done: "{n} fields found in the area ({a} ha).", r_title: "Fields of the area", r_fail: "Field splitting failed (too few clear images?).",
-      r_note: "Boundaries estimated automatically from Sentinel-2 (10 m): mean NDVI per date, Copernicus crop 2024. Data licence: CC BY-NC 4.0, credit Columella, Copernicus, ESA.",
+      r_note: "Boundaries estimated automatically from Sentinel-2 (10 m): mean NDVI per date, Copernicus crop of the year chosen in Maps → Fields and crops. Data licence: CC BY-NC 4.0, credit Columella, Copernicus, ESA.",
       kml: "Download KML", csv: "Download CSV table",
       pm_off: "Public maps will be available when accounts are active.", pm_none: "No public maps yet.",
       pm_show: "Show", pm_zoom: "Go", pm_del: "Unpublish", pm_del_q: "Remove this map for everyone?",
-      pm_pub: "Publish a map (you are an editor)", pm_file: "File (GeoTIFF, GeoJSON or KML, max 50 MB)", pm_title: "Title", pm_desc: "Description",
+      pm_pub: "Upload a map for everyone", pm_file: "File (GeoTIFF, GeoJSON or KML, max 50 MB)", pm_title: "Title", pm_desc: "Description",
       pm_src: "Source / authors", pm_lic: "Licence", pm_go: "Publish for everyone", pm_busy: "Uploading…", pm_ok: "Map published.", pm_err: "Publishing failed: {e}",
       pm_need: "File, title and licence are required.", pm_note: "Public maps are visible to anyone, with title, source and licence. Only publish data you have the right to share.",
       pm_loaded: "Map opened: it is on the map and in Fields → My maps for styling.",
@@ -411,6 +411,7 @@ const Tools = (() => {
     const fc = Segment.allFields();
     if (!fc || !fc.features.length) { msg(tt("r_fail")); return; }
     const nomi = Live.CTY_NOMI();
+    const cropY = (typeof cropYearForFields === "function" && cropYearForFields()) || ctyYear;   // anno scelto in Mappe → Campi e colture
     // coltura Copernicus 2024 di ogni campo, 4 richieste alla volta
     let k = 0;
     const queue = fc.features.slice();
@@ -418,8 +419,8 @@ const Tools = (() => {
       while (queue.length) {
         const f = queue.shift();
         f.properties.superficie_ha = +areaHa(f.geometry).toFixed(3);
-        const c = await Live.cropOfField(f, 2024);
-        if (c) { f.properties.coltura_copernicus_2024 = (nomi[c.cls] || [c.cls])[0]; f.properties.quota_coltura = +c.share.toFixed(2); f.properties.cls = c.cls; }
+        const c = await Live.cropOfField(f, cropY);
+        if (c) { f.properties.coltura_copernicus = (nomi[c.cls] || [c.cls])[0]; f.properties.anno_coltura = cropY; f.properties.quota_coltura = +c.share.toFixed(2); f.properties.cls = c.cls; }
         msg(tt("r_crop", { n: ++k, t: fc.features.length }));
       }
     }));
@@ -442,7 +443,7 @@ const Tools = (() => {
     detLayer = L.geoJSON({ type: "FeatureCollection", features: feats }, {
       style: (f) => ({ color: "#ffffff", weight: 1, fillColor: col(f), fillOpacity: 0.55 }),
       onEachFeature: (f, l) => {
-        l.bindTooltip(`${esc(f.properties.coltura_copernicus_2024 || "—")} · ${f.properties.superficie_ha} ha`, { sticky: true });
+        l.bindTooltip(`${esc(f.properties.coltura_copernicus || "—")} ${f.properties.anno_coltura || ""} · ${f.properties.superficie_ha} ha`, { sticky: true });
         l.on("click", (e) => {
           L.DomEvent.stop(e);
           const add = e.originalEvent.ctrlKey || e.originalEvent.shiftKey || e.originalEvent.metaKey || document.getElementById("addMode").checked;
@@ -474,14 +475,14 @@ const Tools = (() => {
         <div class="tc-actions"><button class="small-btn" data-show="${i}">${tt("pm_show")}</button>
           ${r.mine ? `<button class="small-btn danger" data-del="${i}">${tt("pm_del")}</button>` : ""}</div></li>`).join("")}</ul>`
       : `<p class="hint small">${tt("pm_none")}</p>`) +
-      (editor ? `<details class="pm-form"${pendingMap ? " open" : ""}><summary>${tt("pm_pub")}</summary>
+      (editor ? `<div class="pm-form"><h4>⬆ ${tt("pm_pub")}</h4>
         ${pendingMap ? `<p><b>${tt("pm_file")}:</b> ${esc(pendingMap.name)}</p>` : `<label>${tt("pm_file")} <input type="file" id="pmFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml"></label>`}
         <label>${tt("pm_title")} <input id="pmTitle" maxlength="120" value="${pendingMap ? esc(pendingMap.name.replace(/\.[^.]+$/, "")) : ""}"></label>
         <label>${tt("pm_desc")} <textarea id="pmDesc" rows="3" maxlength="2000"></textarea></label>
         <label>${tt("pm_src")} <input id="pmSrc" maxlength="300"></label>
         <label>${tt("pm_lic")} <select id="pmLic">${LICENZE.map((l) => `<option${l === "CC BY-NC 4.0" ? " selected" : ""}>${l}</option>`).join("")}</select></label>
         <button class="btn-primary" id="pmGo">${tt("pm_go")}</button> <span class="hint small" id="pmMsg"></span>
-        <p class="hint small">${tt("pm_note")}</p></details>` : "");
+        <p class="hint small">${tt("pm_note")}</p></div>` : "");
     box.querySelectorAll("[data-show]").forEach((b) => (b.onclick = async () => {
       const r = rows[+b.dataset.show];
       b.disabled = true;
