@@ -404,11 +404,12 @@ const Tools = (() => {
         const f = queue.shift();
         f.properties.superficie_ha = +areaHa(f.geometry).toFixed(3);
         const c = await Live.cropOfField(f, 2024);
-        if (c) { f.properties.coltura_copernicus_2024 = (nomi[c.cls] || [c.cls])[0]; f.properties.quota_coltura = +c.share.toFixed(2); }
+        if (c) { f.properties.coltura_copernicus_2024 = (nomi[c.cls] || [c.cls])[0]; f.properties.quota_coltura = +c.share.toFixed(2); f.properties.cls = c.cls; }
         msg(tt("r_crop", { n: ++k, t: fc.features.length }));
       }
     }));
     const tot = fc.features.reduce((a, f) => a + f.properties.superficie_ha, 0);
+    showDetected(fc.features);
     const out = { type: "FeatureCollection", features: fc.features, metadata: { fonte: "Columella — https://francescorossi3.github.io/columella/", licenza: "CC BY-NC 4.0", date_ndvi: fc.dates } };
     el.querySelector(".tc-body").innerHTML = `<p>${tt("r_done", { n: fc.features.length, a: tot.toFixed(1) })}</p>
       <div class="tc-actions"><button class="btn-primary" id="raGeo">${tt("geojson")}</button><button class="small-btn" id="raKml">${tt("kml")}</button>
@@ -418,6 +419,31 @@ const Tools = (() => {
     el.querySelector("#raKml").onclick = () => download(`campi_${stamp}.kml`, toKml(out), "application/vnd.google-earth.kml+xml");
     el.querySelector("#raCsv").onclick = () => download(`campi_${stamp}.csv`, toCsv(out), "text/csv");
   }
+  // campi rilevati sulla mappa, colorati per coltura Copernicus; clic = seleziona il campo (Ctrl/Maiusc = aggiunge)
+  let detLayer = null;
+  function showDetected(feats) {
+    if (detLayer) map.removeLayer(detLayer);
+    const col = (f) => (typeof CROP_COLORS !== "undefined" && CROP_COLORS[f.properties.cls]) || "#9aa58f";
+    detLayer = L.geoJSON({ type: "FeatureCollection", features: feats }, {
+      style: (f) => ({ color: "#ffffff", weight: 1, fillColor: col(f), fillOpacity: 0.55 }),
+      onEachFeature: (f, l) => {
+        l.bindTooltip(`${esc(f.properties.coltura_copernicus_2024 || "—")} · ${f.properties.superficie_ha} ha`, { sticky: true });
+        l.on("click", (e) => {
+          L.DomEvent.stop(e);
+          const add = e.originalEvent.ctrlKey || e.originalEvent.shiftKey || e.originalEvent.metaKey || document.getElementById("addMode").checked;
+          Live.analyze(JSON.parse(JSON.stringify(f)), {}, add);
+        });
+      },
+    }).addTo(map);
+  }
+  // rilevamento di campi e colture nell'area visibile della mappa o in un rettangolo disegnato
+  function detectView() {
+    const b = map.getBounds(), wM = (b.getEast() - b.getWest()) * 111320 * Math.cos((b.getCenter().lat * Math.PI) / 180), hM = (b.getNorth() - b.getSouth()) * 110540;
+    if (wM > 6100 || hM > 6100) { card("toolArea", tt("r_title"), `<p class="hint">${t("det_big")}</p>`); return; }
+    areaFields(b);
+  }
+  const detectDraw = () => startDraw("rect", (b) => areaFields(b), "h_rect");
+
   function toKml(fc) {
     const ring = (r) => `<LinearRing><coordinates>${r.map((p) => p.join(",")).join(" ")}</coordinates></LinearRing>`;
     const pm = fc.features.map((f) => {
@@ -772,14 +798,15 @@ const Tools = (() => {
 
   // ================================================================== barra degli strumenti
   function init() {
+    document.getElementById("detectView").onclick = detectView;
+    document.getElementById("detectDraw").onclick = detectDraw;
     // pulsanti degli strumenti nella sezione "Ricerca e campi" della barra laterale
     const d = document.getElementById("toolBar");
-    d.innerHTML = [["draw", "✏️"], ["rect", "⬚"], ["upload", "📂"], ["lawn", "🏡"], ["mine", "⭐"]]
+    d.innerHTML = [["draw", "✏️"], ["upload", "📂"], ["lawn", "🏡"], ["mine", "⭐"]]
       .map(([k, ic]) => `<button type="button" class="tool-btn" data-t="${k}"><span aria-hidden="true">${ic}</span><em>${tt(k)}</em></button>`).join("");
     d.querySelectorAll("button").forEach((a) => (a.onclick = () => {
       switch (a.dataset.t) {
         case "draw": startDraw("poly", (f) => fieldForm(f), "h_poly"); break;
-        case "rect": startDraw("rect", (b) => areaFields(b), "h_rect"); break;
         case "lawn": startDraw("poly", (f) => lawn(f), "h_lawn"); break;
         case "upload": renderMaps(); break;
         case "mine": showMine(); break;
@@ -827,5 +854,5 @@ const Tools = (() => {
   function refreshLang() {
     document.querySelectorAll("#toolBar .tool-btn").forEach((a) => (a.querySelector("em").textContent = tt(a.dataset.t)));
   }
-  return { init, busy, refreshLang, startDraw, welcome };
+  return { init, busy, refreshLang, startDraw, welcome, detectView, detectDraw };
 })();
