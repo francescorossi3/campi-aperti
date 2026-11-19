@@ -39,9 +39,9 @@ const Tools = (() => {
       kml: "Scarica KML", csv: "Scarica tabella CSV",
       pm_off: "Le mappe pubbliche saranno disponibili quando gli account saranno attivi.", pm_none: "Nessuna mappa pubblica per ora.",
       pm_show: "Mostra", pm_zoom: "Vai", pm_del: "Togli dalla pubblicazione", pm_del_q: "Togliere questa mappa per tutti?",
-      pm_pub: "Carica una mappa per tutti", pm_file: "File (GeoTIFF, GeoJSON o KML, al massimo 50 MB)", pm_title: "Titolo", pm_desc: "Descrizione",
-      pm_src: "Fonte / autori", pm_lic: "Licenza", pm_go: "Pubblica per tutti", pm_busy: "Carico…", pm_ok: "Mappa pubblicata.", pm_err: "Pubblicazione non riuscita: {e}",
-      pm_need: "Servono file, titolo e licenza.", pm_note: "Le mappe pubbliche sono visibili a chiunque, con titolo, fonte e licenza. Pubblica solo dati che hai il diritto di condividere.",
+      pm_pub: "Carica una mappa per tutti", pm_file: "File (uno o più; GeoTIFF, GeoJSON o KML, al massimo 50 MB ciascuno)", pm_title: "Titolo", pm_desc: "Descrizione",
+      pm_src: "Fonte / autori", pm_lic: "Licenza", pm_go: "Pubblica per tutti", pm_busy: "Carico…", pm_busy_n: "Carico {i} di {n}…", pm_ok: "Mappa pubblicata.", pm_ok_n: "{n} mappe pubblicate.", pm_err: "Pubblicazione non riuscita: {e}",
+      pm_need: "Servono i file e, per un solo file, il titolo. Con più file il titolo è facoltativo: si usa il nome del file.", pm_note: "Le mappe pubbliche sono visibili a chiunque, con titolo, fonte e licenza. Pubblica solo dati che hai il diritto di condividere.",
       pm_loaded: "Mappa aperta: la trovi sulla mappa e in Campi → Le mie mappe per lo stile.",
       pm_make: "Rendi permanente (pubblica)",
       u_title: "Le mie mappe", u_hint: "GeoTIFF (anche PRISMA, EnMAP, droni, mappe di prescrizione), GeoJSON o KML. Il file resta sul tuo computer: non viene caricato su nessun server.",
@@ -91,9 +91,9 @@ const Tools = (() => {
       kml: "Download KML", csv: "Download CSV table",
       pm_off: "Public maps will be available when accounts are active.", pm_none: "No public maps yet.",
       pm_show: "Show", pm_zoom: "Go", pm_del: "Unpublish", pm_del_q: "Remove this map for everyone?",
-      pm_pub: "Upload a map for everyone", pm_file: "File (GeoTIFF, GeoJSON or KML, max 50 MB)", pm_title: "Title", pm_desc: "Description",
-      pm_src: "Source / authors", pm_lic: "Licence", pm_go: "Publish for everyone", pm_busy: "Uploading…", pm_ok: "Map published.", pm_err: "Publishing failed: {e}",
-      pm_need: "File, title and licence are required.", pm_note: "Public maps are visible to anyone, with title, source and licence. Only publish data you have the right to share.",
+      pm_pub: "Upload a map for everyone", pm_file: "File (one or more; GeoTIFF, GeoJSON or KML, max 50 MB each)", pm_title: "Title", pm_desc: "Description",
+      pm_src: "Source / authors", pm_lic: "Licence", pm_go: "Publish for everyone", pm_busy: "Uploading…", pm_busy_n: "Uploading {i} of {n}…", pm_ok: "Map published.", pm_ok_n: "{n} maps published.", pm_err: "Publishing failed: {e}",
+      pm_need: "Choose the files and, for a single file, a title. With several files the title is optional: the file name is used.", pm_note: "Public maps are visible to anyone, with title, source and licence. Only publish data you have the right to share.",
       pm_loaded: "Map opened: it is on the map and in Fields → My maps for styling.",
       pm_make: "Make permanent (publish)",
       u_title: "My maps", u_hint: "GeoTIFF (including PRISMA, EnMAP, drones, prescription maps), GeoJSON or KML. The file stays on your computer: it is not uploaded to any server.",
@@ -476,7 +476,7 @@ const Tools = (() => {
           ${r.mine ? `<button class="small-btn danger" data-del="${i}">${tt("pm_del")}</button>` : ""}</div></li>`).join("")}</ul>`
       : `<p class="hint small">${tt("pm_none")}</p>`) +
       (editor ? `<div class="pm-form"><h4>⬆ ${tt("pm_pub")}</h4>
-        ${pendingMap ? `<p><b>${tt("pm_file")}:</b> ${esc(pendingMap.name)}</p>` : `<label>${tt("pm_file")} <input type="file" id="pmFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml"></label>`}
+        ${pendingMap ? `<p><b>${tt("pm_file")}:</b> ${esc(pendingMap.name)}</p>` : `<label>${tt("pm_file")} <input type="file" id="pmFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml" multiple></label>`}
         <label>${tt("pm_title")} <input id="pmTitle" maxlength="120" value="${pendingMap ? esc(pendingMap.name.replace(/\.[^.]+$/, "")) : ""}"></label>
         <label>${tt("pm_desc")} <textarea id="pmDesc" rows="3" maxlength="2000"></textarea></label>
         <label>${tt("pm_src")} <input id="pmSrc" maxlength="300"></label>
@@ -501,23 +501,31 @@ const Tools = (() => {
     }));
     const go = box.querySelector("#pmGo");
     if (go) go.onclick = async () => {
-      const pick = box.querySelector("#pmFile"), file = pendingMap ? pendingMap.file : pick && pick.files[0];
+      // uno o più file: con più file il titolo (facoltativo) diventa "titolo – nome del file"
+      const pick = box.querySelector("#pmFile"), files = pendingMap ? [pendingMap.file] : [...((pick && pick.files) || [])];
       const titolo = box.querySelector("#pmTitle").value.trim(), msg = box.querySelector("#pmMsg");
-      if (!file || !titolo) { msg.textContent = tt("pm_need"); return; }
-      go.disabled = true; msg.textContent = tt("pm_busy");
-      try {
-        // la mappa va aperta nel browser per controllarla e ricavarne il riquadro geografico
-        let m = pendingMap;
-        if (!m) { silent = true; await loadFile(file); silent = false; m = userMaps[userMaps.length - 1]; }
-        const b = m && (m.kind === "vector" ? m.layer.getBounds() : L.latLngBounds(m.bounds));
-        const bbox = b && b.isValid() ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((x) => +x.toFixed(6)) : null;
-        await Account.publishMap(file, { titolo, descrizione: box.querySelector("#pmDesc").value.trim(), fonte: box.querySelector("#pmSrc").value.trim(),
-          licenza: box.querySelector("#pmLic").value, bbox });
-        msg.textContent = tt("pm_ok");
-        if (m) m.permanent = true;
-        pendingMap = null;
-        renderCommunity();
-      } catch (e) { silent = false; msg.textContent = tt("pm_err", { e: esc(e.message || e) }); go.disabled = false; }
+      if (!files.length || (files.length === 1 && !titolo)) { msg.textContent = tt("pm_need"); return; }
+      const meta = { descrizione: box.querySelector("#pmDesc").value.trim(), fonte: box.querySelector("#pmSrc").value.trim(), licenza: box.querySelector("#pmLic").value };
+      go.disabled = true;
+      const errori = [];
+      for (const [i, file] of files.entries()) {
+        msg.textContent = files.length > 1 ? tt("pm_busy_n", { i: i + 1, n: files.length }) : tt("pm_busy");
+        const nome = file.name.replace(/\.[^.]+$/, "");
+        try {
+          // la mappa va aperta nel browser per controllarla e ricavarne il riquadro geografico
+          let m = pendingMap;
+          if (!m) { silent = true; await loadFile(file); silent = false; m = userMaps[userMaps.length - 1]; }
+          const b = m && (m.kind === "vector" ? m.layer.getBounds() : L.latLngBounds(m.bounds));
+          const bbox = b && b.isValid() ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((x) => +x.toFixed(6)) : null;
+          const t = files.length === 1 ? titolo : (titolo ? titolo + " – " + nome : nome);
+          await Account.publishMap(file, { ...meta, titolo: t.slice(0, 120), bbox });
+          if (m) m.permanent = true;
+        } catch (e) { silent = false; errori.push(file.name + ": " + (e.message || e)); }
+      }
+      pendingMap = null;
+      await renderCommunity();
+      const m2 = box.querySelector("#pmMsg");
+      if (m2) m2.textContent = errori.length ? tt("pm_err", { e: errori.join("; ") }) : files.length > 1 ? tt("pm_ok_n", { n: files.length }) : tt("pm_ok");
     };
   }
 
