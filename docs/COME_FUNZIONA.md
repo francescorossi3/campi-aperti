@@ -130,7 +130,14 @@ I valori sono sempre **medie sull'intero campo** (nuvole e ombre escluse con la 
 **Resa annata per annata** (tab Campi → Servizi): per ogni annata (nov–ott) con la mappa colture Copernicus il browser legge l'NDVI
 Sentinel-2 medio del campo e la radiazione ERA5 e applica il modello di Monteith (tarato con lo stesso fattore delle province), accanto alla
 resa ISTAT della provincia per la stessa coltura e annata. **Tab Province / Regioni**: Monteith contro ISTAT per provincia
-(`data/monteith_province.json`) e per regione (province pesate sulla superficie ISTAT, nomi delle regioni da `data/province.json`).
+(`data/monteith_province.json`) e per regione (province pesate sulla superficie ISTAT, nomi delle regioni da `data/province.json`). **Fonte dei campi della coltura**, a scelta
+in entrambe le tab: mappa Copernicus Crop Types (pixel 200 m puri, script 10 → 12) o **classificatore delle colture** (le 3 reti MLP dello
+script 18 applicate alle variabili mensili Sentinel-2/Sentinel-1/DEM a 200 m, pixel sicuri con probabilità ≥ 0,6, script 20 → 12 con
+`FONTE=classificatore`, `data/monteith_province_cls.json`, anche con la superficie stimata dal classificatore). Il confronto col
+classificatore si calcola provincia per provincia con il workflow `monteith-classificatore.yml` (annata + sigle, es. 2024 e RM).
+
+Nota: il classificatore delle colture **non** è un modello YOLO: è un insieme di 3 reti MLP (script 13 → 18). YOLO si usa solo per i
+confini dei campi (Delineate Anything S, YOLO11n-seg).
 
 **Acqua disponibile per le piante (PAW)**: funzioni di pedotrasferimento di Saxton & Rawls (2006) (`saxtonRawls` in `croplayer.js`) da
 sabbia, argilla e sostanza organica (SOC × 1,724): capacità di campo θ33, punto di appassimento θ1500 e PAW = θ33 − θ1500 (mm per metro).
@@ -194,11 +201,12 @@ nello storage solo nella cartella dell'editore.
 | `pipeline/03`–`05` | Superfici per blocco di 1 km, celle meteo, bilanci regionali → `data/riepiloghi.json` |
 | `pipeline/06` | ET reale Copernicus per regione e coltura |
 | `pipeline/07` | Rese ISTAT per provincia → `data/rese.json` |
-| `pipeline/10`, `12` | NDVI per provincia e modello di resa di Monteith vs ISTAT |
+| `pipeline/10`, `12` | NDVI per provincia e modello di resa di Monteith vs ISTAT (`FONTE`: Copernicus o classificatore) |
 | `pipeline/11` | Esporta Delineate Anything S in ONNX (AGPL-3.0) |
 | `pipeline/13`, `14`, `18` | Classificatore colture: dataset, addestramento, pesi per il browser |
 | `pipeline/15` | Indice dei comuni per la ricerca → `data/comuni.json` |
 | `pipeline/16`, `17` | Variabili CLMS sull'Italia (COG) e indice delle date |
+| `pipeline/20` | Classificatore delle colture sui pixel 200 m delle province scelte → serie NDVI e superfici stimate (per 12 con `FONTE=classificatore`) |
 | `pipeline/19` | Mappe del suolo SoilGrids per l'Italia (COG) |
 | `pipeline/classi.py` | Classi Crop Types e coefficienti colturali |
 | `pipeline/hf_sync.py` | Sincronizza le cartelle di lavoro con il dataset Hugging Face |

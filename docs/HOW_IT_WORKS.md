@@ -130,7 +130,14 @@ Values are always **means over the whole field** (clouds and shadows masked with
 **Yield, season by season** (Fields tab → Services): for every season (Nov–Oct) with a Copernicus crop map, the browser reads the field-mean
 Sentinel-2 NDVI and ERA5 radiation and applies the Monteith model (calibrated with the same factor as the provinces), next to the ISTAT
 yield of the province for the same crop and year. **Provinces / Regions tabs**: Monteith vs ISTAT per province (`data/monteith_province.json`)
-and per region (provinces weighted by ISTAT area, region names from `data/province.json`).
+and per region (provinces weighted by ISTAT area, region names from `data/province.json`). **Source of the crop fields**, selectable in both
+tabs: the Copernicus Crop Types map (pure 200 m pixels, scripts 10 → 12) or the **crop classifier** (3 MLP networks of script 18 applied to
+200 m monthly Sentinel-2/Sentinel-1/DEM features, confident pixels with probability ≥ 0.6, script 20 → 12 with `FONTE=classificatore`,
+`data/monteith_province_cls.json`, also with the area estimated by the classifier). The classifier comparison is computed province by
+province with the workflow `monteith-classificatore.yml` (season + province codes, e.g. 2024 and RM).
+
+Note: the crop classifier is **not** a YOLO model: it is an ensemble of 3 MLP networks (scripts 13 → 18). YOLO is used only for field
+boundaries (Delineate Anything S, YOLO11n-seg).
 
 **Plant available water (PAW)**: Saxton & Rawls (2006) pedotransfer functions (`saxtonRawls` in `croplayer.js`) from sand, clay and organic
 matter (SOC × 1.724): field capacity θ33, wilting point θ1500 and PAW = θ33 − θ1500 (mm per metre). Shown in the field soil card and as the
@@ -192,11 +199,12 @@ The owner's account (email in the private table `impostazioni`, key `email_propr
 | `pipeline/03`–`05` | Crop areas per 1 km block, weather cells, regional balances → `data/riepiloghi.json` |
 | `pipeline/06` | Copernicus actual ET per region and crop |
 | `pipeline/07` | ISTAT yields per province → `data/rese.json` |
-| `pipeline/10`, `12` | Province NDVI and Monteith yield model vs ISTAT |
+| `pipeline/10`, `12` | Province NDVI and Monteith yield model vs ISTAT (`FONTE`: Copernicus or classifier) |
 | `pipeline/11` | Export Delineate Anything S to ONNX (AGPL-3.0) |
 | `pipeline/13`, `14`, `18` | Crop classifier: dataset, training, browser weights |
 | `pipeline/15` | Municipality index for search → `data/comuni.json` |
 | `pipeline/16`, `17` | CLMS variables on Italy (COG) and date index |
+| `pipeline/20` | Crop classifier on 200 m pixels of chosen provinces → NDVI series and estimated areas (for 12 with `FONTE=classificatore`) |
 | `pipeline/19` | SoilGrids soil maps for Italy (COG) |
 | `pipeline/classi.py` | Crop Types classes and crop coefficients |
 | `pipeline/hf_sync.py` | Sync working folders with the Hugging Face dataset |
