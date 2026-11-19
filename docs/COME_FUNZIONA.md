@@ -36,27 +36,29 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  subgraph Barra["Barra laterale (foglio dal basso sul telefono)"]
-    s1[Ricerca e campi<br/>disegna · area · carica · prato · i miei campi]
-    s2[Livelli<br/>mappe di base · gruppi · Stile per livello · punto cliccato]
-    s3[Indici e serie temporali<br/>mappa del campo · grafici · CSV]
-    s4[Servizi<br/>coltura · resa · suolo · carbonio · avvisi · regioni]
-    s5[Account]
-    s6[Dati · Progetto]
+  subgraph Barra["Barra laterale a tab (foglio dal basso sul telefono)"]
+    t1[Mappe<br/>mappe di base · livelli + Stile · punto cliccato · dati · progetto]
+    t2[Campi<br/>rileva campi e colture · strumenti · campi selezionati C1, C2… ·<br/>mappa del campo · serie · confronto tra campi · servizi · account]
+    t3[Province<br/>rese ISTAT e Monteith]
+    t4[Regioni<br/>acqua · rese ISTAT e Monteith]
   end
-  Barra --- M[Mappa grande<br/>raster solo dentro il campo selezionato<br/>legenda in basso a destra]
+  Barra --- M[Mappa grande<br/>raster solo dentro i campi selezionati, resto velato<br/>finestra dei livelli spostabile · legenda]
 ```
 
-Nessun pannello copre la mappa: strumenti, schede e grafici stanno nelle sezioni a scomparsa della barra laterale. Selezionando un campo
-la mappa si centra su di esso, tutti i livelli raster sono mostrati **solo dentro il poligono** (`clip-path` CSS sul riquadro Leaflet
-`rasters`, `clip.js`) e le statistiche (media, min, max, dev. std.) sono calcolate sull'intero campo. Il pannello **Stile** (`mapstyle.js`,
-ripreso da Prognostica) offre scala di colori, inversione, minimo/massimo (predefiniti, min–max del campo, percentili 2–98 %, media ± 2 dev.
-std., manuali), classi continue / a intervalli uguali / quantili, trasparenza, colore per nessun dato, istogramma dei valori del campo e
-legenda aggiornata; lo stile di ogni livello è salvato nel browser (`localStorage`, chiave `columella.style.<id del livello>`).
-I mosaici Sentinel-2 per periodo sono colorati dal server: per loro solo scala, limiti manuali e trasparenza.
-
-Gli script sono caricati in quest'ordine da `index.html` e condividono variabili globali (`LANG`, `Live`, `Tools`, `Account`, …).
-Il suffisso `?v=NN` di ogni script obbliga i browser a ricaricarlo dopo una modifica.
+- **Campi selezionati** (`clip.js`): il clic seleziona un campo; **Ctrl/Maiusc + clic** (o "aggiungi campi") lo aggiunge con un id
+  temporaneo (C1, C2, …) e un colore. Tutti i raster sono mostrati **solo dentro i poligoni selezionati** (`clip-path` CSS sul riquadro
+  Leaflet `rasters`), il resto della mappa è velato e le statistiche usano tutti i pixel dei campi selezionati. Ogni campo tiene i suoi dati
+  (`live.js`: serie, meteo, suolo…); gli id passano da un campo all'altro senza riscaricare.
+- **Confronto tra campi**: una variabile nel tempo con una linea per id; **grafico a dispersione** dei pixel di due mappe (es. LAI contro
+  NDVI) dall'immagine Sentinel-2 serena più vicina, colorato per id, con la correlazione; tutto scaricabile in CSV.
+- **Rileva campi e colture** nell'area visibile (al massimo circa 6 × 6 km) o in un rettangolo disegnato: segmentazione + coltura
+  Copernicus per campo, campi colorati per coltura; il clic su un campo lo seleziona.
+- **Finestra dei livelli**: finestra spostabile sulla mappa con i livelli accesi (il primo è in cima); nascondi/mostra, sopra/sotto (anche
+  trascinando), togli. L'ordine vale tra i raster; il catasto resta sempre sopra.
+- **Stile** (`mapstyle.js`, ripreso da Prognostica): scala di colori, inversione, minimo/massimo (predefiniti, min–max del campo,
+  percentili 2–98 %, media ± 2 dev. std., manuali), classi continue / a intervalli uguali / quantili, trasparenza, colore per nessun dato,
+  istogramma dei valori del campo e legenda; salvato per livello nel browser (`columella.style.<id del livello>`). I mosaici Sentinel-2
+  per periodo sono colorati dal server (solo scala, limiti manuali e trasparenza).
 
 ## 2. Flusso dei dati
 
@@ -120,6 +122,16 @@ flowchart LR
 ```
 
 I valori sono sempre **medie sull'intero campo** (nuvole e ombre escluse con la classe SCL di Sentinel-2).
+
+**Resa annata per annata** (tab Campi → Servizi): per ogni annata (nov–ott) con la mappa colture Copernicus il browser legge l'NDVI
+Sentinel-2 medio del campo e la radiazione ERA5 e applica il modello di Monteith (tarato con lo stesso fattore delle province), accanto alla
+resa ISTAT della provincia per la stessa coltura e annata. **Tab Province / Regioni**: Monteith contro ISTAT per provincia
+(`data/monteith_province.json`) e per regione (province pesate sulla superficie ISTAT, nomi delle regioni da `data/province.json`).
+
+**Acqua disponibile per le piante (PAW)**: funzioni di pedotrasferimento di Saxton & Rawls (2006) (`saxtonRawls` in `croplayer.js`) da
+sabbia, argilla e sostanza organica (SOC × 1,724): capacità di campo θ33, punto di appassimento θ1500 e PAW = θ33 − θ1500 (mm per metro).
+Nella scheda suolo del campo e come livello "Acqua disponibile per le piante (PAW)", calcolato pixel per pixel nel browser dai COG
+SoilGrids (`CogLayer` con `urls` + `combine`).
 Il classificatore è addestrato offline (`13_dataset_v2.py` → `14_addestra_v2.py` → `18_modello_web.py`).
 
 ## 3. Supabase (account facoltativi)
@@ -152,16 +164,16 @@ sequenceDiagram
 | `js/i18n.js` | Testi EN/IT, nomi delle classi CORINE, catalogo "in arrivo" |
 | `js/layers.js` | Catalogo dei livelli (gruppi, URL, testi, fonti) |
 | `js/mapstyle.js` | Pannello Stile: scale, limiti, classi, istogramma, legenda, salvato per livello |
-| `js/clip.js` | Ritaglia i raster sul campo selezionato e centra la mappa sul campo |
+| `js/clip.js` | Campi selezionati (id C1, C2…, colori), raster ritagliati su di essi, resto della mappa velato |
 | `js/vendor/` | Copie locali di Leaflet, supabase-js, Chart.js, geotiff.js, proj4 (licenze in `LICENSES.md`) |
-| `js/app.js` | Mappa, mappe di base, sezioni della barra laterale, pannello livelli e stili, statistiche sul campo, legenda, clic sul punto, ricerca, lingua, URL condivisibile |
-| `js/croplayer.js` | Raster COG nel browser: Crop Types, suolo, CLMS; scale di colori |
-| `js/live.js` | Livelli Sentinel-2/1 in diretta, scheda campo: serie, coltura, suolo, resa, bilancio idrico, CSV |
+| `js/app.js` | Mappa, mappe di base, tab e sezioni della barra laterale, pannello livelli e stili, finestra dei livelli spostabile, statistiche sui campi, legenda, clic sul punto, ricerca, lingua, URL condivisibile |
+| `js/croplayer.js` | Raster COG nel browser: Crop Types, suolo, CLMS, PAW (Saxton & Rawls); scale di colori |
+| `js/live.js` | Livelli Sentinel-2/1 in diretta; dati per campo selezionato; scheda campo: serie, coltura, suolo, resa (anche annata per annata), bilancio idrico; confronto tra campi e scatter dei pixel; CSV |
 | `js/segment.js` | Divisione in campi dalla serie NDVI Sentinel-2 (riserva) |
 | `js/delineate.js` | Confini dei campi con Delineate Anything S (ONNX, AGPL-3.0, scaricato al momento dell'uso) |
 | `js/advice.js` | Avvisi agronomici per coltura dal meteo orario |
-| `js/regions.js` | Tab "Regioni": riepiloghi per regione, coltura e periodo; Monteith vs ISTAT |
-| `js/tools.js` | Disegno/caricamento di campi e mappe, esportazione area, "i miei campi", prato, benvenuto |
+| `js/regions.js` | Tab "Province" e "Regioni": Monteith contro ISTAT per provincia e regione; acqua per regione, coltura e periodo |
+| `js/tools.js` | Rilevamento di campi e colture (area visibile o disegnata), disegno/caricamento di campi e mappe, "i miei campi", prato, benvenuto |
 | `js/account.js` | Account Supabase, campi salvati, esportazione e cancellazione |
 | `supabase/schema.sql` | Tabella `campi`, regole RLS, massimo 500 campi per utente, cancellazione account, vista condivisa |
 | `pipeline/00`–`02` | Crop Types: download da CDSE, COG Italia, caricamento su HF |

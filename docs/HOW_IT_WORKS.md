@@ -36,27 +36,29 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  subgraph Sidebar["Sidebar (bottom sheet on phones)"]
-    s1[Search and fields<br/>draw · area · upload · lawn · my fields]
-    s2[Layers<br/>base maps · groups · Style per layer · clicked point]
-    s3[Indices and time series<br/>field map · charts · CSV]
-    s4[Services<br/>crop · yield · soil · carbon · alerts · regions]
-    s5[Account]
-    s6[Data · About]
+  subgraph Sidebar["Sidebar with tabs (bottom sheet on phones)"]
+    t1[Maps<br/>base maps · layers + Style · clicked point · data · about]
+    t2[Fields<br/>detect fields and crops · tools · selected fields C1, C2… ·<br/>field map · time series · compare fields · services · account]
+    t3[Provinces<br/>ISTAT vs Monteith yields]
+    t4[Regions<br/>water balance · ISTAT vs Monteith yields]
   end
-  Sidebar --- M[Large map<br/>rasters only inside the selected field<br/>legend bottom right]
+  Sidebar --- M[Large map<br/>rasters only inside the selected fields, rest dimmed<br/>movable layer window · legend]
 ```
 
-No panel covers the map: every tool, card and chart lives in a collapsible sidebar section. Selecting a field zooms to it,
-draws every raster layer **only inside the field polygon** (CSS `clip-path` on the Leaflet pane `rasters`, `clip.js`) and computes the
-field statistics (mean, min, max, std. dev.) on the whole polygon. The **Style** panel (`mapstyle.js`, ported from Prognostica) offers colour
-ramp, invert, min/max (default, field min–max, percentiles 2–98 %, mean ± 2 std. dev., manual), continuous / equal-interval / quantile
-classes, opacity, no-data colour, a histogram of the field values and a live legend; the style of each layer is saved in the browser
-(`localStorage`, key `columella.style.<layer id>`). Sentinel-2 period mosaics are coloured by the server, so they offer ramp, manual limits
-and opacity only.
-
-Scripts are loaded in this order by `index.html` and share globals (`LANG`, `Live`, `Tools`, `Account`, …).
-The `?v=NN` suffix on each script forces browsers to reload after a change.
+- **Selected fields** (`clip.js`): click selects a field; **Ctrl/Shift + click** (or "add fields") adds it with a temporary id (C1, C2, …)
+  and a colour. Every raster layer is drawn **only inside the selected polygons** (CSS `clip-path` on the Leaflet pane `rasters`), the rest
+  of the map is dimmed, and statistics use all pixels of the selected fields. Each field keeps its own data (`live.js`: series, weather,
+  soil…); the id chips switch the panel between fields without downloading again.
+- **Compare fields**: one variable over time with one line per field id; pixel **scatter plot** of two maps (e.g. LAI vs NDVI) from the
+  closest cloud-free Sentinel-2 image, coloured by field id, with correlation; both downloadable as CSV.
+- **Detect fields and crops** in the visible area (≤ about 6 × 6 km) or in a drawn rectangle: segmentation + Copernicus crop per field,
+  fields coloured by crop; clicking one selects it.
+- **Layer window**: a movable window on the map lists the layers that are on (top first); hide/show, move up/down (also drag and drop),
+  remove. The order works within the raster pane; the cadastre always stays on top.
+- **Style** (`mapstyle.js`, ported from Prognostica): colour ramp, invert, min/max (default, field min–max, percentiles 2–98 %,
+  mean ± 2 std. dev., manual), continuous / equal-interval / quantile classes, opacity, no-data colour, histogram of the field values and a
+  live legend; saved per layer in the browser (`columella.style.<layer id>`). Sentinel-2 period mosaics are coloured by the server
+  (ramp, manual limits, opacity only).
 
 ## 2. Data flow
 
@@ -120,6 +122,15 @@ flowchart LR
 ```
 
 Values are always **means over the whole field** (clouds and shadows masked with the Sentinel-2 SCL class).
+
+**Yield, season by season** (Fields tab → Services): for every season (Nov–Oct) with a Copernicus crop map, the browser reads the field-mean
+Sentinel-2 NDVI and ERA5 radiation and applies the Monteith model (calibrated with the same factor as the provinces), next to the ISTAT
+yield of the province for the same crop and year. **Provinces / Regions tabs**: Monteith vs ISTAT per province (`data/monteith_province.json`)
+and per region (provinces weighted by ISTAT area, region names from `data/province.json`).
+
+**Plant available water (PAW)**: Saxton & Rawls (2006) pedotransfer functions (`saxtonRawls` in `croplayer.js`) from sand, clay and organic
+matter (SOC × 1.724): field capacity θ33, wilting point θ1500 and PAW = θ33 − θ1500 (mm per metre). Shown in the field soil card and as the
+map layer "Plant available water (PAW)", computed pixel by pixel in the browser from the SoilGrids COGs (`CogLayer` with `urls` + `combine`).
 The crop classifier is trained offline (`13_dataset_v2.py` → `14_addestra_v2.py` → `18_modello_web.py`).
 
 ## 3. Supabase (optional accounts)
@@ -152,16 +163,16 @@ sequenceDiagram
 | `js/i18n.js` | EN/IT interface texts, CORINE class names, "coming soon" catalogue |
 | `js/layers.js` | Layer catalogue (groups, URLs, texts, sources) |
 | `js/mapstyle.js` | Style panel: ramps, limits, classes, histogram, legend, saved per layer |
-| `js/clip.js` | Clips raster layers to the selected field and zooms to it |
+| `js/clip.js` | Selected fields (ids C1, C2…, colours), rasters clipped to them, rest of the map dimmed |
 | `js/vendor/` | Local copies of Leaflet, supabase-js, Chart.js, geotiff.js, proj4 (licences in `LICENSES.md`) |
-| `js/app.js` | Map, base maps, sidebar sections, layer panel and styles, field statistics, legend, point click, search, language, shareable URL |
-| `js/croplayer.js` | COG raster layers in the browser: Crop Types, soil, CLMS; colour ramps |
-| `js/live.js` | Live Sentinel-2/1 layers, field panel: time series, crop, soil, yield, water balance, CSV |
+| `js/app.js` | Map, base maps, sidebar tabs and sections, layer panel and styles, movable layer window, field statistics, legend, point click, search, language, shareable URL |
+| `js/croplayer.js` | COG raster layers in the browser: Crop Types, soil, CLMS, PAW (Saxton & Rawls); colour ramps |
+| `js/live.js` | Live Sentinel-2/1 layers; data per selected field; field panel: time series, crop, soil, yield (also season by season), water balance; field comparison and pixel scatter; CSV |
 | `js/segment.js` | Field segmentation from the Sentinel-2 NDVI series (fallback) |
 | `js/delineate.js` | Field boundaries with Delineate Anything S (ONNX, AGPL-3.0, downloaded at use time) |
 | `js/advice.js` | Agronomic alerts per crop from hourly weather |
-| `js/regions.js` | "Regions" tab: summaries by region, crop and period; Monteith vs ISTAT |
-| `js/tools.js` | Draw/upload fields and maps, export area, "my fields", lawn tool, welcome |
+| `js/regions.js` | "Provinces" and "Regions" tabs: Monteith vs ISTAT per province and region; water by region, crop and period |
+| `js/tools.js` | Detect fields and crops (visible or drawn area), draw/upload fields and maps, "my fields", lawn tool, welcome |
 | `js/account.js` | Supabase accounts, saved fields, export and deletion |
 | `supabase/schema.sql` | Table `campi`, RLS policies, max 500 fields per user, account deletion, shared view |
 | `pipeline/00`–`02` | Crop Types: download from CDSE, Italy COG, upload to HF |
