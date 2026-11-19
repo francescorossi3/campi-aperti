@@ -1,10 +1,13 @@
 // Columella – account.js
-// IT: account utenti opzionali (Supabase Auth: email e password, conferma via email, reimpostazione password)
-//     e salvataggio dei campi dell'utente. Espone il globale Account { init, attivo, utente, onChange, list,
-//     save, remove, at } (usato da app.js e tools.js). Dipendenze: window.CAMPI_APERTI (config.js), LANG
-//     (app.js), supabase-js v2 caricato da CDN in init(), elementi .topbar e .map-wrap, privacy.html.
-// EN: optional user accounts (Supabase Auth) and per-user saved fields. Exposes Account; needs config.js,
-//     LANG and supabase-js (loaded from CDN). Disabled when config.js is empty.
+// IT: account utenti opzionali (Supabase Auth: email e password, conferma via email, reimpostazione password),
+//     salvataggio dei campi dell'utente e mappe pubbliche: gli "editori" (utenti con permesso speciale, tabella
+//     editori gestita dal pannello Supabase) caricano mappe nel bucket pubblico "mappe", visibili a tutti.
+//     Espone il globale Account { init, render, attivo, utente, onChange, list, save, remove, at, isEditor,
+//     publicMaps, publishMap, unpublishMap } (usato da app.js e tools.js). Dipendenze: window.CAMPI_APERTI
+//     (config.js), LANG (app.js), supabase-js v2 (copia locale js/vendor/supabase.js caricata in init()),
+//     elementi .topbar e #accountBox, privacy.html.
+// EN: optional user accounts (Supabase Auth), per-user saved fields and public maps uploaded by editors.
+//     Disabled when config.js is empty.
 //
 // Le password non passano mai dal nostro codice verso altri servizi: le gestisce Supabase (hash bcrypt, HTTPS).
 // I campi salvati stanno nella tabella "campi" protetta da Row Level Security (ognuno vede solo i propri).
@@ -129,6 +132,7 @@ const Account = (() => {
       };
       el.querySelector("#acDel").onclick = async () => {
         if (!confirm(at("del_q"))) return;
+        await removeMyMapFiles().catch(() => {});        // i file delle mappe pubbliche non si cancellano a cascata
         const { error } = await sb.rpc("elimina_il_mio_account");
         if (error) return msg(at("err", { m: error.message }));
         await sb.auth.signOut(); msg(at("deleted"));
@@ -160,5 +164,46 @@ const Account = (() => {
     const { error } = await sb.from("campi").delete().eq("id", id);
     if (error) throw error;
   }
-  return { init, render: () => panel(user ? "me" : "login"), attivo: () => attivo, utente: () => user, onChange: (f) => listeners.push(f), list, save, remove, at };
+  // ---- mappe pubbliche: chiunque le vede, solo gli editori (tabella editori, gestita dal pannello Supabase) le pubblicano
+  const MAX_MB = 50;
+  async function isEditor() {
+    if (!sb || !user) return false;
+    const { data } = await sb.rpc("sono_editore");
+    return data === true;
+  }
+  async function publicMaps() {
+    if (!sb) return [];
+    const { data, error } = await sb.from("mappe_pubbliche").select("id,user_id,titolo,descrizione,fonte,licenza,percorso,tipo,bbox,creato").order("creato", { ascending: false });
+    if (error) throw error;
+    return data.map((r) => ({ ...r, url: sb.storage.from("mappe").getPublicUrl(r.percorso).data.publicUrl, mine: !!user && r.user_id === user.id }));
+  }
+  // carica il file nella cartella dell'editore e registra la mappa; meta = { titolo, descrizione, fonte, licenza, bbox }
+  async function publishMap(file, meta) {
+    if (!sb || !user) throw new Error(at("err", { m: "login" }));
+    if (file.size > MAX_MB * 1e6) throw new Error(`> ${MAX_MB} MB`);
+    const low = file.name.toLowerCase();
+    const tipo = /\.(tif|tiff|geotiff)$/.test(low) ? "geotiff" : /\.kml$/.test(low) ? "kml" : /\.(geo)?json$/.test(low) ? "geojson" : null;
+    if (!tipo) throw new Error("GeoTIFF / GeoJSON / KML");
+    const type = { geotiff: "image/tiff", geojson: "application/geo+json", kml: "application/vnd.google-earth.kml+xml" }[tipo];
+    const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
+    const percorso = `${user.id}/${Date.now()}_${safe}`;
+    const up = await sb.storage.from("mappe").upload(percorso, file, { contentType: type, upsert: false });
+    if (up.error) throw up.error;
+    const { error } = await sb.from("mappe_pubbliche").insert({ titolo: meta.titolo, descrizione: meta.descrizione || null, fonte: meta.fonte || null,
+      licenza: meta.licenza, percorso, tipo, bbox: meta.bbox || null });
+    if (error) { await sb.storage.from("mappe").remove([percorso]); throw error; }
+  }
+  async function unpublishMap(row) {
+    if (!sb || !user) return;
+    const { error } = await sb.from("mappe_pubbliche").delete().eq("id", row.id);
+    if (error) throw error;
+    await sb.storage.from("mappe").remove([row.percorso]);
+  }
+  async function removeMyMapFiles() {
+    if (!sb || !user) return;
+    const { data } = await sb.storage.from("mappe").list(user.id, { limit: 1000 });
+    if (data && data.length) await sb.storage.from("mappe").remove(data.map((f) => `${user.id}/${f.name}`));
+  }
+  return { init, render: () => panel(user ? "me" : "login"), attivo: () => attivo, utente: () => user, onChange: (f) => listeners.push(f), list, save, remove, at,
+    isEditor, publicMaps, publishMap, unpublishMap };
 })();
