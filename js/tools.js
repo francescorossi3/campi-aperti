@@ -43,6 +43,7 @@ const Tools = (() => {
       pm_src: "Fonte / autori", pm_lic: "Licenza", pm_go: "Pubblica per tutti", pm_busy: "Carico…", pm_ok: "Mappa pubblicata.", pm_err: "Pubblicazione non riuscita: {e}",
       pm_need: "Servono file, titolo e licenza.", pm_note: "Le mappe pubbliche sono visibili a chiunque, con titolo, fonte e licenza. Pubblica solo dati che hai il diritto di condividere.",
       pm_loaded: "Mappa aperta: la trovi sulla mappa e in Campi → Le mie mappe per lo stile.",
+      pm_make: "Rendi permanente (pubblica)",
       u_title: "Le mie mappe", u_hint: "GeoTIFF (anche PRISMA, EnMAP, droni, mappe di prescrizione), GeoJSON o KML. Il file resta sul tuo computer: non viene caricato su nessun server.",
       u_band: "Banda", u_rgb: "Composizione RGB (R, G, B)", u_cmap: "Scala colori", u_min: "Min", u_max: "Max", u_auto: "Automatico (2–98%)",
       u_op: "Trasparenza", u_name: "Titolo legenda", u_unit: "Unità", u_classes: "Classi (una per riga: valore o min-max = colore = etichetta)",
@@ -94,6 +95,7 @@ const Tools = (() => {
       pm_src: "Source / authors", pm_lic: "Licence", pm_go: "Publish for everyone", pm_busy: "Uploading…", pm_ok: "Map published.", pm_err: "Publishing failed: {e}",
       pm_need: "File, title and licence are required.", pm_note: "Public maps are visible to anyone, with title, source and licence. Only publish data you have the right to share.",
       pm_loaded: "Map opened: it is on the map and in Fields → My maps for styling.",
+      pm_make: "Make permanent (publish)",
       u_title: "My maps", u_hint: "GeoTIFF (including PRISMA, EnMAP, drones, prescription maps), GeoJSON or KML. The file stays on your computer: it is not uploaded to any server.",
       u_band: "Band", u_rgb: "RGB composite (R, G, B)", u_cmap: "Colour scale", u_min: "Min", u_max: "Max", u_auto: "Automatic (2–98%)",
       u_op: "Opacity", u_name: "Legend title", u_unit: "Unit", u_classes: "Classes (one per line: value or min-max = colour = label)",
@@ -464,20 +466,20 @@ const Tools = (() => {
     const box = document.getElementById("communityBox");
     if (!box) return;
     if (typeof Account === "undefined" || !Account.attivo()) { box.innerHTML = `<p class="hint small">${tt("pm_off")}</p>`; return; }
-    let rows = [], editor = false;
-    try { [rows, editor] = await Promise.all([Account.publicMaps(), Account.isEditor()]); } catch (e) { box.innerHTML = `<p class="hint small">${esc(e.message || e)}</p>`; return; }
+    let rows = [];
+    try { [rows] = await Promise.all([Account.publicMaps(), checkEditor()]); } catch (e) { box.innerHTML = `<p class="hint small">${esc(e.message || e)}</p>`; return; }
     box.innerHTML = (rows.length ? `<ul class="pm-list">${rows.map((r, i) => `<li>
         <b>${esc(r.titolo)}</b> <small>${esc(r.tipo)} · ${esc(r.licenza)}${r.fonte ? " · " + esc(r.fonte) : ""}</small>
         ${r.descrizione ? `<div class="hint small">${esc(r.descrizione)}</div>` : ""}
         <div class="tc-actions"><button class="small-btn" data-show="${i}">${tt("pm_show")}</button>
           ${r.mine ? `<button class="small-btn danger" data-del="${i}">${tt("pm_del")}</button>` : ""}</div></li>`).join("")}</ul>`
       : `<p class="hint small">${tt("pm_none")}</p>`) +
-      (editor ? `<details class="pm-form"><summary>${tt("pm_pub")}</summary>
-        <label>${tt("pm_file")} <input type="file" id="pmFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml"></label>
-        <label>${tt("pm_title")} <input id="pmTitle" maxlength="120"></label>
+      (editor ? `<details class="pm-form"${pendingMap ? " open" : ""}><summary>${tt("pm_pub")}</summary>
+        ${pendingMap ? `<p><b>${tt("pm_file")}:</b> ${esc(pendingMap.name)}</p>` : `<label>${tt("pm_file")} <input type="file" id="pmFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml"></label>`}
+        <label>${tt("pm_title")} <input id="pmTitle" maxlength="120" value="${pendingMap ? esc(pendingMap.name.replace(/\.[^.]+$/, "")) : ""}"></label>
         <label>${tt("pm_desc")} <textarea id="pmDesc" rows="3" maxlength="2000"></textarea></label>
         <label>${tt("pm_src")} <input id="pmSrc" maxlength="300"></label>
-        <label>${tt("pm_lic")} <select id="pmLic">${LICENZE.map((l) => `<option>${l}</option>`).join("")}</select></label>
+        <label>${tt("pm_lic")} <select id="pmLic">${LICENZE.map((l) => `<option${l === "CC BY-NC 4.0" ? " selected" : ""}>${l}</option>`).join("")}</select></label>
         <button class="btn-primary" id="pmGo">${tt("pm_go")}</button> <span class="hint small" id="pmMsg"></span>
         <p class="hint small">${tt("pm_note")}</p></details>` : "");
     box.querySelectorAll("[data-show]").forEach((b) => (b.onclick = async () => {
@@ -498,19 +500,21 @@ const Tools = (() => {
     }));
     const go = box.querySelector("#pmGo");
     if (go) go.onclick = async () => {
-      const file = box.querySelector("#pmFile").files[0], titolo = box.querySelector("#pmTitle").value.trim(), msg = box.querySelector("#pmMsg");
+      const pick = box.querySelector("#pmFile"), file = pendingMap ? pendingMap.file : pick && pick.files[0];
+      const titolo = box.querySelector("#pmTitle").value.trim(), msg = box.querySelector("#pmMsg");
       if (!file || !titolo) { msg.textContent = tt("pm_need"); return; }
       go.disabled = true; msg.textContent = tt("pm_busy");
       try {
-        // apre la mappa nel browser per controllarla e ricavarne il riquadro geografico
-        silent = true;
-        await loadFile(file);
-        silent = false;
-        const m = userMaps[userMaps.length - 1], b = m && (m.kind === "vector" ? m.layer.getBounds() : L.latLngBounds(m.bounds));
+        // la mappa va aperta nel browser per controllarla e ricavarne il riquadro geografico
+        let m = pendingMap;
+        if (!m) { silent = true; await loadFile(file); silent = false; m = userMaps[userMaps.length - 1]; }
+        const b = m && (m.kind === "vector" ? m.layer.getBounds() : L.latLngBounds(m.bounds));
         const bbox = b && b.isValid() ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((x) => +x.toFixed(6)) : null;
         await Account.publishMap(file, { titolo, descrizione: box.querySelector("#pmDesc").value.trim(), fonte: box.querySelector("#pmSrc").value.trim(),
           licenza: box.querySelector("#pmLic").value, bbox });
         msg.textContent = tt("pm_ok");
+        if (m) m.permanent = true;
+        pendingMap = null;
         renderCommunity();
       } catch (e) { silent = false; msg.textContent = tt("pm_err", { e: esc(e.message || e) }); go.disabled = false; }
     };
@@ -575,6 +579,7 @@ const Tools = (() => {
       if (/\.(geo)?json$/.test(low)) addVector(name, JSON.parse(await file.text()));
       else if (/\.kml$/.test(low)) addVector(name, kmlToGeoJSON(await file.text()));
       else await addRaster(name, file);
+      userMaps[userMaps.length - 1].file = file;            // per "Rendi permanente"
     } catch (e) {
       panelEl.querySelector(".tc-body").innerHTML = `<p class="hint">${tt("u_err", { e: esc(e.message || e) })}</p>`;
       return;
@@ -739,11 +744,18 @@ const Tools = (() => {
         : `<span class="ul-bar" style="background:linear-gradient(90deg,${m.legend.ramp.join(",")})"></span><span class="ul-lim"><span>${fmt(m.legend.min)}</span><span>${fmt(m.legend.max)}</span></span>`) + `</div>`).join("");
     box.hidden = !box.innerHTML;
   }
+  // editore (o proprietario): può rendere permanenti le mappe caricate, cioè pubblicarle per tutti
+  let editor = false, pendingMap = null;
+  const checkEditor = async () => {
+    const was = editor;
+    editor = typeof Account !== "undefined" && Account.attivo() ? await Account.isEditor().catch(() => false) : false;
+    if (was !== editor && document.getElementById("toolMaps")) { silent = true; renderMaps(); silent = false; }
+  };
   function renderMaps() {
     const el = card("toolMaps", tt("u_title"), `
       <p class="hint small">${tt("u_hint")}</p>
       <label class="file-drop"><input type="file" id="umFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml" multiple> 📂 ${tt("upload")}</label>
-      <div id="umList">${userMaps.map((m, i) => m.kind === "vector" ? `<div class="um"><b>${esc(m.name)}</b> <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button></div>` : `
+      <div id="umList">${userMaps.map((m, i) => m.kind === "vector" ? `<div class="um"><b>${esc(m.name)}</b> <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>${editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : ""}</div>` : `
         <div class="um" data-i="${i}"><b>${esc(m.name)}</b> <small>${m.W}×${m.H} px · ${m.nb} ${LANG === "it" ? "bande" : "bands"} · ${esc(m.crs)}</small>
           <div class="um-grid">
             ${m.nb >= 3 ? `<label><input type="radio" name="md${i}" value="rgb" ${m.cfg.mode === "rgb" ? "checked" : ""}> ${tt("u_rgb")}
@@ -760,9 +772,10 @@ const Tools = (() => {
             <label>${tt("u_unit")} <input class="um-unit" value="${esc(m.cfg.unit)}"></label>
             <label class="wide" ${m.cfg.cmap === "classes" ? "" : "hidden"}>${tt("u_classes")}<textarea class="um-cls" rows="4" placeholder="0-0.3 = #d73027 = basso&#10;0.3-0.6 = #fee08b = medio&#10;0.6-1 = #1a9850 = alto">${esc(m.cfg.classes)}</textarea></label>
           </div>
-          <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>
+          <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>${editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : ""}
         </div>`).join("")}</div>`);
     el.querySelector("#umFile").onchange = (e) => [...e.target.files].forEach(loadFile);
+    el.querySelectorAll("[data-perm]").forEach((b) => (b.onclick = () => { pendingMap = userMaps[+b.dataset.perm]; openSection("community"); renderCommunity(); }));
     el.querySelectorAll("[data-z]").forEach((b) => (b.onclick = () => { const m = userMaps[+b.dataset.z]; map.fitBounds(m.kind === "vector" ? m.layer.getBounds() : m.bounds); }));
     el.querySelectorAll("[data-x]").forEach((b) => (b.onclick = () => { const m = userMaps.splice(+b.dataset.x, 1)[0]; map.removeLayer(m.layer); drawLegend(); renderMaps(); }));
     el.querySelectorAll(".um[data-i]").forEach((box) => {
