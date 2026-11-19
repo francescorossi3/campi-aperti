@@ -104,7 +104,7 @@ async def main():
         await pg.screenshot(path=os.path.join(OUT, "browser_rilevamento.png"))
         # PAW, finestra dei livelli, province e regioni
         await pg.evaluate("window.__prima = 1")
-        for passo in ["document.getElementById('chk_so_paw').click()", "toggleLayerWin(true)", "map.setView([45.25, 9.55], 11)"]:
+        for passo in ["document.getElementById('chk_so_paw').click()", "toggleLayerWin(true)", "map.setView([45.25, 9.55], 11); 0"]:
             try: await pg.evaluate(passo); await pg.wait_for_timeout(4000)
             except Exception as e: print("passo non riuscito:", passo, str(e)[:120])
             print("dopo", passo, "-> pagina ricaricata:", await pg.evaluate("!window.__prima"))
@@ -119,18 +119,18 @@ async def main():
         # mappe del suolo
         for lay in ["so_tessitura", "so_stock_soc"]:
             await pg.evaluate(f"document.getElementById('chk_{lay}').click()"); await pg.wait_for_timeout(500)
-            await pg.evaluate("map.setView([42.0, 12.6], 9)"); await pg.wait_for_timeout(12000)
+            await pg.evaluate("map.setView([42.0, 12.6], 9); 0"); await pg.wait_for_timeout(12000)
             await pg.screenshot(path=os.path.join(OUT, f"browser_{lay}.png"))
             await pg.evaluate(f"document.getElementById('chk_{lay}').click()"); await pg.wait_for_timeout(500)
         # layer Copernicus LAI sulla mappa
         await pg.evaluate("document.getElementById('chk_cl_lai').click()"); await pg.wait_for_timeout(1000)
-        await pg.evaluate("map.setView([43.5, 12.5], 8)"); await pg.wait_for_timeout(12000)
+        await pg.evaluate("map.setView([43.5, 12.5], 8); 0"); await pg.wait_for_timeout(12000)
         await pg.screenshot(path=os.path.join(OUT, "browser_copernicus_lai.png"))
         # dove sta "Località Strada" (Camerino)?
         rep["strada"] = await pg.evaluate("fetch('https://photon.komoot.io/api/?q=Strada&osm_tag=place&lat=43.13&lon=13.06&limit=3').then(r=>r.json()).then(j=>j.features.map(f=>[f.properties.name,f.properties.city||f.properties.county,f.geometry.coordinates]))")
         print("strada", rep["strada"])
         # ricerca luoghi (mappa centrata vicino a Macerata)
-        await pg.evaluate("map.setView([43.07, 13.11], 13)"); await pg.wait_for_timeout(1500)
+        await pg.evaluate("map.setView([43.07, 13.11], 13); 0"); await pg.wait_for_timeout(1500)
         for q in ["maceratta", "Località Strada", "Strada", "Muccia", "41.86, 12.23", "Sant Angelo Lodigiano"]:
             await pg.fill("#searchInput", q); await pg.wait_for_timeout(2500)
             rep["ricerca " + q] = (await pg.locator("#searchResults").inner_text())[:300]
