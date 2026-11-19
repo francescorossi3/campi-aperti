@@ -1,12 +1,12 @@
 // Columella – regions.js
-// IT: tab "Regioni" con due viste: (1) acqua per regione, coltura e periodo da data/riepiloghi.json,
-//     prodotto ogni giorno dalla GitHub Action "Meteo e riepiloghi regionali" (superfici: Copernicus HRL
-//     Crop Types; pioggia ed ET0: ERA5; ET coltura: Kc FAO-56 × ET0); (2) rese per provincia, ISTAT contro
-//     modello di Monteith, da data/monteith_province.json.
-//     Espone il globale Regions { show, render, taratura } (usato da app.js e live.js).
-//     Dipendenze: LANG (app.js), Chart.js (js/vendor), elemento #regionsPanel.
-// EN: "Regions" tab: water balance by region/crop/period and province yields (ISTAT vs Monteith model).
-//     Exposes Regions { show, render, taratura }; needs LANG, Chart.js and #regionsPanel.
+// IT: tab "Province" e "Regioni".
+//     Province (#provPanel): rese per provincia, ISTAT contro modello di Monteith (data/monteith_province.json).
+//     Regioni (#regionsPanel): due viste: (1) acqua per regione, coltura e periodo da data/riepiloghi.json
+//     (superfici Copernicus HRL Crop Types; pioggia ed ET0 ERA5; ET coltura Kc FAO-56 × ET0); (2) rese per regione,
+//     ISTAT contro Monteith, aggregando le province (medie pesate sulla superficie ISTAT; regione da data/province.json).
+//     Espone il globale Regions { showProvince, showRegions, render, taratura } (usato da app.js e live.js).
+//     Dipendenze: LANG (app.js), Chart.js (js/vendor), elementi #provPanel e #regionsPanel.
+// EN: "Provinces" and "Regions" tabs: province and region yields (ISTAT vs Monteith) and regional water balance.
 
 const Regions = (() => {
   const RT = {
@@ -27,8 +27,10 @@ const Regions = (() => {
       rain: "Pioggia (mm)", etc: "ET coltura FAO-56 (mm)", et0: "ET0 (mm)", eta: "ET reale Copernicus (mm)",
       note: "Superfici: Copernicus HRL Croplands – Crop Types (10 m). Pioggia ed ET0: ERA5 (Copernicus C3S) via Open-Meteo, media pesata sulle superfici della coltura. ET coltura FAO-56 = Kc mensile × ET0 (stima da tabelle). ET reale Copernicus: CLMS Evapotranspiration 300 m da Sentinel-3 (modello ensemble TSEB-PT + ETLook), misura da satellite, dal novembre 2025. Le due fonti sono indipendenti: il confronto mostra quanto la coltura consuma davvero rispetto al fabbisogno teorico.",
       upd: "Aggiornato",
-      v_acqua: "Acqua per regione", v_rese: "Rese per provincia: ISTAT e modello",
-      prov: "Provincia", all_prov: "Tutte le province",
+      v_acqua: "Acqua per regione", v_rese: "Rese per regione: ISTAT e modello",
+      prov: "Provincia", all_prov: "Tutte le province", reg: "Regione",
+      sc_rr: "Tutte le regioni, annata {y}: ISTAT (verticale) e modello tarato (orizzontale)",
+      reg_note: "Resa regionale = media delle province pesata sulla superficie ISTAT della coltura (solo province con dati ISTAT e del modello).",
       th_r: ["Annata", "ISTAT (t/ha)", "Modello (t/ha)", "Modello tarato (t/ha)", "Scarto", "Superficie ISTAT (ha)", "Pixel 200 m usati"],
       ch_r: "Resa per annata: ISTAT e modello di Monteith (tarato)",
       sc_r: "Tutte le province, annata {y}: ISTAT (verticale) e modello tarato (orizzontale)",
@@ -54,8 +56,10 @@ const Regions = (() => {
       rain: "Rain (mm)", etc: "Crop ET FAO-56 (mm)", et0: "ET0 (mm)", eta: "Actual ET Copernicus (mm)",
       note: "Areas: Copernicus HRL Croplands – Crop Types (10 m). Rain and ET0: ERA5 (Copernicus C3S) via Open-Meteo, weighted by crop area. FAO-56 crop ET = monthly Kc × ET0 (table-based estimate). Copernicus actual ET: CLMS Evapotranspiration 300 m from Sentinel-3 (TSEB-PT + ETLook ensemble), satellite-based, from November 2025. The two sources are independent: comparing them shows actual crop water use versus theoretical demand.",
       upd: "Updated",
-      v_acqua: "Water by region", v_rese: "Yields by province: ISTAT and model",
-      prov: "Province", all_prov: "All provinces",
+      v_acqua: "Water by region", v_rese: "Yields by region: ISTAT and model",
+      prov: "Province", all_prov: "All provinces", reg: "Region",
+      sc_rr: "All regions, season {y}: ISTAT (vertical) vs calibrated model (horizontal)",
+      reg_note: "Regional yield = mean of the provinces weighted by the ISTAT crop area (only provinces with both ISTAT and model data).",
       th_r: ["Season", "ISTAT (t/ha)", "Model (t/ha)", "Calibrated model (t/ha)", "Difference", "ISTAT area (ha)", "200 m pixels used"],
       ch_r: "Yield by season: ISTAT and Monteith model (calibrated)",
       sc_r: "All provinces, season {y}: ISTAT (vertical) vs calibrated model (horizontal)",
@@ -70,10 +74,11 @@ const Regions = (() => {
   const opt = (v, l, s) => `<option value="${v}" ${v == s ? "selected" : ""}>${l}</option>`;
   const seasonLabel = (y) => `${y - 1}/${String(y).slice(2)}`;   // annata agraria, es. 2024 -> "2023/24"
 
-  // D/rows: riepiloghi regionali; M: rese per provincia; chart/chart2: grafici Chart.js attivi
-  let D = null, rows = null, loaded = false, chart = null;
-  let M = null, mLoaded = false, chart2 = null;
-  const sel = { regione: "Italia", classe: "all", anno: null, periodo: "q1", vista: "acqua", prov: null, rcl: 1, ranno: null };
+  // D/rows: riepiloghi regionali; M: rese per provincia (M.rows) e per regione (M.regRows); charts: grafici Chart.js attivi
+  let D = null, rows = null, loaded = false;
+  let M = null, mLoaded = false;
+  const charts = {};                 // grafici Chart.js attivi per riquadro
+  const sel = { regione: "Italia", classe: "all", anno: null, periodo: "q1", vista: "acqua", rcl: 1, ranno: null, pick: { prov: null, reg: null } };
 
   // ---------- Vista "rese per provincia" ----------
   async function loadM() {
@@ -84,8 +89,19 @@ const Regions = (() => {
       if (!r.ok) throw new Error(r.status);
       M = await r.json();
       const ix = Object.fromEntries(M.colonne.map((c, i) => [c, i]));
-      M.rows = M.righe.map((r) => ({ prov: r[ix.provincia], cl: r[ix.classe], y: r[ix.anno], mod: r[ix.modello], ist: r[ix.istat], ha: r[ix.ha_istat], px: r[ix.pixel] }));
+      M.rows = M.righe.map((r) => ({ prov: r[ix.provincia], nuts: r[ix.nuts], cl: r[ix.classe], y: r[ix.anno], mod: r[ix.modello], ist: r[ix.istat], ha: r[ix.ha_istat], px: r[ix.pixel] }));
       sel.ranno = Math.max(...M.rows.filter((r) => r.ist != null).map((r) => r.y));
+      // regioni: medie delle province pesate sulla superficie ISTAT (nome della regione da data/province.json)
+      const P = await fetch("data/province.json").then((r) => r.json()).catch(() => null);
+      const regOf = Object.fromEntries(((P && P.features) || []).map((f) => [f.properties.nuts, f.properties.reg_name]));
+      const g = {};
+      M.rows.forEach((r) => {
+        const reg = regOf[r.nuts];
+        if (!reg || r.ist == null || r.mod == null || !r.ha) return;
+        const o = g[reg + "|" + r.cl + "|" + r.y] || (g[reg + "|" + r.cl + "|" + r.y] = { prov: reg, cl: r.cl, y: r.y, si: 0, sm: 0, ha: 0, px: 0 });
+        o.si += r.ist * r.ha; o.sm += r.mod * r.ha; o.ha += r.ha; o.px += r.px;
+      });
+      M.regRows = Object.values(g).map((o) => ({ prov: o.prov, cl: o.cl, y: o.y, ist: o.si / o.ha, mod: o.sm / o.ha, ha: o.ha, px: o.px }));
     } catch (e) { M = null; }
     return M;
   }
@@ -97,21 +113,26 @@ const Regions = (() => {
       `<button class="seg ${sel.vista === "rese" ? "active" : ""}" data-v="rese">${rt("v_rese")}</button></div>`;
   }
   function bindViews() {
-    document.querySelectorAll(".reg-views .seg").forEach((b) => (b.onclick = async () => { sel.vista = b.dataset.v; await show(); }));
+    document.querySelectorAll(".reg-views .seg").forEach((b) => (b.onclick = async () => { sel.vista = b.dataset.v; await showRegions(); }));
   }
-  function renderRese() {
-    const box = document.getElementById("regionsPanel");
-    if (!M) { box.innerHTML = viewTabs() + `<p class="hint">${rt("r_missing")}</p>`; bindViews(); return; }
+  // rese ISTAT contro modello di Monteith per provincia (level "prov", tab Province) o per regione (level "reg", tab Regioni)
+  function renderRese(level) {
+    const isReg = level === "reg", box = document.getElementById(isReg ? "regionsPanel" : "provPanel");
+    if (!box) return;
+    const head = isReg ? viewTabs() : "";
+    if (!M) { box.innerHTML = head + `<p class="hint">${rt("r_missing")}</p>`; if (isReg) bindViews(); return; }
+    const ROWS = isReg ? M.regRows : M.rows, P = isReg ? "Rr" : "Rp";
     const fat = (c) => (M.taratura[c] ? M.taratura[c].fattore : 1);
-    const provs = [...new Set(M.rows.map((r) => r.prov))].sort();
-    const cls = [...new Set(M.rows.map((r) => r.cl))].sort((a, b) => a - b);
+    const provs = [...new Set(ROWS.map((r) => r.prov))].sort();
+    const cls = [...new Set(ROWS.map((r) => r.cl))].sort((a, b) => a - b);
     if (!cls.includes(sel.rcl)) sel.rcl = cls[0];
-    if (!sel.prov || !provs.includes(sel.prov)) {
-      const cnt = {}; M.rows.forEach((r) => { if (r.cl === sel.rcl && r.ist != null) cnt[r.prov] = (cnt[r.prov] || 0) + (r.ha || 0); });
-      sel.prov = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || provs[0];
+    let cur = sel.pick[level];
+    if (!cur || !provs.includes(cur)) {
+      const cnt = {}; ROWS.forEach((r) => { if (r.cl === sel.rcl && r.ist != null) cnt[r.prov] = (cnt[r.prov] || 0) + (r.ha || 0); });
+      cur = sel.pick[level] = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || provs[0];
     }
-    const anni = [...new Set(M.rows.map((r) => r.y))].sort((a, b) => b - a);
-    const mine = M.rows.filter((r) => r.prov === sel.prov && r.cl === sel.rcl).sort((a, b) => a.y - b.y);
+    const anni = [...new Set(ROWS.map((r) => r.y))].sort((a, b) => b - a);
+    const mine = ROWS.filter((r) => r.prov === cur && r.cl === sel.rcl).sort((a, b) => a.y - b.y);
     const f = fat(sel.rcl), T = M.taratura[sel.rcl];
     const f2 = (x) => (x == null ? "—" : f1(x));
     const righe = mine.map((r) => {
@@ -126,24 +147,23 @@ const Regions = (() => {
       return `<tr><td>${seasonLabel(r.y)}</td><td>${f2(r.ist)}</td><td>${f2(r.mod)}</td><td><b>${f2(t)}</b></td>` +
         `<td class="${scClass}">${scText}</td><td>${r.ha ? Math.round(r.ha).toLocaleString() : "—"}</td><td>${r.px}</td></tr>`;
     }).join("");
-    box.innerHTML = viewTabs() + `
+    box.innerHTML = head + `
       <div class="reg-form">
-        <label>${rt("prov")}<select id="rpP">${provs.map((p) => opt(p, p, sel.prov)).join("")}</select></label>
-        <label>${rt("crop")}<select id="rpC">${cls.map((c) => opt(c, clName(c), sel.rcl)).join("")}</select></label>
-        <label>${rt("year")} (${LANG === "it" ? "grafico province" : "province chart"})<select id="rpY">${anni.map((y) => opt(y, y, sel.ranno)).join("")}</select></label>
+        <label>${rt(isReg ? "reg" : "prov")}<select id="${P}P">${provs.map((p) => opt(p, p, cur)).join("")}</select></label>
+        <label>${rt("crop")}<select id="${P}C">${cls.map((c) => opt(c, clName(c), sel.rcl)).join("")}</select></label>
+        <label>${rt("year")} (${LANG === "it" ? "grafico a dispersione" : "scatter chart"})<select id="${P}Y">${anni.map((y) => opt(y, y, sel.ranno)).join("")}</select></label>
       </div>
       ${T ? `<p class="reg-sentence">${rt("tar").replace("{c}", clName(sel.rcl).toLowerCase()).replace("{f}", T.fattore.toFixed(2)).replace("{n}", T.n).replace("{r2}", T.r2.toFixed(2)).replace("{e}", Math.round(T.errore_rel_tarato * 100))}</p>` : ""}
       <div class="reg-table-wrap"><table class="reg-table"><thead><tr>${rt("th_r").map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${righe}</tbody></table></div>
-      <figure class="reg-fig"><figcaption>${rt("ch_r")}</figcaption><div class="cbox"><canvas id="rpChart"></canvas></div></figure>
-      <figure class="reg-fig"><figcaption>${rt("sc_r").replace("{y}", seasonLabel(sel.ranno))}</figcaption><div class="cbox"><canvas id="rpScatter"></canvas></div></figure>
-      <p class="hint small">${rt("r_note")} ${rt("upd")}: ${new Date(M.generato).toLocaleDateString(locale())}.</p>`;
-    bindViews();
-    document.getElementById("rpP").onchange = (e) => { sel.prov = e.target.value; renderRese(); };
-    document.getElementById("rpC").onchange = (e) => { sel.rcl = +e.target.value; sel.prov = null; renderRese(); };
-    document.getElementById("rpY").onchange = (e) => { sel.ranno = +e.target.value; renderRese(); };
-    if (chart) { chart.destroy(); chart = null; }
-    if (chart2) { chart2.destroy(); chart2 = null; }
-    chart = new Chart(document.getElementById("rpChart"), {
+      <figure class="reg-fig"><figcaption>${rt("ch_r")}</figcaption><div class="cbox"><canvas id="${P}Chart"></canvas></div></figure>
+      <figure class="reg-fig"><figcaption>${rt(isReg ? "sc_rr" : "sc_r").replace("{y}", seasonLabel(sel.ranno))}</figcaption><div class="cbox"><canvas id="${P}Scatter"></canvas></div></figure>
+      <p class="hint small">${rt("r_note")}${isReg ? " " + rt("reg_note") : ""} ${rt("upd")}: ${new Date(M.generato).toLocaleDateString(locale())}.</p>`;
+    if (isReg) bindViews();
+    document.getElementById(P + "P").onchange = (e) => { sel.pick[level] = e.target.value; renderRese(level); };
+    document.getElementById(P + "C").onchange = (e) => { sel.rcl = +e.target.value; sel.pick[level] = null; renderRese(level); };
+    document.getElementById(P + "Y").onchange = (e) => { sel.ranno = +e.target.value; renderRese(level); };
+    [P + "1", P + "2"].forEach((k) => { if (charts[k]) { charts[k].destroy(); delete charts[k]; } });
+    charts[P + "1"] = new Chart(document.getElementById(P + "Chart"), {
       type: "line",
       data: { labels: mine.map((r) => seasonLabel(r.y)), datasets: [
         { label: rt("istat"), data: mine.map((r) => r.ist), borderColor: "#2b6cb0", backgroundColor: "#2b6cb0", tension: 0.2 },
@@ -153,18 +173,18 @@ const Regions = (() => {
       options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
         scales: { y: { title: { display: true, text: "t/ha" }, beginAtZero: true } } },
     });
-    const pts = M.rows.filter((r) => r.cl === sel.rcl && r.y === sel.ranno && r.ist != null);
+    const pts = ROWS.filter((r) => r.cl === sel.rcl && r.y === sel.ranno && r.ist != null);
     const mx = Math.max(1, ...pts.map((r) => Math.max(r.ist, r.mod * f))) * 1.1;
-    chart2 = new Chart(document.getElementById("rpScatter"), {
+    charts[P + "2"] = new Chart(document.getElementById(P + "Scatter"), {
       type: "scatter",
       data: { datasets: [
-        { label: rt("prov"), data: pts.map((r) => ({ x: r.mod * f, y: r.ist, p: r.prov })), backgroundColor: pts.map((r) => (r.prov === sel.prov ? "#d0572b" : "#2f8f3a99")),
-          pointRadius: pts.map((r) => (r.prov === sel.prov ? 6 : 3.5)) },
+        { label: rt(isReg ? "reg" : "prov"), data: pts.map((r) => ({ x: r.mod * f, y: r.ist, p: r.prov })), backgroundColor: pts.map((r) => (r.prov === cur ? "#d0572b" : "#2f8f3a99")),
+          pointRadius: pts.map((r) => (r.prov === cur ? 6 : 3.5)) },
         { type: "line", label: "1:1", data: [{ x: 0, y: 0 }, { x: mx, y: mx }], borderColor: "#999", borderDash: [4, 3], pointRadius: 0 },
       ] },
       options: { responsive: true, maintainAspectRatio: false, animation: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.raw.p ? `${c.raw.p}: ISTAT ${c.raw.y.toFixed(1)} · mod. ${c.raw.x.toFixed(1)} t/ha` : "" } } },
-        onClick: (e, els) => { const el = els.find((x) => x.datasetIndex === 0); if (el) { sel.prov = pts[el.index].prov; renderRese(); } },
+        onClick: (e, els) => { const el = els.find((x) => x.datasetIndex === 0); if (el) { sel.pick[level] = pts[el.index].prov; renderRese(level); } },
         scales: { x: { min: 0, max: mx, title: { display: true, text: rt("mod") + " (t/ha)" } }, y: { min: 0, max: mx, title: { display: true, text: "ISTAT (t/ha)" } } } },
     });
   }
@@ -270,8 +290,8 @@ const Regions = (() => {
         eta: hae ? he.reduce((a, r) => a + r.eta * r.ha, 0) / hae : null,
         etc: rs.reduce((a, r) => a + r.etc * r.ha, 0) / ha, e0: rs.reduce((a, r) => a + r.e0 * r.ha, 0) / ha, inP: list.some(([a, b]) => a === y && b === m) };
     });
-    if (chart) chart.destroy();
-    chart = new Chart(el, {
+    if (charts.water) charts.water.destroy();
+    charts.water = new Chart(el, {
       data: { labels: agg.map((a) => a.lab), datasets: [
         { type: "bar", label: rt("rain"), data: agg.map((a) => a.p), backgroundColor: agg.map((a) => (a.inP ? "#2b6cb0" : "#2b6cb055")) },
         { type: "bar", label: rt("etc"), data: agg.map((a) => a.etc), backgroundColor: agg.map((a) => (a.inP ? "#d0572b" : "#d0572b55")) },
@@ -284,12 +304,23 @@ const Regions = (() => {
     });
   }
 
-  async function show() {
+  async function showProvince() {
+    const box = document.getElementById("provPanel");
+    if (box && !M) box.innerHTML = `<p class="hint">${rt("loading")}</p>`;
+    await loadM();
+    renderRese("prov");
+  }
+  async function showRegions() {
     const box = document.getElementById("regionsPanel");
     if (box && !D) box.innerHTML = `<p class="hint">${rt("loading")}</p>`;
-    if (sel.vista === "rese") { await loadM(); renderRese(); return; }
+    if (sel.vista === "rese") { await loadM(); renderRese("reg"); return; }
     await load();
     render();
   }
-  return { show, render: () => (sel.vista === "rese" ? renderRese() : render()), taratura: async () => ((await loadM()) || {}).taratura || null };
+  // ridisegna i riquadri già aperti (cambio lingua)
+  function renderAll() {
+    if (mLoaded && document.getElementById("provPanel")?.childElementCount) renderRese("prov");
+    if (document.getElementById("regionsPanel")?.childElementCount) { if (sel.vista === "rese") renderRese("reg"); else if (D) render(); }
+  }
+  return { showProvince, showRegions, render: renderAll, taratura: async () => ((await loadM()) || {}).taratura || null };
 })();
