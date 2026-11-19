@@ -200,7 +200,7 @@ nello storage solo nella cartella dell'editore.
 | `js/advice.js` | Avvisi agronomici per coltura dal meteo orario |
 | `js/regions.js` | Tab "Province" e "Regioni": Monteith contro ISTAT per provincia e regione; acqua per regione, coltura e periodo |
 | `js/tools.js` | Rilevamento di campi e colture (area visibile o disegnata), disegno/caricamento di campi e mappe, "i miei campi", prato, benvenuto |
-| `js/account.js` | Account Supabase, campi salvati, esportazione e cancellazione; mappe pubbliche (elenco, pubblicazione, rimozione) |
+| `js/account.js` | Account Supabase (pulsante 👤 in alto a destra: accesso, registrazione, uscita), campi salvati, esportazione e cancellazione; mappe pubbliche (elenco, pubblicazione, rimozione) |
 | `supabase/schema.sql` | Tabella `campi`, regole RLS, massimo 500 campi per utente, cancellazione account, vista condivisa; editori, mappe pubbliche e bucket `mappe` |
 | `pipeline/00`–`02` | Crop Types: download da CDSE, COG Italia, caricamento su HF |
 | `pipeline/03`–`05` | Superfici per blocco di 1 km, celle meteo, bilanci regionali → `data/riepiloghi.json` |

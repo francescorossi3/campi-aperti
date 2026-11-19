@@ -42,6 +42,8 @@ button, input, select, textarea { font: inherit; }
 .lang { display: flex; border: 1px solid #ffffff66; border-radius: 8px; overflow: hidden; flex: none; }
 .lang button { background: none; color: #fff; border: 0; padding: 5px 10px; cursor: pointer; font-weight: 600; }
 .lang button.active { background: var(--wheat); color: var(--green); }
+.account-wrap { position: relative; flex: none; }
+.account-pop { position: absolute; right: 0; top: calc(100% + 8px); width: 300px; max-width: calc(100vw - 20px); background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px #0003; padding: 12px 14px; z-index: 1200; }
 .account-btn { border: 1px solid #ffffff55; background: #ffffff1a; color: inherit; border-radius: 8px; padding: 4px 10px; cursor: pointer; flex: none; }
 
 /* ---------- impaginazione: barra laterale a sezioni + mappa grande ---------- */

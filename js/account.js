@@ -5,7 +5,7 @@
 //     Espone il globale Account { init, render, attivo, utente, onChange, list, save, remove, at, isEditor,
 //     publicMaps, publishMap, unpublishMap } (usato da app.js e tools.js). Dipendenze: window.CAMPI_APERTI
 //     (config.js), LANG (app.js), supabase-js v2 (copia locale js/vendor/supabase.js caricata in init()),
-//     elementi .topbar e #accountBox, privacy.html.
+//     elementi #accountBtn e #accountBox (in alto a destra), privacy.html.
 // EN: optional user accounts (Supabase Auth), per-user saved fields and public maps uploaded by editors.
 //     Disabled when config.js is empty.
 //
@@ -52,7 +52,7 @@ const Account = (() => {
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   async function init() {
-    if (!attivo) { panel(); return; }
+    if (!attivo) { button(); return; }
     // carica supabase-js (copia locale, versione fissa 2.119.1) solo se gli account sono attivi
     await new Promise((ok, ko) => {
       const s = document.createElement("script");
@@ -71,20 +71,19 @@ const Account = (() => {
     notify();
   }
   function notify() { button(); panel(user ? "me" : "login"); listeners.forEach((f) => f(user)); }
-  // pulsante 👤 nella barra in alto (creato al primo uso)
+  // pulsante 👤 in alto a destra: apre/chiude il riquadro account (accesso, registrazione, uscita)
   function button() {
-    let b = document.getElementById("accountBtn");
-    if (!b) {
-      b = document.createElement("button"); b.id = "accountBtn"; b.className = "account-btn";
-      const bar = document.querySelector(".topbar .lang") || document.querySelector(".topbar");
-      bar.parentNode.insertBefore(b, bar);
-      b.onclick = () => { panel(user ? "me" : "login"); if (typeof openSection === "function") openSection("account"); };
-    }
+    const b = document.getElementById("accountBtn"), box = document.getElementById("accountBox");
     b.textContent = user ? "👤 " + user.email.split("@")[0] : "👤 " + at("login");
+    if (b.onclick) return;
+    const show = (on) => { box.hidden = !on; b.setAttribute("aria-expanded", on); };
+    b.onclick = (e) => { e.stopPropagation(); if (box.hidden) panel(user ? "me" : "login"); show(box.hidden); };
+    document.addEventListener("click", (e) => { if (!box.hidden && !e.composedPath().includes(box)) show(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") show(false); });
   }
   // stessa regola mostrata all'utente in pwd_short
   const strong = (p) => p.length >= 10 && /[a-z]/i.test(p) && /\d/.test(p);
-  // riquadro account nella sezione "Account" della barra laterale; mode: login | signup | reset | newpwd | me
+  // riquadro account sotto il pulsante 👤; mode: login | signup | reset | newpwd | me
   function panel(mode) {
     const el = document.getElementById("accountBox");
     if (!el) return;

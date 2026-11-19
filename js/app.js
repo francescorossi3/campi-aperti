@@ -814,8 +814,6 @@ function updateSummaries() {
   set("selected", n ? t("sum_n_fields").replace("{n}", n) : t("sum_nofield"));
   set("series", n ? t("sum_field") : t("sum_nofield"));
   set("services", n ? t("sum_field") : "");
-  const u = typeof Account !== "undefined" && Account.utente();
-  set("account", u ? u.email.split("@")[0] : "");
 }
 // telefono: la barra laterale diventa un foglio dal basso (peek / half / full)
 function setSheet(pos) { document.body.dataset.sheet = pos; setTimeout(() => map.invalidateSize(), 260); }
