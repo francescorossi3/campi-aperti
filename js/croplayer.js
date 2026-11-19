@@ -64,7 +64,8 @@ function cogImages(url) {
   return cogCache[url];
 }
 const CogLayer = L.GridLayer.extend({
-  // opts: url, crs ("EPSG:3035" | "EPSG:4326"), color(v) -> [r,g,b] | null
+  // opts: url, crs ("EPSG:3035" | "EPSG:4326"), color(v) -> [r,g,b] | null;
+  //       oppure urls [..] + combine(valori) per un livello calcolato da più COG sulla stessa griglia (es. PAW)
   setUrl(url) { this.options.url = url; this.redraw(); },
   setColor(fn) { this.options.color = fn; this.redraw(); },
   createTile(coords, done) {
@@ -74,13 +75,14 @@ const CogLayer = L.GridLayer.extend({
     return tile;
   },
   async _draw(tile, coords) {
-    const ims = await cogImages(this.options.url), geo = this.options.crs === "EPSG:4326";
+    const urls = this.options.urls || [this.options.url], ims = await cogImages(urls[0]), geo = this.options.crs === "EPSG:4326";
     const S = tile.width, n = Math.pow(2, coords.z);
     const latOf = (Y) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * Y) / n))) * 180) / Math.PI;
     const mpp = (40075016 * Math.cos((latOf(coords.y + 0.5) * Math.PI) / 180)) / (n * S);
     // overview più grossolana con risoluzione ancora ≤ 1,5 × quella del tassello
-    let lev = ims[0];
-    for (const l of ims) if ((geo ? l.rx * 111320 : l.rx) <= mpp * 1.5) lev = l;
+    let li = 0;
+    ims.forEach((l, i) => { if ((geo ? l.rx * 111320 : l.rx) <= mpp * 1.5) li = i; });
+    const lev = ims[li];
     // coordinate di ogni pixel su una griglia 16×16 interpolata
     const G = 16, step = S / G, pts = [];
     for (let j = 0; j <= G; j++) for (let i = 0; i <= G; i++) {
@@ -91,7 +93,8 @@ const CogLayer = L.GridLayer.extend({
     const c0 = Math.max(0, Math.floor((Math.min(...xs) - lev.ox) / lev.rx)), c1 = Math.min(lev.W, Math.ceil((Math.max(...xs) - lev.ox) / lev.rx));
     const r0 = Math.max(0, Math.floor((lev.oy - Math.max(...ys)) / lev.ry)), r1 = Math.min(lev.H, Math.ceil((lev.oy - Math.min(...ys)) / lev.ry));
     if (c1 <= c0 || r1 <= r0) return;
-    const [band] = await lev.im.readRasters({ window: [c0, r0, c1, r1], samples: [0] });
+    const bands = await Promise.all(urls.map(async (u) => (await (await cogImages(u))[li].im.readRasters({ window: [c0, r0, c1, r1], samples: [0] }))[0]));
+    const comb = this.options.combine, band = comb ? bands[0].map((_, k) => comb(bands.map((b) => b[k]))) : bands[0];
     const W = c1 - c0, ctx = tile.getContext("2d"), img = ctx.createImageData(S, S), color = this.options.color;
     for (let py = 0; py < S; py++) {
       const gj = py / step, j0 = Math.min(G - 1, Math.floor(gj)), fj = gj - j0;
@@ -111,16 +114,18 @@ const CogLayer = L.GridLayer.extend({
   },
 });
 
-// valori di un COG geografico (EPSG:4326) sul poligono: pixel col centro dentro il campo, altrimenti quello del centro
-async function fieldValues(url, feature, categorical = false) {
+// valori di un COG geografico (EPSG:4326) sul poligono: pixel col centro dentro il campo, altrimenti quello del centro.
+// url può essere una lista di COG sulla stessa griglia, combinati pixel per pixel da combine(valori)
+async function fieldValues(url, feature, categorical = false, combine = null) {
   const polys = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
   const all = polys.flat(2), lo0 = Math.min(...all.map((q) => q[0])), lo1 = Math.max(...all.map((q) => q[0])), la0 = Math.min(...all.map((q) => q[1])), la1 = Math.max(...all.map((q) => q[1]));
   const inRing = (x, y, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > y) !== (r[j][1] > y) && x < ((r[j][0] - r[i][0]) * (y - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) c = !c; return c; };
   const inside = (x, y) => polys.some((pl) => inRing(x, y, pl[0]) && !pl.slice(1).some((h) => inRing(x, y, h)));
-  const [lev] = await cogImages(url);
+  const urls = Array.isArray(url) ? url : [url], [lev] = await cogImages(urls[0]);
   const c0 = Math.floor((lo0 - lev.ox) / lev.rx), c1 = Math.floor((lo1 - lev.ox) / lev.rx) + 1;
   const r0 = Math.floor((lev.oy - la1) / lev.ry), r1 = Math.floor((lev.oy - la0) / lev.ry) + 1;
-  const [b] = await lev.im.readRasters({ window: [c0, r0, c1, r1], samples: [0] });
+  const bands = await Promise.all(urls.map(async (u) => (await (await cogImages(u))[0].im.readRasters({ window: [c0, r0, c1, r1], samples: [0] }))[0]));
+  const b = combine ? bands[0].map((_, k) => combine(bands.map((x) => x[k]))) : bands[0];
   const W = c1 - c0, nd = lev.im.getGDALNoData(), vals = [];
   const ok = (v) => isFinite(v) && v !== nd && v > -9000 && !(categorical && v === 0);
   for (let r = 0; r < r1 - r0; r++) for (let c = 0; c < W; c++) {
@@ -143,6 +148,23 @@ async function fieldMean(url, feature, categorical = false) {
   return { mean: vals.reduce((a, v) => a + v, 0) / vals.length, n: vals.length };
 }
 
+// ---------------------------------------------------------------- acqua nel suolo: Saxton & Rawls (2006)
+// funzioni di pedotrasferimento da sabbia e argilla (%) e sostanza organica (%): umidità alla capacità di campo
+// (θ33, −33 kPa), al punto di appassimento (θ1500, −1500 kPa) e acqua disponibile per le piante PAW = θ33 − θ1500 (m³/m³)
+function saxtonRawls(sand, clay, om) {
+  const s_ = sand / 100, c_ = clay / 100;
+  const t15t = -0.024 * s_ + 0.487 * c_ + 0.006 * om + 0.005 * s_ * om - 0.013 * c_ * om + 0.068 * s_ * c_ + 0.031;
+  const wp = t15t + (0.14 * t15t - 0.02);
+  const t33t = -0.251 * s_ + 0.195 * c_ + 0.011 * om + 0.006 * s_ * om - 0.027 * c_ * om + 0.452 * s_ * c_ + 0.299;
+  const fc = t33t + (1.283 * t33t * t33t - 0.374 * t33t - 0.015);
+  return { fc, wp, paw: Math.max(0.03, fc - wp) };
+}
+// PAW in mm per metro di suolo da sabbia %, argilla % e carbonio organico g/kg (SOM = SOC × 1,724)
+const pawMm = ([sand, clay, soc]) => {
+  if (![sand, clay, soc].every((v) => Number.isFinite(v) && v > -9000) || sand + clay <= 0) return NaN;
+  return 1000 * saxtonRawls(sand, clay, (soc / 10) * 1.724).paw;
+};
+
 // ---------------------------------------------------------------- suolo (SoilGrids 0–30 cm, COG Italia)
 const Suolo = (() => {
   const URL = (n) => `${HF_RAW}suolo/${n}.tif`;
@@ -152,7 +174,10 @@ const Suolo = (() => {
     sabbia: [5, 80, "%", "Sabbia", "Sand", "ylorbr"], limo: [10, 65, "%", "Limo", "Silt", "ylgn"], argilla: [5, 55, "%", "Argilla", "Clay", "purples"],
     soc: [5, 40, "g/kg", "Carbonio organico", "Organic carbon", "ylorbr"], stock_soc: [20, 120, "t C/ha", "Stock di carbonio 0–30 cm", "Carbon stock 0–30 cm", "ylorbr"],
     azoto: [0.5, 3, "g/kg", "Azoto totale", "Total nitrogen", "blues"], ph: [5, 8.5, "", "pH", "pH", "rdbu"],
+    paw: [80, 200, "mm/m", "Acqua disponibile per le piante (PAW)", "Plant available water (PAW)", "blues"],
   };
+  // PAW: calcolata nel browser da sabbia, argilla e carbonio organico con Saxton & Rawls (2006)
+  const PAW_SRC = ["sabbia", "argilla", "soc"];
   const style0 = (n) => ({ cmap: P[n][5], min: P[n][0], max: P[n][1], rev: false, unit: P[n][2] });
   const TEX = { 1: ["#f4e04d", "sabbioso", "sand"], 2: ["#e8c547", "sabbioso-franco", "loamy sand"], 3: ["#d9a441", "franco-sabbioso", "sandy loam"],
     4: ["#a3b86c", "franco", "loam"], 5: ["#7fbf7b", "franco-limoso", "silt loam"], 6: ["#4aa564", "limoso", "silt"],
@@ -160,7 +185,10 @@ const Suolo = (() => {
     10: ["#b2453b", "argilloso-sabbioso", "sandy clay"], 11: ["#5e6fa3", "argilloso-limoso", "silty clay"], 12: ["#6b3a7d", "argilloso", "clay"] };
   const texRgb = Object.fromEntries(Object.entries(TEX).map(([k, v]) => [k, hexRgb(v[0])]));
   // opts.color (facoltativo): funzione colore dello stile scelto dall'utente
-  const layer = (n, opts) => new CogLayer({ url: URL(n), crs: "EPSG:4326", color: n === "tessitura" ? (v) => texRgb[v] || null : rampFn(style0(n)), ...opts });
+  const layer = (n, opts) => new CogLayer({ ...(n === "paw" ? { urls: PAW_SRC.map(URL), combine: pawMm } : { url: URL(n) }), crs: "EPSG:4326",
+    color: n === "tessitura" ? (v) => texRgb[v] || null : rampFn(style0(n)), ...opts });
+  const url = (n) => (n === "paw" ? PAW_SRC.map(URL) : URL(n));     // per fieldValues
+  const combine = (n) => (n === "paw" ? pawMm : null);
   const texLegend = () => `<div class="crop-legend">${Object.values(TEX).map((t) => `<span><i style="background:${t[0]}"></i>${t[LANG === "it" ? 1 : 2]}</span>`).join("")}</div>`;
   // tutti i valori del campo
   async function field(feature) {
@@ -170,7 +198,7 @@ const Suolo = (() => {
     o.texName = o.tessitura && TEX[o.tessitura] ? TEX[o.tessitura][LANG === "it" ? 1 : 2] : null;
     return o;
   }
-  return { P, layer, texLegend, style0, field, TEX, url: URL };
+  return { P, layer, texLegend, style0, field, TEX, url, combine };
 })();
 
 // ---------------------------------------------------------------- colture Copernicus
