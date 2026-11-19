@@ -465,6 +465,8 @@ const Tools = (() => {
   // ================================================================== mappe pubbliche (tab Mappe, sezione "Mappe della comunità")
   // elenco per tutti; gli editori (permesso dato dal proprietario in Supabase) possono pubblicarne di nuove
   const LICENZE = ["CC BY 4.0", "CC BY-NC 4.0", "CC BY-SA 4.0", "CC0 1.0"];
+  const styleOpen = new Set();                                   // mappe pubbliche con i comandi di aspetto aperti
+  const loadedPub = (r) => userMaps.find((m) => m.pub && m.pub.id === r.id);
   async function renderCommunity() {
     const box = document.getElementById("communityBox");
     if (!box) return;
@@ -475,8 +477,9 @@ const Tools = (() => {
         <b>${esc(r.titolo)}</b> <small>${esc(r.tipo)} · ${esc(r.licenza)}${r.fonte ? " · " + esc(r.fonte) : ""}</small>
         ${r.descrizione ? `<div class="hint small">${esc(r.descrizione)}</div>` : ""}
         <div class="tc-actions"><button class="small-btn" data-show="${i}">${tt("pm_show")}</button>
-          ${editor ? `<button class="small-btn" data-style="${i}">${tt("pm_style")}</button>` : ""}
-          ${r.mine ? `<button class="small-btn danger" data-del="${i}">${tt("pm_del")}</button>` : ""}</div></li>`).join("")}</ul>`
+          ${editor ? `<button class="small-btn${styleOpen.has(r.id) ? " on" : ""}" data-style="${i}">${tt("pm_style")}</button>` : ""}
+          ${r.mine ? `<button class="small-btn danger" data-del="${i}">${tt("pm_del")}</button>` : ""}</div>
+        ${styleOpen.has(r.id) && loadedPub(r) ? `<div class="pm-style">${editorHtml(loadedPub(r), userMaps.indexOf(loadedPub(r)), "p")}</div>` : ""}</li>`).join("")}</ul>`
       : `<p class="hint small">${tt("pm_none")}</p>`) +
       (editor ? `<div class="pm-form"><h4>⬆ ${tt("pm_pub")}</h4>
         ${pendingMap ? `<p><b>${tt("pm_file")}:</b> ${esc(pendingMap.name)}</p>` : `<label>${tt("pm_file")} <input type="file" id="pmFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml" multiple></label>`}
@@ -488,7 +491,7 @@ const Tools = (() => {
         <p class="hint small">${tt("pm_note")}</p></div>` : "");
     // apre la mappa pubblica (una volta sola) con l'aspetto salvato; restituisce la mappa caricata
     const showPublic = async (r) => {
-      const gia = userMaps.find((m) => m.pub && m.pub.id === r.id);
+      const gia = loadedPub(r);
       if (gia) return gia;
       const blob = await fetch(r.url).then((x) => { if (!x.ok) throw new Error(x.status); return x.blob(); });
       const n0 = userMaps.length;
@@ -507,10 +510,12 @@ const Tools = (() => {
       catch (e) { b.disabled = false; alert(e.message || e); }
     }));
     box.querySelectorAll("[data-style]").forEach((b) => (b.onclick = async () => {
+      const r = rows[+b.dataset.style];
+      if (styleOpen.has(r.id)) { styleOpen.delete(r.id); return renderCommunity(); }
       b.disabled = true;
-      try { await showPublic(rows[+b.dataset.style]); renderMaps(); } catch (e) { alert(e.message || e); }
-      b.disabled = false;
+      try { await showPublic(r); styleOpen.add(r.id); renderCommunity(); } catch (e) { b.disabled = false; alert(e.message || e); }
     }));
+    bindEditors(box);
     box.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
       if (!confirm(tt("pm_del_q"))) return;
       try { await Account.unpublishMap(rows[+b.dataset.del]); } catch (e) { alert(e.message || e); }
@@ -794,22 +799,24 @@ const Tools = (() => {
     editor = typeof Account !== "undefined" && Account.attivo() ? await Account.isEditor().catch(() => false) : false;
     if (was !== editor && document.getElementById("toolMaps")) { silent = true; renderMaps(); silent = false; }
   };
-  function renderMaps() {
-    const el = card("toolMaps", tt("u_title"), `
-      <p class="hint small">${tt("u_hint")}</p>
-      <label class="file-drop"><input type="file" id="umFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml" multiple> 📂 ${tt("upload")}</label>
-      <div id="umList">${userMaps.map((m, i) => m.kind === "vector" ? `<div class="um" data-v="${i}"><b>${esc(m.pub ? m.pub.titolo : m.name)}</b>
+  // comandi di aspetto di una mappa caricata (i = indice in userMaps; pre distingue i nomi dei radio se la stessa
+  // mappa compare sia nella tab Campi sia sotto la lista delle mappe pubbliche)
+  function editorHtml(m, i, pre = "") {
+    const act = `<button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>` +
+      (editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : "") +
+      (editor && m.pub ? ` <button class="small-btn" data-savest="${i}">${tt("pm_save_style")}</button>` : "") + ` <span class="hint small um-msg"></span>`;
+    if (m.kind === "vector") return `<div class="um" data-v="${i}"><b>${esc(m.pub ? m.pub.titolo : m.name)}</b>
           <div class="um-grid">
             <label>${tt("v_color")} <input type="color" class="uv-color" value="${m.vst.color}"></label>
             <label>${tt("v_weight")} <input type="number" class="uv-weight" min="0" max="10" step="0.5" value="${m.vst.weight}"></label>
             <label>${tt("v_fill")} <input type="range" class="uv-fill" min="0" max="1" step="0.05" value="${m.vst.fillOpacity}"></label>
-          </div>
-          <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>${editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : ""}${editor && m.pub ? ` <button class="small-btn" data-savest="${i}">${tt("pm_save_style")}</button>` : ""}</div>` : `
-        <div class="um" data-i="${i}"><b>${esc(m.pub ? m.pub.titolo : m.name)}</b> <small>${m.W}×${m.H} px · ${m.nb} ${LANG === "it" ? "bande" : "bands"} · ${esc(m.crs)}</small>
+          </div>${act}</div>`;
+    const md = "md" + pre + i;
+    return `<div class="um" data-i="${i}" data-md="${md}"><b>${esc(m.pub ? m.pub.titolo : m.name)}</b> <small>${m.W}×${m.H} px · ${m.nb} ${LANG === "it" ? "bande" : "bands"} · ${esc(m.crs)}</small>
           <div class="um-grid">
-            ${m.nb >= 3 ? `<label><input type="radio" name="md${i}" value="rgb" ${m.cfg.mode === "rgb" ? "checked" : ""}> ${tt("u_rgb")}
+            ${m.nb >= 3 ? `<label><input type="radio" name="${md}" value="rgb" ${m.cfg.mode === "rgb" ? "checked" : ""}> ${tt("u_rgb")}
               ${[0, 1, 2].map((j) => `<input type="number" class="um-rgb" data-j="${j}" min="1" max="${m.nb}" value="${m.cfg.rgb[j] + 1}">`).join("")}</label>
-              <label><input type="radio" name="md${i}" value="single" ${m.cfg.mode === "single" ? "checked" : ""}> ${tt("u_band")}</label>` : ""}
+              <label><input type="radio" name="${md}" value="single" ${m.cfg.mode === "single" ? "checked" : ""}> ${tt("u_band")}</label>` : ""}
             <label>${tt("u_band")} <input type="number" class="um-band" min="1" max="${m.nb}" value="${m.cfg.band + 1}"></label>
             <label>${tt("u_cmap")} <select class="um-cmap">${[...Object.keys(COLORMAPS), "classes"].map((k) => `<option value="${k}" ${k === m.cfg.cmap ? "selected" : ""}>${tt("cm")[k] || k}</option>`).join("")}</select></label>
             <label><input type="checkbox" class="um-auto" ${m.cfg.auto ? "checked" : ""}> ${tt("u_auto")}</label>
@@ -820,29 +827,33 @@ const Tools = (() => {
             <label>${tt("u_name")} <input class="um-title" value="${esc(m.cfg.title)}"></label>
             <label>${tt("u_unit")} <input class="um-unit" value="${esc(m.cfg.unit)}"></label>
             <label class="wide" ${m.cfg.cmap === "classes" ? "" : "hidden"}>${tt("u_classes")}<textarea class="um-cls" rows="4" placeholder="0-0.3 = #d73027 = basso&#10;0.3-0.6 = #fee08b = medio&#10;0.6-1 = #1a9850 = alto">${esc(m.cfg.classes)}</textarea></label>
-          </div>
-          <button class="small-btn" data-z="${i}">${tt("u_zoom")}</button> <button class="small-btn" data-x="${i}">${tt("u_remove")}</button>${editor && m.file && !m.permanent ? ` <button class="small-btn" data-perm="${i}">${tt("pm_make")}</button>` : ""}${editor && m.pub ? ` <button class="small-btn" data-savest="${i}">${tt("pm_save_style")}</button>` : ""}
-        </div>`).join("")}</div><p class="hint small" id="umMsg"></p>`);
-    el.querySelector("#umFile").onchange = (e) => [...e.target.files].forEach(loadFile);
-    el.querySelectorAll("[data-perm]").forEach((b) => (b.onclick = () => { pendingMap = userMaps[+b.dataset.perm]; openSection("community"); renderCommunity(); }));
-    el.querySelectorAll("[data-z]").forEach((b) => (b.onclick = () => { const m = userMaps[+b.dataset.z]; map.fitBounds(m.kind === "vector" ? m.layer.getBounds() : m.bounds); }));
-    el.querySelectorAll("[data-x]").forEach((b) => (b.onclick = () => { const m = userMaps.splice(+b.dataset.x, 1)[0]; map.removeLayer(m.layer); drawLegend(); renderMaps(); }));
-    el.querySelectorAll("[data-savest]").forEach((b) => (b.onclick = async () => {
-      const m = userMaps[+b.dataset.savest], msg = el.querySelector("#umMsg");
+          </div>${act}</div>`;
+  }
+  // collega i comandi di aspetto dentro root; dopo "Togli" aggiorna la tab Campi e la lista delle mappe pubbliche
+  function bindEditors(root) {
+    root.querySelectorAll("[data-perm]").forEach((b) => (b.onclick = () => { pendingMap = userMaps[+b.dataset.perm]; openSection("community"); renderCommunity(); }));
+    root.querySelectorAll("[data-z]").forEach((b) => (b.onclick = () => { const m = userMaps[+b.dataset.z]; map.fitBounds(m.kind === "vector" ? m.layer.getBounds() : m.bounds); }));
+    root.querySelectorAll("[data-x]").forEach((b) => (b.onclick = () => {
+      const m = userMaps.splice(+b.dataset.x, 1)[0]; map.removeLayer(m.layer); drawLegend();
+      silent = true; if (document.getElementById("toolMaps")) renderMaps(); silent = false;
+      if (m.pub) renderCommunity();
+    }));
+    root.querySelectorAll("[data-savest]").forEach((b) => (b.onclick = async () => {
+      const m = userMaps[+b.dataset.savest], msg = b.parentElement.querySelector(".um-msg");
       b.disabled = true;
       try { await Account.saveMapStyle(m.pub.id, styleOf(m)); m.pub.stile = styleOf(m); msg.textContent = tt("pm_style_ok"); }
       catch (e) { msg.textContent = tt("pm_err", { e: e.message || e }); }
       b.disabled = false;
     }));
-    el.querySelectorAll(".um[data-v]").forEach((box) => {
+    root.querySelectorAll(".um[data-v]").forEach((box) => {
       const m = userMaps[+box.dataset.v], q = (s) => box.querySelector(s);
       box.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", () =>
         applyStyle(m, { color: q(".uv-color").value, weight: +q(".uv-weight").value, fillOpacity: +q(".uv-fill").value })));
     });
-    el.querySelectorAll(".um[data-i]").forEach((box) => {
-      const m = userMaps[+box.dataset.i], c = m.cfg, q = (s) => box.querySelector(s);
+    root.querySelectorAll(".um[data-i]").forEach((box) => {
+      const m = userMaps[+box.dataset.i], c = m.cfg, q = (s) => box.querySelector(s), md = box.dataset.md;
       const apply = async (full) => {
-        const r = box.querySelector(`input[name=md${box.dataset.i}]:checked`); if (r) c.mode = r.value;
+        const r = box.querySelector(`input[name=${md}]:checked`); if (r) c.mode = r.value;
         c.rgb = [...box.querySelectorAll(".um-rgb")].map((x) => Math.max(0, Math.min(m.nb - 1, +x.value - 1)));
         c.band = Math.max(0, Math.min(m.nb - 1, +q(".um-band").value - 1)); c.cmap = q(".um-cmap").value; c.auto = q(".um-auto").checked;
         c.min = +q(".um-min").value; c.max = +q(".um-max").value; c.nodata = q(".um-nd").value; c.op = +q(".um-op").value;
@@ -856,14 +867,22 @@ const Tools = (() => {
         const light = inp.classList.contains("um-op") || inp.classList.contains("um-title") || inp.classList.contains("um-unit");
         inp.addEventListener(light ? "input" : "change", () => {
           if (inp.classList.contains("um-min") || inp.classList.contains("um-max")) q(".um-auto").checked = false;
-          const rs = box.querySelector(`input[name=md${box.dataset.i}][value=single]`);
+          const rs = box.querySelector(`input[name=${md}][value=single]`);
           if (rs && /um-(band|cmap|min|max|auto|cls)/.test(inp.className)) rs.checked = true;
-          const rr = box.querySelector(`input[name=md${box.dataset.i}][value=rgb]`);
+          const rr = box.querySelector(`input[name=${md}][value=rgb]`);
           if (rr && inp.classList.contains("um-rgb")) rr.checked = true;
           apply(!light);
         });
       });
     });
+  }
+  function renderMaps() {
+    const el = card("toolMaps", tt("u_title"), `
+      <p class="hint small">${tt("u_hint")}</p>
+      <label class="file-drop"><input type="file" id="umFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml" multiple> 📂 ${tt("upload")}</label>
+      <div id="umList">${userMaps.map((m, i) => editorHtml(m, i)).join("")}</div>`);
+    el.querySelector("#umFile").onchange = (e) => [...e.target.files].forEach(loadFile);
+    bindEditors(el);
   }
   // valore della mappa caricata sotto il mouse
   function onHover(e) {

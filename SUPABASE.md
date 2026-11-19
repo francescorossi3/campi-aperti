@@ -49,6 +49,6 @@ Le password non passano mai dal codice di Campi Aperti verso altri servizi: Supa
   Tutti, anche senza account, vedono e aprono le mappe pubblicate; ogni editore può togliere solo le proprie.
 - In **Campi → Le mie mappe** ogni mappa caricata ha, per gli editori, il pulsante **Rendi permanente (pubblica)**: la mappa viene salvata nel
   bucket `mappe` e resta disponibile a tutti anche dopo aver chiuso il browser.
-- **Aspetto delle mappe pubbliche**: ogni editore, dalla lista delle mappe pubbliche, apre una mappa con "🎨 Modifica aspetto", cambia scala colori,
+- **Aspetto delle mappe pubbliche**: ogni editore, dalla lista delle mappe pubbliche, apre con "🎨 Modifica aspetto" i comandi sotto la mappa stessa (tab Mappe), cambia scala colori,
   limiti, trasparenza, classi (raster) o colore, bordo e riempimento (vettori) e preme "💾 Salva aspetto per tutti". L'aspetto sta nella colonna
   `stile` di `mappe_pubbliche` e si cambia solo con la funzione `salva_stile_mappa` (controlla che l'utente sia editore e tocca solo quella colonna).
