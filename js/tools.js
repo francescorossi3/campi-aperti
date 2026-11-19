@@ -37,6 +37,12 @@ const Tools = (() => {
       r_done: "{n} campi trovati nell'area ({a} ha).", r_title: "Campi dell'area", r_fail: "Divisione in campi non riuscita (poche immagini serene?).",
       r_note: "Confini stimati automaticamente da Sentinel-2 (10 m): NDVI medio per data, coltura Copernicus 2024. Licenza dei dati: CC BY-NC 4.0, citare Columella, Copernicus, ESA.",
       kml: "Scarica KML", csv: "Scarica tabella CSV",
+      pm_off: "Le mappe pubbliche saranno disponibili quando gli account saranno attivi.", pm_none: "Nessuna mappa pubblica per ora.",
+      pm_show: "Mostra", pm_zoom: "Vai", pm_del: "Togli dalla pubblicazione", pm_del_q: "Togliere questa mappa per tutti?",
+      pm_pub: "Pubblica una mappa (sei un editore)", pm_file: "File (GeoTIFF, GeoJSON o KML, al massimo 50 MB)", pm_title: "Titolo", pm_desc: "Descrizione",
+      pm_src: "Fonte / autori", pm_lic: "Licenza", pm_go: "Pubblica per tutti", pm_busy: "Carico…", pm_ok: "Mappa pubblicata.", pm_err: "Pubblicazione non riuscita: {e}",
+      pm_need: "Servono file, titolo e licenza.", pm_note: "Le mappe pubbliche sono visibili a chiunque, con titolo, fonte e licenza. Pubblica solo dati che hai il diritto di condividere.",
+      pm_loaded: "Mappa aperta: la trovi sulla mappa e in Campi → Le mie mappe per lo stile.",
       u_title: "Le mie mappe", u_hint: "GeoTIFF (anche PRISMA, EnMAP, droni, mappe di prescrizione), GeoJSON o KML. Il file resta sul tuo computer: non viene caricato su nessun server.",
       u_band: "Banda", u_rgb: "Composizione RGB (R, G, B)", u_cmap: "Scala colori", u_min: "Min", u_max: "Max", u_auto: "Automatico (2–98%)",
       u_op: "Trasparenza", u_name: "Titolo legenda", u_unit: "Unità", u_classes: "Classi (una per riga: valore o min-max = colore = etichetta)",
@@ -82,6 +88,12 @@ const Tools = (() => {
       r_done: "{n} fields found in the area ({a} ha).", r_title: "Fields of the area", r_fail: "Field splitting failed (too few clear images?).",
       r_note: "Boundaries estimated automatically from Sentinel-2 (10 m): mean NDVI per date, Copernicus crop 2024. Data licence: CC BY-NC 4.0, credit Columella, Copernicus, ESA.",
       kml: "Download KML", csv: "Download CSV table",
+      pm_off: "Public maps will be available when accounts are active.", pm_none: "No public maps yet.",
+      pm_show: "Show", pm_zoom: "Go", pm_del: "Unpublish", pm_del_q: "Remove this map for everyone?",
+      pm_pub: "Publish a map (you are an editor)", pm_file: "File (GeoTIFF, GeoJSON or KML, max 50 MB)", pm_title: "Title", pm_desc: "Description",
+      pm_src: "Source / authors", pm_lic: "Licence", pm_go: "Publish for everyone", pm_busy: "Uploading…", pm_ok: "Map published.", pm_err: "Publishing failed: {e}",
+      pm_need: "File, title and licence are required.", pm_note: "Public maps are visible to anyone, with title, source and licence. Only publish data you have the right to share.",
+      pm_loaded: "Map opened: it is on the map and in Fields → My maps for styling.",
       u_title: "My maps", u_hint: "GeoTIFF (including PRISMA, EnMAP, drones, prescription maps), GeoJSON or KML. The file stays on your computer: it is not uploaded to any server.",
       u_band: "Band", u_rgb: "RGB composite (R, G, B)", u_cmap: "Colour scale", u_min: "Min", u_max: "Max", u_auto: "Automatic (2–98%)",
       u_op: "Opacity", u_name: "Legend title", u_unit: "Unit", u_classes: "Classes (one per line: value or min-max = colour = label)",
@@ -231,10 +243,11 @@ const Tools = (() => {
   }
 
   // ================================================================== schede degli strumenti (sezione "Ricerca e campi")
+  let silent = false;          // true mentre si apre una mappa pubblica dalla tab Mappe: non cambia tab
   function card(id, title, html, cls = "") {
     let el = document.getElementById(id);
     if (!el) { el = document.createElement("section"); el.id = id; document.getElementById("toolCards").prepend(el); }
-    if (typeof openSection === "function") openSection("fields");
+    if (!silent && typeof openSection === "function") openSection("fields");
     el.className = "tool-card " + cls;
     el.innerHTML = `<div class="tc-head"><b>${title}</b><button class="icon-x" title="×">×</button></div><div class="tc-body">${html}</div>`;
     el.querySelector(".icon-x").onclick = () => el.remove();
@@ -443,6 +456,65 @@ const Tools = (() => {
     areaFields(b);
   }
   const detectDraw = () => startDraw("rect", (b) => areaFields(b), "h_rect");
+
+  // ================================================================== mappe pubbliche (tab Mappe, sezione "Mappe della comunità")
+  // elenco per tutti; gli editori (permesso dato dal proprietario in Supabase) possono pubblicarne di nuove
+  const LICENZE = ["CC BY 4.0", "CC BY-NC 4.0", "CC BY-SA 4.0", "CC0 1.0"];
+  async function renderCommunity() {
+    const box = document.getElementById("communityBox");
+    if (!box) return;
+    if (typeof Account === "undefined" || !Account.attivo()) { box.innerHTML = `<p class="hint small">${tt("pm_off")}</p>`; return; }
+    let rows = [], editor = false;
+    try { [rows, editor] = await Promise.all([Account.publicMaps(), Account.isEditor()]); } catch (e) { box.innerHTML = `<p class="hint small">${esc(e.message || e)}</p>`; return; }
+    box.innerHTML = (rows.length ? `<ul class="pm-list">${rows.map((r, i) => `<li>
+        <b>${esc(r.titolo)}</b> <small>${esc(r.tipo)} · ${esc(r.licenza)}${r.fonte ? " · " + esc(r.fonte) : ""}</small>
+        ${r.descrizione ? `<div class="hint small">${esc(r.descrizione)}</div>` : ""}
+        <div class="tc-actions"><button class="small-btn" data-show="${i}">${tt("pm_show")}</button>
+          ${r.mine ? `<button class="small-btn danger" data-del="${i}">${tt("pm_del")}</button>` : ""}</div></li>`).join("")}</ul>`
+      : `<p class="hint small">${tt("pm_none")}</p>`) +
+      (editor ? `<details class="pm-form"><summary>${tt("pm_pub")}</summary>
+        <label>${tt("pm_file")} <input type="file" id="pmFile" accept=".tif,.tiff,.geotiff,.json,.geojson,.kml"></label>
+        <label>${tt("pm_title")} <input id="pmTitle" maxlength="120"></label>
+        <label>${tt("pm_desc")} <textarea id="pmDesc" rows="3" maxlength="2000"></textarea></label>
+        <label>${tt("pm_src")} <input id="pmSrc" maxlength="300"></label>
+        <label>${tt("pm_lic")} <select id="pmLic">${LICENZE.map((l) => `<option>${l}</option>`).join("")}</select></label>
+        <button class="btn-primary" id="pmGo">${tt("pm_go")}</button> <span class="hint small" id="pmMsg"></span>
+        <p class="hint small">${tt("pm_note")}</p></details>` : "");
+    box.querySelectorAll("[data-show]").forEach((b) => (b.onclick = async () => {
+      const r = rows[+b.dataset.show];
+      b.disabled = true;
+      try {
+        const blob = await fetch(r.url).then((x) => { if (!x.ok) throw new Error(x.status); return x.blob(); });
+        silent = true;
+        await loadFile(new File([blob], r.titolo.replace(/[^\w.-]+/g, "_") + "." + ({ geotiff: "tif", geojson: "geojson", kml: "kml" }[r.tipo]), { type: blob.type }));
+        b.textContent = "✓ " + tt("pm_show");
+      } catch (e) { b.disabled = false; alert(esc(e.message || e)); }
+      finally { silent = false; }
+    }));
+    box.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
+      if (!confirm(tt("pm_del_q"))) return;
+      try { await Account.unpublishMap(rows[+b.dataset.del]); } catch (e) { alert(e.message || e); }
+      renderCommunity();
+    }));
+    const go = box.querySelector("#pmGo");
+    if (go) go.onclick = async () => {
+      const file = box.querySelector("#pmFile").files[0], titolo = box.querySelector("#pmTitle").value.trim(), msg = box.querySelector("#pmMsg");
+      if (!file || !titolo) { msg.textContent = tt("pm_need"); return; }
+      go.disabled = true; msg.textContent = tt("pm_busy");
+      try {
+        // apre la mappa nel browser per controllarla e ricavarne il riquadro geografico
+        silent = true;
+        await loadFile(file);
+        silent = false;
+        const m = userMaps[userMaps.length - 1], b = m && (m.kind === "vector" ? m.layer.getBounds() : L.latLngBounds(m.bounds));
+        const bbox = b && b.isValid() ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((x) => +x.toFixed(6)) : null;
+        await Account.publishMap(file, { titolo, descrizione: box.querySelector("#pmDesc").value.trim(), fonte: box.querySelector("#pmSrc").value.trim(),
+          licenza: box.querySelector("#pmLic").value, bbox });
+        msg.textContent = tt("pm_ok");
+        renderCommunity();
+      } catch (e) { silent = false; msg.textContent = tt("pm_err", { e: esc(e.message || e) }); go.disabled = false; }
+    };
+  }
 
   function toKml(fc) {
     const ring = (r) => `<LinearRing><coordinates>${r.map((p) => p.join(",")).join(" ")}</coordinates></LinearRing>`;
@@ -854,5 +926,5 @@ const Tools = (() => {
   function refreshLang() {
     document.querySelectorAll("#toolBar .tool-btn").forEach((a) => (a.querySelector("em").textContent = tt(a.dataset.t)));
   }
-  return { init, busy, refreshLang, startDraw, welcome, detectView, detectDraw };
+  return { init, busy, refreshLang, startDraw, welcome, detectView, detectDraw, renderCommunity };
 })();

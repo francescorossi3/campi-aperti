@@ -5,7 +5,7 @@
 // EN: UI strings (IT/EN) and lookup tables. Exposes I18N, CATALOG_EXTRA, CLC_IT, CLC_EN; no dependencies.
 const I18N = {
   it: {
-    tab_maps: "Mappe", tab_fields: "Campi", tab_provinces: "Province",
+    sec_community: "Mappe pubbliche", tab_maps: "Mappe", tab_fields: "Campi", tab_provinces: "Province",
     sec_selected: "Campi selezionati", sec_compare: "Confronto tra campi", sum_n_fields: "{n} campi",
     add_mode: "Aggiungi campi alla selezione (come Ctrl/Maiusc + clic)",
     multi_hint: "Clic su un campo: lo seleziona. Ctrl o Maiusc + clic: lo aggiunge con un nuovo id (C1, C2, …). Clic sull'id: lo mostra nel pannello; × lo toglie.",
@@ -85,7 +85,7 @@ const I18N = {
     credits: "Dati: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Agenzia delle Entrate (CC BY 4.0), ISTAT, ISRIC SoilGrids (CC BY 4.0), OpenStreetMap, EOX, Esri. Confini dei campi: modello Delineate Anything S (Lavreniuk et al. 2025, AGPL-3.0).",
   },
   en: {
-    tab_maps: "Maps", tab_fields: "Fields", tab_provinces: "Provinces",
+    sec_community: "Public maps", tab_maps: "Maps", tab_fields: "Fields", tab_provinces: "Provinces",
     sec_selected: "Selected fields", sec_compare: "Compare fields", sum_n_fields: "{n} fields",
     add_mode: "Add fields to the selection (like Ctrl/Shift + click)",
     multi_hint: "Click a field: it is selected. Ctrl or Shift + click: it is added with a new id (C1, C2, …). Click the id to show it in the panel; × removes it.",

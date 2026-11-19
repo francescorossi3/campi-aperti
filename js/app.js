@@ -868,7 +868,8 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&a
   document.body.dataset.sheet = "peek";
   Tools.init();
   Account.init().catch((e) => console.warn("account non disponibile", e));
-  if (typeof Account.onChange === "function") Account.onChange(updateSummaries);
+  if (typeof Account.onChange === "function") Account.onChange(() => { updateSummaries(); Tools.renderCommunity(); });
+  document.getElementById("sec-community").addEventListener("toggle", (e) => { if (e.target.open) Tools.renderCommunity(); });
   Clms.loadIndex().then((j) => { clmsIdx = j || {}; renderLayerPanel(); });
   applyLang();
   setBase(currentBase);
