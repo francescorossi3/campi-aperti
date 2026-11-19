@@ -11,7 +11,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
-      - run: pip install -q playwright && python -m playwright install --with-deps chromium
+      # se i mirror Ubuntu non rispondono, Chromium senza pacchetti di sistema (sul runner ci sono quasi tutti)
+      - run: pip install -q playwright && (python -m playwright install --with-deps chromium || python -m playwright install chromium)
       - run: python pipeline/test/prova_browser.py
       - if: always()
         run: |
