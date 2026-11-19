@@ -156,7 +156,7 @@ sequenceDiagram
 
 **Mappe pubbliche**: gli utenti che il proprietario segna come *editori* (tabella `editori`, modificabile solo dal pannello Supabase) caricano
 mappe GeoTIFF / GeoJSON / KML (al massimo 50 MB) con titolo, fonte e licenza; tutti le vedono in **Mappe → Mappe pubbliche** e le aprono nel
-browser. RLS: tutti leggono `mappe_pubbliche`; inserimento, modifica e cancellazione solo per gli editori e solo sulle proprie righe; scrittura
+browser. L'account del proprietario (email nella tabella privata `impostazioni`, chiave `email_proprietario`) è sempre editore. In Campi → Le mie mappe gli editori possono **rendere permanente** (pubblicare) una mappa caricata. RLS: tutti leggono `mappe_pubbliche`; inserimento, modifica e cancellazione solo per gli editori e solo sulle proprie righe; scrittura
 nello storage solo nella cartella dell'editore.
 
 - `js/config.js` contiene solo URL e chiave anon **pubblici**; se è vuoto gli account sono spenti e i campi restano in `localStorage`.

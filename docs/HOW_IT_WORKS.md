@@ -155,7 +155,7 @@ sequenceDiagram
 
 **Public maps**: users the owner marks as *editors* (table `editori`, edited only from the Supabase dashboard) can upload GeoTIFF / GeoJSON /
 KML maps (≤ 50 MB) with title, source and licence; everyone sees them in **Maps → Public maps** and opens them in the browser.
-RLS: anyone reads `mappe_pubbliche`; insert/update/delete only for editors on their own rows; storage writes only in the editor's folder.
+The owner's account (email in the private table `impostazioni`, key `email_proprietario`) is always an editor. In Fields → My maps, editors can **make an uploaded map permanent** (publish it). RLS: anyone reads `mappe_pubbliche`; insert/update/delete only for editors on their own rows; storage writes only in the editor's folder.
 
 - `js/config.js` holds only the **public** URL and anon key; if empty, accounts are off and fields stay in `localStorage`.
 - Security is in `supabase/schema.sql` (Row Level Security, at most 500 fields per user). Setup: `SUPABASE.md`. Privacy notice: `privacy.html`.
