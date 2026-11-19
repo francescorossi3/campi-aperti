@@ -1,6 +1,6 @@
 // Columella – layers.js
 // IT: catalogo dei layer della mappa (solo dati, nessuna logica). Espone le costanti globali LAYER_GROUPS
-//     (gruppi del pannello Layer), ARCHIVE_GROUPS (gruppi solo in archivio), LAYERS (definizioni dei layer),
+//     (gruppi di livelli), MAP_SECTIONS (sezioni della tab Mappe), ARCHIVE_GROUPS (gruppi solo nel catalogo), LAYERS (definizioni dei layer),
 //     EEA e CATASTO_WMS (URL base). Usa Clms e Suolo da croplayer.js (caricato prima); letto da app.js.
 //     Campo "type": "arcgis-map"   -> ArcGIS MapServer /export (EEA discomap)
 //                   "arcgis-image" -> ArcGIS ImageServer /exportImage (EEA discomap)
@@ -27,16 +27,31 @@ const RDYLGN_GRAD = '<div class="grad" style="background:linear-gradient(90deg,#
 const AE_SRC = "Agenzia delle Entrate — CC BY 4.0";
 const AE_LINK = "https://www.agenziaentrate.gov.it/portale/schede/fabbricatiterreni/consultazione-cartografia-catastale/servizio-consultazione-cartografia";
 
+// gruppi di livelli (un <details> ciascuno) …
 const LAYER_GROUPS = [
-  { id: "live", it: "Satellite in tempo reale (Sentinel-2)", en: "Real-time satellite (Sentinel-2)" },
-  { id: "fields", it: "Campi e colture", en: "Fields and crops" },
-  { id: "catasto", it: "Catasto (Agenzia delle Entrate)", en: "Cadastre (Italian Revenue Agency)" },
-  { id: "clms", it: "Variabili Copernicus (LAI, FAPAR, umidità del suolo…)", en: "Copernicus variables (LAI, FAPAR, soil moisture…)" },
-  { id: "hrvpp", it: "Fenologia e produttività (Copernicus HR-VPP, 10 m)", en: "Phenology and productivity (Copernicus HR-VPP, 10 m)" },
+  { id: "fields", it: "Mappa delle colture", en: "Crop map" },
+  { id: "live", it: "Sentinel-2 in tempo reale (10 m)", en: "Real-time Sentinel-2 (10 m)" },
+  { id: "clms", it: "Parametri biogeofisici: vegetazione, acqua ed energia (300 m)", en: "Bio-geophysical parameters: vegetation, water and energy (300 m)" },
+  { id: "hrvpp", it: "Fenologia e produttività della vegetazione (HR-VPP, 10 m)", en: "Vegetation phenology and productivity (HR-VPP, 10 m)" },
+  { id: "pheno", it: "Fenologia e produttività: serie lunghe (MR-VPP 500 m, LPD)", en: "Phenology and productivity: long series (MR-VPP 500 m, LPD)" },
+  { id: "landcover", it: "Copertura e uso del suolo (CORINE, CLC+)", en: "Land cover and land use (CORINE, CLC+)" },
+  { id: "agri", it: "Layer ad alta risoluzione: praterie e terreni arati", en: "High Resolution Layers: grasslands and ploughing" },
+  { id: "trees", it: "Layer ad alta risoluzione: alberi e foreste", en: "High Resolution Layers: trees and forests" },
+  { id: "water", it: "Layer ad alta risoluzione: acqua, umidità e impermeabilizzazione", en: "High Resolution Layers: water, wetness and imperviousness" },
   { id: "soil", it: "Suolo (SoilGrids, 250 m)", en: "Soil (SoilGrids, 250 m)" },
+  { id: "catasto", it: "Catasto (Agenzia delle Entrate)", en: "Cadastre (Italian Revenue Agency)" },
 ];
-// I layer statici CLMS (2012–2021) restano solo nel catalogo "Dati" come archivio.
-const ARCHIVE_GROUPS = ["landcover", "trees", "agri", "pheno", "water", "nature"];
+// … raccolti nelle sezioni della tab Mappe, in quest'ordine (prima ci sono le mappe di base)
+const MAP_SECTIONS = [
+  { id: "crops", it: "Campi e colture", en: "Fields and crops", groups: ["fields"] },
+  { id: "s2", it: "Sentinel-2", en: "Sentinel-2", groups: ["live"] },
+  { id: "clms", it: "Copernicus Land Monitoring Service (CLMS)", en: "Copernicus Land Monitoring Service (CLMS)",
+    groups: ["clms", "hrvpp", "pheno", "landcover", "agri", "trees", "water"] },
+  { id: "soil", it: "Suolo", en: "Soil", groups: ["soil"] },
+  { id: "cad", it: "Catasto", en: "Cadastre", groups: ["catasto"] },
+];
+// gruppi solo nel catalogo "Dati" (non riguardano l'agricoltura)
+const ARCHIVE_GROUPS = ["nature"];
 
 const LAYERS = [
   // ---------------- VARIABILI BIOGEOFISICHE COPERNICUS ----------------
