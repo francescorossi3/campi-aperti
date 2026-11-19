@@ -14,6 +14,8 @@ async def main():
         await pg.add_init_script("try{localStorage.setItem('campiAperti.benvenuto','1')}catch(e){}")
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
+        pg.on("crash", lambda *a: print("PAGINA ANDATA IN CRASH (memoria?)"))
+        pg.on("framenavigated", lambda f: f == pg.main_frame and print("navigazione:", f.url[:120]))
         pg.on("console", lambda m: (m.type in ("error", "warning") or "divisi" in m.text) and errs.append(m.text[:300]))
         for nome, lat, lon in [("lodi", 45.25, 9.55), ("maccarese", 41.86, 12.23), ("muccese", 43.1167, 13.0524)]:
             await pg.goto(f"http://127.0.0.1:8770/index.html?lang=it&r={nome}#15/{lat}/{lon}/sat")
@@ -96,6 +98,8 @@ async def main():
         rep["rilevamento"] = (await pg.locator("#toolArea").inner_text())[:300]
         rep["rilevamento_s"] = round(asyncio.get_event_loop().time() - t0)
         rep["rilevamento_area_km"] = await pg.evaluate("(() => { const b = map.getBounds(); return [(b.getEast()-b.getWest())*111.32*Math.cos(b.getCenter().lat*Math.PI/180), (b.getNorth()-b.getSouth())*110.54].map(x => +x.toFixed(1)); })()")
+        rep["memoria_mb"] = await pg.evaluate("performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null")
+        print("memoria JS dopo il rilevamento:", rep["memoria_mb"], "MB")
         print("rilevamento:", rep["rilevamento_s"], "s", rep["rilevamento_area_km"], "km", rep["rilevamento"].replace("\n", " | "))
         await pg.screenshot(path=os.path.join(OUT, "browser_rilevamento.png"))
         # PAW, finestra dei livelli, province e regioni
