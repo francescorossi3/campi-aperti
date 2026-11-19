@@ -10,9 +10,11 @@
 # Nota: le reti sono addestrate su pixel da 20 m; qui si applicano a medie su 200 m (come nel sito si applicano a medie
 #       sul campo). La pendenza a 200 m è più bassa che a 20 m.
 # Ingressi: modello pubblico modelli/colture_v2_mlp.json su Hugging Face, Planetary Computer (pubblico),
-#           province_istat.geojson; env ANNO (def. 2024), PROVINCE (sigle separate da virgole, es. "RM,LT"; vuoto = tutte)
-# Uscite: data/province_ndvi_cls/ndvi_<anno>.parquet (stesse colonne dello script 10)
-#         data/province_ndvi_cls/superfici_<anno>.parquet (ettari stimati per provincia e classe)
+#           province_istat.geojson; env ANNO (def. 2024), PROVINCE (sigle separate da virgole, es. "RM,LT"), oppure
+#           PARTE "k/n" (es. "2/4"): le regioni d'Italia divise in n gruppi di superficie simile, si calcola il k-esimo
+# Uscite (in data/province_ndvi_cls/, <etichetta> = sigle o "parte2di4", colonna "calcolato" = momento del calcolo):
+#         ndvi_<anno>_<etichetta>.parquet (colonne dello script 10), superfici_<anno>_<etichetta>.parquet (ettari stimati
+#         per provincia e classe), tempi_<anno>_<etichetta>.parquet (secondi di calcolo per provincia: tasselli che la toccano)
 # Esecuzione: workflow monteith-classificatore.yml (poi 12 con FONTE=classificatore) oppure Spyder
 # EN: per-province NDVI series like script 10, with crop pixels found by the browser crop classifier (3 MLPs) instead of
 #     the Copernicus crop map.
@@ -32,6 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ANNO = int(os.environ.get("ANNO", "2024"))
 SIGLE = [s.strip().upper() for s in os.environ.get("PROVINCE", "").split(",") if s.strip()]
+PARTE = os.environ.get("PARTE", "")
 PC = "https://planetarycomputer.microsoft.com/api"
 MODELLO = "https://huggingface.co/datasets/Bradipo92/campi-aperti-data/resolve/main/modelli/colture_v2_mlp.json"
 RES = 200
@@ -68,7 +71,17 @@ def probabilita(X):
 
 prov = gpd.read_file("province_istat.geojson").to_crs(3035)
 prov["pid"] = np.arange(1, len(prov) + 1)
-scelte = prov[prov.prov_acr.isin(SIGLE)] if SIGLE else prov
+if SIGLE:
+    scelte, ETICHETTA = prov[prov.prov_acr.isin(SIGLE)], "-".join(sorted(SIGLE))
+elif PARTE:
+    # regioni in ordine di codice ISTAT, tagliate in n gruppi di superficie simile
+    k, n = (int(x) for x in PARTE.split("/"))
+    reg = prov.assign(a=prov.area).groupby("reg_istat_code_num").a.sum().sort_index()
+    gruppo = np.minimum((reg.cumsum() - reg / 2) / reg.sum() * n, n - 1).astype(int) + 1
+    scelte, ETICHETTA = prov[prov.reg_istat_code_num.map(gruppo) == k], f"parte{k}di{n}"
+else:
+    scelte, ETICHETTA = prov, "italia"
+CALCOLATO = pd.Timestamp.now("UTC").isoformat()
 print(len(scelte), "province:", ", ".join(scelte.prov_acr))
 lo0, la0, lo1, la1 = scelte.to_crs(4326).total_bounds
 
@@ -127,7 +140,7 @@ def mensili(cubo, nb, H, W):
     return f
 
 
-righe, superfici, visti = [], [], set()
+righe, superfici, visti, tempi = [], [], set(), []
 for k, (tile, (x0, y0, x1, y1)) in enumerate(sorted(tiles.items())):
     t0 = time.time()
     W, H = int((x1 - x0) / RES), int((y1 - y0) / RES)
@@ -244,7 +257,9 @@ for k, (tile, (x0, y0, x1, y1)) in enumerate(sorted(tiles.items())):
         for g, r in s.iterrows():
             righe.append((int(g // 32), int(g % 32), d, float(r["mean"]), int(r["count"])))
         n_ok += 1
-    print(f"[{k + 1}/{len(tiles)}] {tile}: S2 {len(cubo)}, S1 {len(c1)}, {int(sicuro.sum())} pixel sicuri, {n_ok} date utili, {time.time() - t0:.0f} s", flush=True)
+    dt = time.time() - t0
+    tempi += [(int(p_), dt) for p_ in np.unique(pid[pid > 0])]          # il tempo del tassello va a ogni provincia che tocca
+    print(f"[{k + 1}/{len(tiles)}] {tile}: S2 {len(cubo)}, S1 {len(c1)}, {int(sicuro.sum())} pixel sicuri, {n_ok} date utili, {dt:.0f} s", flush=True)
 
 nome = dict(zip(prov.pid, prov.prov_name))
 sigla = dict(zip(prov.pid, prov.prov_acr))
@@ -259,15 +274,9 @@ sf["ha"] = sf.pixel * RES * RES / 1e4
 sf["provincia"], sf["anno"] = sf.pid.map(nome), ANNO
 
 
-# si aggiunge ai risultati già calcolati per altre province (stessa annata): le province rifatte si sostituiscono
-def salva(nuovo, nome_file):
-    f = os.path.join(OUT, nome_file)
-    if os.path.exists(f):
-        vecchio = pd.read_parquet(f)
-        nuovo = pd.concat([vecchio[~vecchio.provincia.isin(scelte.prov_name)], nuovo], ignore_index=True)
-    nuovo.to_parquet(f, index=False)
-
-
-salva(df.drop(columns="vn"), f"ndvi_{ANNO}.parquet")
-salva(sf.drop(columns="pid"), f"superfici_{ANNO}.parquet")
-print(ANNO, len(df), "righe NDVI;", len(sf), "superfici")
+tp = pd.DataFrame(tempi, columns=["pid", "secondi"]).groupby("pid", as_index=False).agg(secondi=("secondi", "sum"), tasselli=("secondi", "size"))
+tp["provincia"], tp["anno"] = tp.pid.map(nome), ANNO
+for nome_file, d in [("ndvi", df.drop(columns="vn")), ("superfici", sf.drop(columns="pid")), ("tempi", tp.drop(columns="pid"))]:
+    d["calcolato"] = CALCOLATO
+    d.to_parquet(os.path.join(OUT, f"{nome_file}_{ANNO}_{ETICHETTA}.parquet"), index=False)
+print(ANNO, ETICHETTA, len(df), "righe NDVI;", len(sf), "superfici;", len(tp), "province con tempi")
