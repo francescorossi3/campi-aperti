@@ -7,8 +7,8 @@
 // EN: public site config (optional Supabase accounts). Exposes window.CAMPI_APERTI, read by account.js.
 //     Only the public anon key belongs here, never the service_role key.
 window.CAMPI_APERTI = {
-  supabaseUrl: "",        // es. https://abcdefghijk.supabase.co
-  supabaseAnonKey: "",    // Project Settings -> API Keys -> anon / publishable
+  supabaseUrl: "https://eoasesjiarmxeglwahxg.supabase.co",
+  supabaseAnonKey: "sb_publishable_S5hoJR877LDu0yp2mmAAQg_hzzxkRYT", // chiave pubblica (publishable)
 };
 
 // GoatCounter (statistiche anonime): prefisso del percorso. Qui e non inline in index.html, per la Content-Security-Policy.
