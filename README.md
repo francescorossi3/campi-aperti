@@ -79,3 +79,10 @@ Per provarlo in locale: `python -m http.server` nella cartella, poi apri `http:/
 Codice: tutti i diritti riservati (vedi [LICENSE](LICENSE)). Il modello per i confini dei campi, Delineate Anything S (Lavreniuk et al., 2025, https://github.com/Lavreniuk/Delineate-Anything), è distribuito separatamente in formato ONNX con la sua licenza AGPL-3.0 e viene scaricato dal browser al momento dell'uso. Suolo: ISRIC SoilGrids 2.0 (CC BY 4.0). Dati: secondo le licenze delle rispettive fonti (Agenzia delle Entrate CC BY 4.0; Copernicus: accesso pieno, aperto e gratuito, Reg. UE 1159/2013; OpenStreetMap ODbL; EOX CC BY-NC-SA 4.0).
 
 La mappa catastale ha valore indicativo e non sostituisce le visure ufficiali.
+
+## Come citare / How to cite
+
+Rossi, F. (2026). *Columella: open data for Italian agriculture* [web application]. CNR – Istituto di Metodologie Integrate per
+l'Osservazione della Terra (IMIOT). https://francescorossi3.github.io/columella/
+
+Vedi anche `CITATION.cff` (GitHub mostra il pulsante "Cite this repository") e cita le fonti dei dati usati (Copernicus, ESA, ISTAT, SoilGrids, ERA5/Open-Meteo).

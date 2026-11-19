@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "Se usi Columella, i suoi dati o le sue mappe, cita così. / If you use Columella, its data or maps, please cite it as below."
+title: "Columella: open data for Italian agriculture"
+type: software
+authors:
+  - family-names: Rossi
+    given-names: Francesco
+    affiliation: "CNR – Istituto di Metodologie Integrate per l'Osservazione della Terra (IMIOT)"
+url: "https://francescorossi3.github.io/columella/"
+repository-code: "https://github.com/francescorossi3/columella"
+license-url: "https://github.com/francescorossi3/columella/blob/main/LICENSE"
+keywords:
+  - agriculture
+  - Copernicus
+  - Sentinel-2
+  - crop classification
+  - yield estimation
+  - Italy
