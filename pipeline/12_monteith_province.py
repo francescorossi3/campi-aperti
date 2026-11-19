@@ -29,7 +29,16 @@ PAR = {1: (2.8, 0.45, 0.13), 2: (2.7, 0.45, 0.13), 3: (3.8, 0.50, 0.155), 4: (2.
 FONTE = os.environ.get("FONTE", "copernicus")
 CLS = FONTE == "classificatore"
 DIR = os.path.join("data", "province_ndvi_cls" if CLS else "province_ndvi")
-nd = pd.concat([pd.read_parquet(f) for f in glob.glob(os.path.join(DIR, "ndvi_*.parquet"))], ignore_index=True)
+def leggi(prefisso):
+    # più calcoli della stessa provincia e annata (es. manuale e automatico): vale il più recente
+    d = pd.concat([pd.read_parquet(f) for f in glob.glob(os.path.join(DIR, prefisso + "_*.parquet"))], ignore_index=True)
+    if "calcolato" in d:
+        d["calcolato"] = d.calcolato.fillna("")
+        d = d[d.calcolato == d.groupby(["provincia", "anno"]).calcolato.transform("max")]
+    return d
+
+
+nd = leggi("ndvi")
 nd = nd[nd.classe.isin(PAR)]
 nd["t"] = pd.to_datetime(nd.data)
 print(len(nd), "righe NDVI;", nd.anno.min(), "–", nd.anno.max())
@@ -185,7 +194,7 @@ print(json.dumps(tar, indent=1))
 # superfici stimate dal classificatore (ettari di pixel sicuri) da confrontare con quelle ISTAT
 cmp_["ha_stimati"] = np.nan
 if CLS:
-    sf = pd.concat([pd.read_parquet(f) for f in glob.glob(os.path.join(DIR, "superfici_*.parquet"))], ignore_index=True)
+    sf = leggi("superfici")
     cmp_ = cmp_.drop(columns="ha_stimati").merge(sf.rename(columns={"ha": "ha_stimati"})[["provincia", "classe", "anno", "ha_stimati"]],
                                                  on=["provincia", "classe", "anno"], how="left")
 
@@ -200,6 +209,9 @@ out = {
               for r in cmp_.itertuples()],
     "taratura": tar,
 }
+if CLS:   # tempo di calcolo (classificatore + NDVI) di ogni provincia e annata, per il sito
+    tp = leggi("tempi") if glob.glob(os.path.join(DIR, "tempi_*.parquet")) else pd.DataFrame(columns=["provincia", "anno", "secondi", "tasselli", "calcolato"])
+    out["tempi"] = {f"{r.provincia}|{int(r.anno)}": {"secondi": int(r.secondi), "tasselli": int(r.tasselli), "quando": r.calcolato} for r in tp.itertuples()}
 nome = "monteith_province_cls.json" if CLS else "monteith_province.json"
 json.dump(out, open(os.path.join("data", nome), "w"), ensure_ascii=False, separators=(",", ":"))
 print("scritto data/" + nome + ":", len(out["righe"]), "righe")
