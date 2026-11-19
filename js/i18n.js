@@ -1,10 +1,15 @@
 // Columella – i18n.js
 // IT: testi dell'interfaccia in italiano e inglese e tabelle di supporto. Espone le costanti globali
-//     I18N {it, en} (letta da t() in app.js), CATALOG_EXTRA (dataset del catalogo, pannello Dati),
-//     CLC_IT / CLC_EN (nomi delle classi CORINE Land Cover). Nessuna dipendenza.
-// EN: UI strings (IT/EN) and lookup tables. Exposes I18N, CATALOG_EXTRA, CLC_IT, CLC_EN; no dependencies.
+//     I18N {it, en} (letta da t() in app.js) e CATALOG_EXTRA (dataset del catalogo, pannello Dati). Nessuna dipendenza.
+// EN: UI strings (IT/EN) and lookup tables. Exposes I18N and CATALOG_EXTRA; no dependencies.
 const I18N = {
   it: {
+    bm_none: "Nessuna", bm_gray: "Scala di grigi (luminosità)",
+    cp_product: "Coltura dei campi da", cp_copernicus: "Mappa Copernicus HRL Crop Types (anno sotto)", cp_model: "Modello di classificazione Columella",
+    cp_season: "Annata a cui applicare il modello",
+    cp_cop_note: "Per la mappa e per i campi rilevati si usa la mappa Copernicus dell'anno scelto (2017–2024).",
+    cp_model_note: "Il modello riconosce la coltura dei campi selezionati nell'annata scelta (novembre–ottobre); i campi rilevati restano colorati con la mappa Copernicus.",
+    lw_fields: "Campi selezionati", lw_nofields: "Nessun campo selezionato.", lw_veil: "Vela il resto della mappa", lw_zoom: "Vai",
     sec_community: "Mappe pubbliche", tab_maps: "Mappe", tab_fields: "Campi", tab_provinces: "Province",
     sec_selected: "Campi selezionati", sec_compare: "Confronto tra campi", sum_n_fields: "{n} campi",
     add_mode: "Aggiungi campi alla selezione (come Ctrl/Maiusc + clic)",
@@ -15,8 +20,7 @@ const I18N = {
     lw_open: "Finestra dei livelli sulla mappa", lw_title: "Livelli accesi", lw_empty: "Nessun livello acceso: accendili dalla tab Mappe.",
     lw_up: "Sopra", lw_down: "Sotto", lw_hide: "Nascondi / mostra", lw_off: "Togli",
     sec_fields: "Ricerca e campi", sec_layers: "Livelli", sec_series: "Indici e serie temporali", sec_services: "Servizi", sec_account: "Account",
-    fields_hint: "Cerca un luogo in alto, poi clicca un campo sulla mappa oppure disegnalo.",
-    point_values: "Punto cliccato", series_empty: "Clicca un campo sulla mappa per vedere la mappa del campo e le serie temporali.",
+    fields_hint: "Cerca un luogo in alto, poi clicca un campo sulla mappa oppure disegnalo.", series_empty: "Clicca un campo sulla mappa per vedere la mappa del campo e le serie temporali.",
     services_empty: "Con un campo selezionato qui trovi coltura, resa, suolo, carbonio e avvisi.",
     sum_on: "accesi: {n}", sum_field: "campo selezionato", sum_nofield: "nessun campo", info: "Informazioni",
     st_title: "Stile", st_ramp: "Scala di colori", st_range: "Minimo e massimo", st_r_default: "Predefiniti", st_r_minmax: "Min – max del campo",
@@ -47,25 +51,10 @@ const I18N = {
     legend: "Legenda",
     source: "Fonte",
     more: "Scheda del dataset",
-    info_hint: "Clicca sulla mappa: qui trovi coordinate e particella catastale; il campo cliccato si apre in «Indici e serie temporali».",
-    info_coords: "Coordinate",
-    info_parcel: "Particella catastale",
-    info_parcel_how: "I confini delle particelle compaiono da zoom 16, i fogli con il loro numero da zoom 13. Il servizio dell'Agenzia delle Entrate non si può incorporare: la scheda (comune, foglio, particella) si apre in una nuova finestra.",
-    info_parcel_open: "Leggi la particella",
-    info_layers: "Valori dei layer accesi",
-    info_nolayers: "Nessun layer Copernicus acceso.",
-    info_nodata: "nessun dato",
-    info_loading: "carico…",
-    info_error: "servizio non raggiungibile",
-    info_clc: "Copertura CORINE 2018",
-    copy_coords: "Copia",
-    copied: "Copiato",
-    links_ext: "Apri il punto in",
     data_intro: "Tutti i dataset aperti raccolti nel progetto. Quelli marcati “sulla mappa” si accendono dal pannello Layer; gli altri sono in arrivo.",
     on_map: "sulla mappa",
     coming: "in arrivo",
     archive: "archivio, non sulla mappa",
-    info_field: "Le misure del campo (medie su tutto il campo, non sul singolo punto) sono nel pannello sotto la mappa.",
     about_html: `
       <p><b>Il nome.</b> Lucio Giunio Moderato <b>Columella</b> (I secolo d.C.) scrisse il <i>De re rustica</i>, il trattato di agricoltura più completo
       dell'antichità romana: terreni, colture, vite, olivo, alberi da frutto e allevamento. Fa parte di una famiglia di progetti con <b>Prognostica</b>
@@ -85,6 +74,12 @@ const I18N = {
     credits: "Dati: Copernicus Sentinel-1/2 (via Microsoft Planetary Computer), Copernicus Land Monitoring Service / EEA, ERA5 Copernicus C3S (via Open-Meteo), Agenzia delle Entrate (CC BY 4.0), ISTAT, ISRIC SoilGrids (CC BY 4.0), OpenStreetMap, EOX, Esri. Confini dei campi: modello Delineate Anything S (Lavreniuk et al. 2025, AGPL-3.0).",
   },
   en: {
+    bm_none: "None", bm_gray: "Greyscale (brightness)",
+    cp_product: "Field crops from", cp_copernicus: "Copernicus HRL Crop Types map (year below)", cp_model: "Columella classification model",
+    cp_season: "Season to apply the model to",
+    cp_cop_note: "The map and the detected fields use the Copernicus map of the chosen year (2017–2024).",
+    cp_model_note: "The model recognises the crop of the selected fields in the chosen season (November–October); detected fields stay coloured with the Copernicus map.",
+    lw_fields: "Selected fields", lw_nofields: "No field selected.", lw_veil: "Dim the rest of the map", lw_zoom: "Go",
     sec_community: "Public maps", tab_maps: "Maps", tab_fields: "Fields", tab_provinces: "Provinces",
     sec_selected: "Selected fields", sec_compare: "Compare fields", sum_n_fields: "{n} fields",
     add_mode: "Add fields to the selection (like Ctrl/Shift + click)",
@@ -95,8 +90,7 @@ const I18N = {
     lw_open: "Layer window on the map", lw_title: "Layers on", lw_empty: "No layer on: switch them on from the Maps tab.",
     lw_up: "Up", lw_down: "Down", lw_hide: "Hide / show", lw_off: "Remove",
     sec_fields: "Search and fields", sec_layers: "Layers", sec_series: "Indices and time series", sec_services: "Services", sec_account: "Account",
-    fields_hint: "Search for a place above, then click a field on the map or draw it.",
-    point_values: "Clicked point", series_empty: "Click a field on the map to see its field map and time series.",
+    fields_hint: "Search for a place above, then click a field on the map or draw it.", series_empty: "Click a field on the map to see its field map and time series.",
     services_empty: "With a field selected, crop, yield, soil, carbon and alerts appear here.",
     sum_on: "on: {n}", sum_field: "field selected", sum_nofield: "no field", info: "Information",
     st_title: "Style", st_ramp: "Colour ramp", st_range: "Minimum and maximum", st_r_default: "Default", st_r_minmax: "Field min – max",
@@ -127,25 +121,10 @@ const I18N = {
     legend: "Legend",
     source: "Source",
     more: "Dataset page",
-    info_hint: "Click the map: here you get the coordinates and the cadastral parcel; the field you clicked opens in “Indices and time series”.",
-    info_coords: "Coordinates",
-    info_parcel: "Cadastral parcel",
-    info_parcel_how: "Parcel boundaries appear from zoom 16, sheets with their number from zoom 13. The Revenue Agency service cannot be embedded: the parcel record (municipality, sheet, parcel) opens in a new window.",
-    info_parcel_open: "Read the parcel",
-    info_layers: "Values of active layers",
-    info_nolayers: "No Copernicus layer is on.",
-    info_nodata: "no data",
-    info_loading: "loading…",
-    info_error: "service unreachable",
-    info_clc: "CORINE land cover 2018",
-    copy_coords: "Copy",
-    copied: "Copied",
-    links_ext: "Open this point in",
     data_intro: "All open datasets gathered by the project. Those marked “on the map” can be switched on from the Layers panel; the others are coming.",
     on_map: "on the map",
     coming: "coming",
     archive: "archive, not on the map",
-    info_field: "Field measurements (averaged over the whole field, not a single point) are in the panel below the map.",
     about_html: `
       <p><b>The name.</b> Lucius Junius Moderatus <b>Columella</b> (1st century AD) wrote the <i>De re rustica</i>, the most complete treatise on
       agriculture of Roman antiquity: soils, crops, vines, olives, fruit trees and livestock. It belongs to a family of projects with <b>Prognostica</b>
@@ -193,30 +172,3 @@ const CATALOG_EXTRA = [
     dit: "Rianalisi climatica oraria a 9 km dal 1950: temperatura, pioggia, umidità del suolo.", den: "Hourly climate reanalysis at 9 km since 1950: temperature, rainfall, soil moisture.",
     link: "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land", status: "coming" },
 ];
-
-// Classi CORINE Land Cover in italiano (nomenclatura ISPRA)
-const CLC_IT = {
-  111:"Zone residenziali a tessuto continuo",112:"Zone residenziali a tessuto discontinuo",121:"Aree industriali, commerciali e dei servizi",
-  122:"Reti stradali, ferroviarie e infrastrutture",123:"Aree portuali",124:"Aeroporti",131:"Aree estrattive",132:"Discariche",
-  133:"Cantieri",141:"Aree verdi urbane",142:"Aree ricreative e sportive",211:"Seminativi in aree non irrigue",
-  212:"Seminativi in aree irrigue",213:"Risaie",221:"Vigneti",222:"Frutteti e frutti minori",223:"Oliveti",
-  231:"Prati stabili (foraggere permanenti)",241:"Colture annuali associate a colture permanenti",242:"Sistemi colturali e particellari complessi",
-  243:"Aree prevalentemente agricole con spazi naturali",244:"Aree agroforestali",311:"Boschi di latifoglie",312:"Boschi di conifere",
-  313:"Boschi misti di conifere e latifoglie",321:"Aree a pascolo naturale e praterie",322:"Brughiere e cespuglieti",
-  323:"Aree a vegetazione sclerofilla",324:"Aree a vegetazione boschiva e arbustiva in evoluzione",331:"Spiagge, dune e sabbie",
-  332:"Rocce nude, falesie, affioramenti",333:"Aree con vegetazione rada",334:"Aree percorse da incendi",335:"Ghiacciai e nevi perenni",
-  411:"Paludi interne",412:"Torbiere",421:"Paludi salmastre",422:"Saline",423:"Zone intertidali",511:"Corsi d'acqua, canali e idrovie",
-  512:"Bacini d'acqua",521:"Lagune",522:"Estuari",523:"Mari e oceani",
-};
-const CLC_EN = {
-  111:"Continuous urban fabric",112:"Discontinuous urban fabric",121:"Industrial or commercial units",122:"Road and rail networks",
-  123:"Port areas",124:"Airports",131:"Mineral extraction sites",132:"Dump sites",133:"Construction sites",141:"Green urban areas",
-  142:"Sport and leisure facilities",211:"Non-irrigated arable land",212:"Permanently irrigated land",213:"Rice fields",221:"Vineyards",
-  222:"Fruit trees and berry plantations",223:"Olive groves",231:"Pastures",241:"Annual crops associated with permanent crops",
-  242:"Complex cultivation patterns",243:"Agriculture with significant natural vegetation",244:"Agro-forestry areas",
-  311:"Broad-leaved forest",312:"Coniferous forest",313:"Mixed forest",321:"Natural grasslands",322:"Moors and heathland",
-  323:"Sclerophyllous vegetation",324:"Transitional woodland-shrub",331:"Beaches, dunes, sands",332:"Bare rocks",
-  333:"Sparsely vegetated areas",334:"Burnt areas",335:"Glaciers and perpetual snow",411:"Inland marshes",412:"Peat bogs",
-  421:"Salt marshes",422:"Salines",423:"Intertidal flats",511:"Water courses",512:"Water bodies",521:"Coastal lagoons",
-  522:"Estuaries",523:"Sea and ocean",
-};
