@@ -415,3 +415,6 @@ table.mini td:first-child, table.mini th:first-child { text-align: left; }
 .lw-fid { font-weight: 700; } .lw-fid.active { background: var(--ochre-soft) !important; }
 .lw-veil { display: flex; gap: 6px; align-items: center; margin: 6px 2px; }
 .fp-carbon .neg, .cb-res .neg { color: #c53030; }
+.reg-time { background: var(--ochre-soft); border-left: 4px solid var(--ochre); padding: 6px 10px; border-radius: 6px; font-size: 13.5px; }
+.reg-loading { font-style: italic; }
+.reg-how { margin: 6px 0; } .reg-how > summary { cursor: pointer; color: var(--green); font-weight: 600; font-size: 13.5px; }
