@@ -101,7 +101,7 @@ const leafletLayers = {};
 let ctyYear = 2024, hvYear = 2024, clmsDate = null, clmsIdx = {};
 // ---- stile dei livelli a valori continui (Copernicus, suolo, indici Sentinel-2): simbologia di mapstyle.js,
 //      salvata nel browser per ogni livello; con un campo selezionato i limiti automatici usano i suoi valori
-const fieldStats = {};             // id del livello -> statistiche dei valori dentro il campo selezionato
+const fieldStats = {};             // id del livello -> statistiche dei valori dentro i campi selezionati
 function styleBase(def) {
   if (def.type === "clms") { const st = Clms.style0(def.product); return MapStyle.create(st.cmap, st.min, st.max, st.unit); }
   if (def.type === "soil" && def.soil !== "tessitura") { const st = Suolo.style0(def.soil); return MapStyle.create(st.cmap, st.min, st.max, st.unit); }
@@ -149,13 +149,14 @@ function cogUrl(def) {
   if (def.type === "soil" && def.soil !== "tessitura") return Suolo.url(def.soil);
   return null;
 }
-// statistiche del campo selezionato per i livelli accesi che hanno valori leggibili nel browser
+// statistiche dei campi selezionati (tutti i loro pixel insieme) per i livelli accesi con valori leggibili nel browser
 async function updateFieldStats(def) {
-  const f = Clip.feature(), url = cogUrl(def);
-  if (!f || !url) { delete fieldStats[def.id]; return; }
-  const vals = await fieldValues(url, f).catch(() => null);
-  if (Clip.feature() !== f) return;
-  fieldStats[def.id] = MapStyle.stats(vals);
+  const fs = Clip.features(), url = cogUrl(def);
+  if (!fs.length || !url) { delete fieldStats[def.id]; return; }
+  const comb = def.type === "soil" ? Suolo.combine(def.soil) : null;
+  const parts = await Promise.all(fs.map((f) => fieldValues(url, f, false, comb).catch(() => null)));
+  if (Clip.features().length !== fs.length || Clip.features().some((f, i) => f !== fs[i])) return;
+  fieldStats[def.id] = MapStyle.stats(parts.flatMap((v) => v || []));
   applyStyle(def);
   const el = document.querySelector(`.layer[data-id="${def.id}"]`);
   if (el && el.classList.contains("expanded")) renderStyle(def, el);
@@ -189,6 +190,84 @@ const clmsPick = (p) => {
 };
 const state = { on: new Set() };
 
+// ---- finestra dei livelli sulla mappa (spostabile): livelli accesi dall'alto in basso, nascondi, sopra/sotto, togli
+// l'ordine vale dentro lo stesso riquadro Leaflet (raster); il catasto resta sempre sopra ai raster
+const layerOrder = [];                // id dei livelli accesi, il primo è quello più in alto
+const hiddenLayers = new Set();
+function applyOrder() {
+  layerOrder.forEach((id, i) => { const l = leafletLayers[id]; if (l && l.setZIndex) l.setZIndex(100 + layerOrder.length - i); });
+}
+function setHidden(id, hide) {
+  const l = leafletLayers[id], el = l && (l.getContainer ? l.getContainer() : l.getElement && l.getElement());
+  if (hide) hiddenLayers.add(id); else hiddenLayers.delete(id);
+  if (el) el.style.display = hide ? "none" : "";
+}
+function renderLayerWin() {
+  const w = document.getElementById("layerWin");
+  if (!w || w.hidden) return;
+  const name = (id) => { const d = LAYERS.find((l) => l.id === id); return d ? d[LANG].name : id; };
+  w.querySelector(".lw-body").innerHTML = layerOrder.length ? `<ol class="lw-list">${layerOrder.map((id, i) => `
+    <li draggable="true" data-id="${id}" class="${hiddenLayers.has(id) ? "lw-hidden" : ""}">
+      <span class="lw-grip" aria-hidden="true">⋮⋮</span>
+      <label><input type="checkbox" data-a="vis" ${hiddenLayers.has(id) ? "" : "checked"} title="${t("lw_hide")}"> ${escapeHtml(name(id))}</label>
+      <button type="button" data-a="up" title="${t("lw_up")}" aria-label="${t("lw_up")}"${i ? "" : " disabled"}>▲</button>
+      <button type="button" data-a="down" title="${t("lw_down")}" aria-label="${t("lw_down")}"${i < layerOrder.length - 1 ? "" : " disabled"}>▼</button>
+      <button type="button" data-a="off" title="${t("lw_off")}" aria-label="${t("lw_off")}">×</button></li>`).join("")}</ol>`
+    : `<p class="hint small">${t("lw_empty")}</p>`;
+  const move = (id, to) => { const i = layerOrder.indexOf(id); layerOrder.splice(i, 1); layerOrder.splice(Math.max(0, Math.min(layerOrder.length, to)), 0, id); applyOrder(); renderLayerWin(); };
+  w.querySelectorAll(".lw-list li").forEach((li) => {
+    const id = li.dataset.id;
+    li.querySelector('[data-a="vis"]').onchange = (e) => { setHidden(id, !e.target.checked); renderLayerWin(); };
+    li.querySelector('[data-a="up"]').onclick = () => move(id, layerOrder.indexOf(id) - 1);
+    li.querySelector('[data-a="down"]').onclick = () => move(id, layerOrder.indexOf(id) + 1);
+    li.querySelector('[data-a="off"]').onclick = () => setLayer(id, false);
+    li.ondragstart = (e) => e.dataTransfer.setData("text/plain", id);
+    li.ondragover = (e) => e.preventDefault();
+    li.ondrop = (e) => { e.preventDefault(); const from = e.dataTransfer.getData("text/plain"); if (from && from !== id) move(from, layerOrder.indexOf(id)); };
+  });
+}
+function toggleLayerWin(show) {
+  let w = document.getElementById("layerWin");
+  if (!w) {
+    w = document.createElement("section");
+    w.id = "layerWin"; w.className = "layer-win"; w.hidden = true;
+    w.innerHTML = `<header class="lw-head"><b>${t("lw_title")}</b><button type="button" class="icon-x" aria-label="×">×</button></header><div class="lw-body"></div>`;
+    document.querySelector(".map-wrap").appendChild(w);
+    L.DomEvent.disableClickPropagation(w); L.DomEvent.disableScrollPropagation(w);
+    try { const p = JSON.parse(localStorage.getItem("columella.layerWin") || "null"); if (p) { w.style.left = p.x + "px"; w.style.top = p.y + "px"; } } catch (e) { /* */ }
+    w.querySelector(".icon-x").onclick = () => toggleLayerWin(false);
+    // trascinamento dalla barra del titolo
+    const head = w.querySelector(".lw-head");
+    head.onpointerdown = (e) => {
+      if (e.target.closest("button")) return;
+      const box = w.parentElement.getBoundingClientRect(), r = w.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+      head.setPointerCapture(e.pointerId);
+      head.onpointermove = (ev) => {
+        w.style.left = Math.max(0, Math.min(box.width - r.width, ev.clientX - box.left - dx)) + "px";
+        w.style.top = Math.max(0, Math.min(box.height - 40, ev.clientY - box.top - dy)) + "px";
+        w.style.right = "auto";
+      };
+      head.onpointerup = () => {
+        head.onpointermove = head.onpointerup = null;
+        try { localStorage.setItem("columella.layerWin", JSON.stringify({ x: parseInt(w.style.left), y: parseInt(w.style.top) })); } catch (err) { /* */ }
+      };
+    };
+  }
+  w.hidden = show === undefined ? !w.hidden : !show;
+  w.querySelector(".lw-head b").textContent = t("lw_title");
+  renderLayerWin();
+}
+const lwCtl = L.control({ position: "topright" });
+lwCtl.onAdd = () => {
+  const b = L.DomUtil.create("button", "lw-toggle leaflet-bar");
+  b.type = "button"; b.textContent = "☰"; b.title = t("lw_title"); b.setAttribute("aria-label", t("lw_title"));
+  L.DomEvent.disableClickPropagation(b);
+  b.onclick = () => toggleLayerWin();
+  return b;
+};
+lwCtl.addTo(map);
+document.getElementById("openLayerWin").onclick = () => toggleLayerWin(true);
+
 function makeLayer(def) {
   const pane = Clip.pane(), st = styleOf(def);
   if (def.type === "s2live") return Live.makeS2Layer(def);
@@ -218,15 +297,21 @@ function setLayer(id, on) {
     if (!leafletLayers[id]) leafletLayers[id] = makeLayer(def);
     leafletLayers[id].addTo(map);
     state.on.add(id);
+    if (!layerOrder.includes(id)) layerOrder.unshift(id);       // l'ultimo acceso va in cima
+    setHidden(id, false);
+    applyOrder();
     if (styleBase(def)) { applyStyle(def); updateFieldStats(def); }
   } else {
     if (leafletLayers[id]) map.removeLayer(leafletLayers[id]);
     state.on.delete(id);
+    if (layerOrder.includes(id)) layerOrder.splice(layerOrder.indexOf(id), 1);
+    hiddenLayers.delete(id);
   }
   const el = document.querySelector(`.layer[data-id="${id}"]`);
   if (el) { el.classList.toggle("on", on); el.querySelector("input[type=checkbox]").checked = on; if (on) loadLegend(def, el); }
   updateZoomNotes();
   renderLegendDock();
+  renderLayerWin();
   updateSummaries();
   saveHash();
 }
@@ -420,7 +505,13 @@ function renderCatalog() {
 
 // ------------------------------------------------------------------ clic sulla mappa / point query
 let clickMarker = null;
-map.on("click", (e) => { if (Tools.busy()) return; queryPoint(e.latlng); Live.onMapClick(e.latlng); });
+// clic: seleziona il campo; con Ctrl/Maiusc/⌘ o con "aggiungi campi" attivo lo aggiunge ai campi selezionati
+map.on("click", (e) => {
+  if (Tools.busy()) return;
+  const add = !!(e.originalEvent && (e.originalEvent.ctrlKey || e.originalEvent.shiftKey || e.originalEvent.metaKey)) || document.getElementById("addMode").checked;
+  queryPoint(e.latlng);
+  Live.onMapClick(e.latlng, add);
+});
 
 const ratCache = {};
 async function getRAT(def) {
@@ -689,28 +780,43 @@ sInput.addEventListener("focus", () => {
 });
 document.addEventListener("click", (e) => { if (!e.target.closest(".search")) sList.hidden = true; });
 
-// ------------------------------------------------------------------ sezioni della barra laterale, telefono
-// sezioni: fields (Ricerca e campi) · layers · series (Indici e serie temporali) · services · account · data · about
+// ------------------------------------------------------------------ tab e sezioni della barra laterale, telefono
+// tab: maps (Mappe) · fields (Campi) · provinces (Province) · regions (Regioni); dentro le tab, sezioni a scomparsa
+function openTab(name) {
+  document.querySelectorAll(".tabs .tab").forEach((b) => { const on = b.dataset.tab === name; b.classList.toggle("active", on); b.setAttribute("aria-selected", on); });
+  document.querySelectorAll(".tab-panel").forEach((p) => { const on = p.id === "tab-" + name; p.hidden = !on; p.classList.toggle("active", on); });
+  if (name === "provinces") Regions.showProvince();
+  if (name === "regions") Regions.showRegions();
+  updateWide();
+  if (document.body.dataset.sheet === "peek") setSheet("half");
+}
+document.querySelectorAll(".tabs .tab").forEach((b) => (b.onclick = () => openTab(b.dataset.tab)));
+// apre la tab che contiene la sezione e la sezione stessa (fields, selected, series, compare, services, account, layers, point…)
 function openSection(name) {
   const d = document.getElementById("sec-" + name);
   if (!d) return;
+  const panel = d.closest(".tab-panel");
+  if (panel && panel.hidden) openTab(panel.id.slice(4));
   d.open = true;
   if (document.body.dataset.sheet === "peek") setSheet("half");
   setTimeout(() => d.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 30);
 }
-document.querySelectorAll("details.sec").forEach((d) => d.addEventListener("toggle", () => {
-  if (d.id === "sec-services" && d.open) Regions.show();
-  // barra più larga (schermi grandi) quando sono aperti grafici o tabelle
-  document.body.classList.toggle("wide-sidebar", ["sec-series", "sec-services"].some((id) => document.getElementById(id).open));
+// barra più larga (schermi grandi) quando servono grafici o tabelle
+function updateWide() {
+  const tab = (document.querySelector(".tabs .tab.active") || {}).dataset?.tab;
+  const wide = tab === "provinces" || tab === "regions" || (tab === "fields" && ["sec-series", "sec-compare", "sec-services"].some((id) => document.getElementById(id).open));
+  document.body.classList.toggle("wide-sidebar", wide);
   setTimeout(() => map.invalidateSize(), 220);
-}));
-// riepilogo accanto al titolo di ogni sezione
+}
+document.querySelectorAll("details.sec").forEach((d) => d.addEventListener("toggle", updateWide));
+// riepilogo accanto al titolo delle sezioni
 function updateSummaries() {
   const set = (id, txt) => { const el = document.getElementById("sum-" + id); if (el) el.textContent = txt; };
   set("layers", state.on.size ? t("sum_on").replace("{n}", state.on.size) : "");
-  const f = Clip.feature();
-  set("series", f ? t("sum_field") : t("sum_nofield"));
-  set("services", f ? t("sum_field") : "");
+  const n = Clip.features().length;
+  set("selected", n ? t("sum_n_fields").replace("{n}", n) : t("sum_nofield"));
+  set("series", n ? t("sum_field") : t("sum_nofield"));
+  set("services", n ? t("sum_field") : "");
   const u = typeof Account !== "undefined" && Account.utente();
   set("account", u ? u.email.split("@")[0] : "");
 }
@@ -731,11 +837,12 @@ function applyLang() {
   renderLayerPanel();
   renderCatalog();
   renderLegendDock();
+  if (document.getElementById("layerWin")) toggleLayerWin(!document.getElementById("layerWin").hidden);
   updateSummaries();
   Live.refreshLang();
   Tools.refreshLang();
   Account.render();
-  if (document.getElementById("sec-services").open) Regions.render();
+  Regions.render();
   const info = document.getElementById("infoPanel");
   if (!clickMarker) info.innerHTML = `<p class="hint">${t("info_hint")}</p>`;
   else queryPoint(clickMarker.getLatLng());
