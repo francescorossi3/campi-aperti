@@ -129,3 +129,10 @@ create policy "mappe: editori caricano" on storage.objects for insert to authent
 drop policy if exists "mappe: editori cancellano" on storage.objects;
 create policy "mappe: editori cancellano" on storage.objects for delete to authenticated
   using (bucket_id = 'mappe' and owner_id = (select auth.uid())::text and public.sono_editore());
+
+-- accesso alle tabelle dalle API (necessario se "Grant API access to new tables automatically" è spento);
+-- chi vede quali righe lo decidono comunque le policy RLS qui sopra. impostazioni resta senza accesso diretto.
+grant select, insert, update, delete on public.campi to authenticated;
+grant select on public.editori to authenticated;
+grant select on public.mappe_pubbliche to anon, authenticated;
+grant insert, update, delete on public.mappe_pubbliche to authenticated;
