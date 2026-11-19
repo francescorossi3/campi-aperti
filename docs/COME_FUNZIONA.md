@@ -134,7 +134,12 @@ resa ISTAT della provincia per la stessa coltura e annata. **Tab Province / Regi
 in entrambe le tab: mappa Copernicus Crop Types (pixel 200 m puri, script 10 → 12) o **classificatore delle colture** (le 3 reti MLP dello
 script 18 applicate alle variabili mensili Sentinel-2/Sentinel-1/DEM a 200 m, pixel sicuri con probabilità ≥ 0,6, script 20 → 12 con
 `FONTE=classificatore`, `data/monteith_province_cls.json`, anche con la superficie stimata dal classificatore). Il confronto col
-classificatore si calcola provincia per provincia con il workflow `monteith-classificatore.yml` (annata + sigle, es. 2024 e RM).
+classificatore si calcola provincia per provincia con il workflow `monteith-classificatore.yml`: **in automatico ogni mese** per tutte le annate (2018–2025) e tutta
+Italia divisa in 4 gruppi di regioni (`PARTE=k/4`, circa 2 ore ciascuno, 8 lavori in parallelo), oppure a mano per un'annata e alcune sigle.
+Ogni esecuzione scrive file con la propria etichetta e il momento del calcolo (`calcolato`); lo script 12 tiene il calcolo più recente per
+provincia e annata ed esporta il tempo di calcolo (`tempi`), che le tab Province/Regioni mostrano insieme alla superficie stimata dal
+classificatore contro quella ISTAT (barre per annata e dispersione tra province). **Taratura**: per coltura, fattore = mediana di ISTAT /
+modello su tutte le province e annate con dati ISTAT; con poche province calcolate dal classificatore si usa il fattore di Copernicus.
 
 Nota: il classificatore delle colture **non** è un modello YOLO: è un insieme di 3 reti MLP (script 13 → 18). YOLO si usa solo per i
 confini dei campi (Delineate Anything S, YOLO11n-seg).

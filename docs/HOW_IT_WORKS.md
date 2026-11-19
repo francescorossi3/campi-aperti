@@ -134,7 +134,12 @@ and per region (provinces weighted by ISTAT area, region names from `data/provin
 tabs: the Copernicus Crop Types map (pure 200 m pixels, scripts 10 → 12) or the **crop classifier** (3 MLP networks of script 18 applied to
 200 m monthly Sentinel-2/Sentinel-1/DEM features, confident pixels with probability ≥ 0.6, script 20 → 12 with `FONTE=classificatore`,
 `data/monteith_province_cls.json`, also with the area estimated by the classifier). The classifier comparison is computed province by
-province with the workflow `monteith-classificatore.yml` (season + province codes, e.g. 2024 and RM).
+province with the workflow `monteith-classificatore.yml`: **automatically every month** for all seasons (2018–2025) and all of Italy
+split into 4 groups of regions (`PARTE=k/4`, about 2 hours each, 8 jobs in parallel), or by hand for a season and some province codes.
+Each run writes files tagged with its label and timestamp (`calcolato`); script 12 keeps the most recent run per province and season and
+exports the computing time (`tempi`), which the Provinces/Regions tabs show, together with the area estimated by the classifier vs ISTAT
+(bars per season and scatter across provinces). **Calibration**: per crop, factor = median of ISTAT / model over all provinces and seasons
+with ISTAT data; with too few classifier provinces the Copernicus factor is used.
 
 Note: the crop classifier is **not** a YOLO model: it is an ensemble of 3 MLP networks (scripts 13 → 18). YOLO is used only for field
 boundaries (Delineate Anything S, YOLO11n-seg).
