@@ -68,6 +68,37 @@ async def main():
         rep["carbonio"] = await pg.locator("#fpCarbon").inner_text()
         print("suolo:", rep["suolo"][:300].replace("\n", " | "))
         print("carbonio:", rep["carbonio"][-500:].replace("\n", " | "))
+        # più campi: aggiunge il secondo campo più grande (come Ctrl + clic), confronto per id e scatter LAI contro NDVI
+        await pg.evaluate("""() => { const fs = Segment.allFields().features.slice().sort((a, b) => {
+            const A = (f) => { const x = L.geoJSON(f).getBounds(); return (x.getEast()-x.getWest())*(x.getNorth()-x.getSouth()); }; return A(b) - A(a); });
+          Live.analyze(JSON.parse(JSON.stringify(fs[1])), {}, true); }""")
+        await pg.wait_for_timeout(60000)
+        rep["campi_selezionati"] = await pg.evaluate("Clip.ids()")
+        await pg.evaluate("openSection('compare')"); await pg.wait_for_timeout(1000)
+        await pg.click("#scRun"); await pg.wait_for_timeout(20000)
+        rep["scatter"] = await pg.locator("#scMsg").inner_text()
+        print("campi:", rep["campi_selezionati"], "scatter:", rep["scatter"])
+        await pg.screenshot(path=os.path.join(OUT, "browser_confronto.png"))
+        # resa annata per annata del campo attivo
+        await pg.evaluate("openSection('services')"); await pg.click("#yyRun"); await pg.wait_for_timeout(150000)
+        rep["resa_annate"] = (await pg.locator("#yyBox").inner_text())[:600]
+        print("resa annate:", rep["resa_annate"].replace("\n", " | "))
+        await pg.screenshot(path=os.path.join(OUT, "browser_resa_annate.png"))
+        # rilevamento di campi e colture nell'area visibile
+        await pg.evaluate("map.setView([45.25, 9.55], 15); openSection('fields'); Tools.detectView()")
+        await pg.wait_for_timeout(90000)
+        rep["rilevamento"] = (await pg.locator("#toolArea").inner_text())[:300]
+        print("rilevamento:", rep["rilevamento"].replace("\n", " | "))
+        await pg.screenshot(path=os.path.join(OUT, "browser_rilevamento.png"))
+        # PAW, finestra dei livelli, province e regioni
+        await pg.evaluate("document.getElementById('chk_so_paw').click(); toggleLayerWin(true); map.setView([45.25, 9.55], 11)"); await pg.wait_for_timeout(12000)
+        await pg.screenshot(path=os.path.join(OUT, "browser_paw.png"))
+        await pg.evaluate("document.getElementById('chk_so_paw').click()")
+        await pg.evaluate("openTab('regions')"); await pg.wait_for_timeout(2000)
+        await pg.click(".reg-views [data-v=rese]"); await pg.wait_for_timeout(4000)
+        rep["regioni_rese"] = (await pg.locator("#regionsPanel").inner_text())[:300]
+        await pg.screenshot(path=os.path.join(OUT, "browser_regioni_rese.png"))
+        await pg.evaluate("openTab('maps')")
         # mappe del suolo
         for lay in ["so_tessitura", "so_stock_soc"]:
             await pg.evaluate(f"document.getElementById('chk_{lay}').click()"); await pg.wait_for_timeout(500)
