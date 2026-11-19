@@ -1,6 +1,8 @@
 // Columella – regions.js
 // IT: tab "Province" e "Regioni".
-//     Province (#provPanel): rese per provincia, ISTAT contro modello di Monteith (data/monteith_province.json).
+//     Province (#provPanel): rese per provincia, ISTAT contro modello di Monteith. Fonte dei campi a scelta: mappa
+//     Copernicus Crop Types (data/monteith_province.json, script 10+12) o classificatore delle colture
+//     (data/monteith_province_cls.json, script 20+12, con le superfici stimate).
 //     Regioni (#regionsPanel): due viste: (1) acqua per regione, coltura e periodo da data/riepiloghi.json
 //     (superfici Copernicus HRL Crop Types; pioggia ed ET0 ERA5; ET coltura Kc FAO-56 × ET0); (2) rese per regione,
 //     ISTAT contro Monteith, aggregando le province (medie pesate sulla superficie ISTAT; regione da data/province.json).
@@ -31,6 +33,9 @@ const Regions = (() => {
       prov: "Provincia", all_prov: "Tutte le province", reg: "Regione",
       sc_rr: "Tutte le regioni, annata {y}: ISTAT (verticale) e modello tarato (orizzontale)",
       reg_note: "Resa regionale = media delle province pesata sulla superficie ISTAT della coltura (solo province con dati ISTAT e del modello).",
+      src: "Campi della coltura individuati con", src_cop: "Mappa Copernicus HRL Crop Types (pixel 200 m puri)",
+      src_cls: "Classificatore delle colture (3 reti neurali MLP, pixel 200 m sicuri)", th_hs: "Superficie stimata dal classificatore (ha)",
+      src_missing: "Il confronto con il classificatore non è ancora stato calcolato. Si calcola provincia per provincia con il workflow GitHub «Rese per provincia con il classificatore delle colture» (annata e sigle, es. 2024 e RM); le regioni sommano le province calcolate.",
       th_r: ["Annata", "ISTAT (t/ha)", "Modello (t/ha)", "Modello tarato (t/ha)", "Scarto", "Superficie ISTAT (ha)", "Pixel 200 m usati"],
       ch_r: "Resa per annata: ISTAT e modello di Monteith (tarato)",
       sc_r: "Tutte le province, annata {y}: ISTAT (verticale) e modello tarato (orizzontale)",
@@ -60,6 +65,9 @@ const Regions = (() => {
       prov: "Province", all_prov: "All provinces", reg: "Region",
       sc_rr: "All regions, season {y}: ISTAT (vertical) vs calibrated model (horizontal)",
       reg_note: "Regional yield = mean of the provinces weighted by the ISTAT crop area (only provinces with both ISTAT and model data).",
+      src: "Crop fields found with", src_cop: "Copernicus HRL Crop Types map (pure 200 m pixels)",
+      src_cls: "Crop classifier (3 MLP neural networks, confident 200 m pixels)", th_hs: "Area estimated by the classifier (ha)",
+      src_missing: "The comparison with the classifier has not been computed yet. It is computed province by province with the GitHub workflow “Yields by province with the crop classifier” (season and codes, e.g. 2024 and RM); regions add up the computed provinces.",
       th_r: ["Season", "ISTAT (t/ha)", "Model (t/ha)", "Calibrated model (t/ha)", "Difference", "ISTAT area (ha)", "200 m pixels used"],
       ch_r: "Yield by season: ISTAT and Monteith model (calibrated)",
       sc_r: "All provinces, season {y}: ISTAT (vertical) vs calibrated model (horizontal)",
@@ -78,18 +86,22 @@ const Regions = (() => {
   let D = null, rows = null, loaded = false;
   let M = null, mLoaded = false;
   const charts = {};                 // grafici Chart.js attivi per riquadro
-  const sel = { regione: "Italia", classe: "all", anno: null, periodo: "q1", vista: "acqua", rcl: 1, ranno: null, pick: { prov: null, reg: null } };
+  const sel = { regione: "Italia", classe: "all", anno: null, periodo: "q1", vista: "acqua", rcl: 1, ranno: null, pick: { prov: null, reg: null }, src: "copernicus" };
 
   // ---------- Vista "rese per provincia" ----------
+  // fonte dei campi: "copernicus" (pixel puri Crop Types, script 10) o "classificatore" (classificatore delle colture, script 20)
+  const FILES = { copernicus: "data/monteith_province.json", classificatore: "data/monteith_province_cls.json" };
+  const cacheM = {};
   async function loadM() {
-    if (mLoaded) return M;
+    if (sel.src in cacheM) { M = cacheM[sel.src]; return M; }
     mLoaded = true;
     try {
-      const r = await fetch("data/monteith_province.json?ts=" + Date.now());
+      const r = await fetch(FILES[sel.src] + "?ts=" + Date.now());
       if (!r.ok) throw new Error(r.status);
       M = await r.json();
       const ix = Object.fromEntries(M.colonne.map((c, i) => [c, i]));
-      M.rows = M.righe.map((r) => ({ prov: r[ix.provincia], nuts: r[ix.nuts], cl: r[ix.classe], y: r[ix.anno], mod: r[ix.modello], ist: r[ix.istat], ha: r[ix.ha_istat], px: r[ix.pixel] }));
+      M.rows = M.righe.map((r) => ({ prov: r[ix.provincia], nuts: r[ix.nuts], cl: r[ix.classe], y: r[ix.anno], mod: r[ix.modello], ist: r[ix.istat], ha: r[ix.ha_istat], px: r[ix.pixel],
+        hs: ix.ha_stimati != null ? r[ix.ha_stimati] : null }));
       sel.ranno = Math.max(...M.rows.filter((r) => r.ist != null).map((r) => r.y));
       // regioni: medie delle province pesate sulla superficie ISTAT (nome della regione da data/province.json)
       const P = await fetch("data/province.json").then((r) => r.json()).catch(() => null);
@@ -98,11 +110,13 @@ const Regions = (() => {
       M.rows.forEach((r) => {
         const reg = regOf[r.nuts];
         if (!reg || r.ist == null || r.mod == null || !r.ha) return;
-        const o = g[reg + "|" + r.cl + "|" + r.y] || (g[reg + "|" + r.cl + "|" + r.y] = { prov: reg, cl: r.cl, y: r.y, si: 0, sm: 0, ha: 0, px: 0 });
+        const o = g[reg + "|" + r.cl + "|" + r.y] || (g[reg + "|" + r.cl + "|" + r.y] = { prov: reg, cl: r.cl, y: r.y, si: 0, sm: 0, ha: 0, px: 0, hs: null });
         o.si += r.ist * r.ha; o.sm += r.mod * r.ha; o.ha += r.ha; o.px += r.px;
+        if (r.hs != null) o.hs = (o.hs || 0) + r.hs;
       });
-      M.regRows = Object.values(g).map((o) => ({ prov: o.prov, cl: o.cl, y: o.y, ist: o.si / o.ha, mod: o.sm / o.ha, ha: o.ha, px: o.px }));
+      M.regRows = Object.values(g).map((o) => ({ prov: o.prov, cl: o.cl, y: o.y, ist: o.si / o.ha, mod: o.sm / o.ha, ha: o.ha, px: o.px, hs: o.hs }));
     } catch (e) { M = null; }
+    cacheM[sel.src] = M;
     return M;
   }
   const CL_NAMES = { 1: ["Frumento", "Wheat"], 2: ["Orzo", "Barley"], 3: ["Mais", "Maize"], 4: ["Riso", "Rice"], 5: ["Altri cereali", "Other cereals"],
@@ -119,10 +133,15 @@ const Regions = (() => {
   function renderRese(level) {
     const isReg = level === "reg", box = document.getElementById(isReg ? "regionsPanel" : "provPanel");
     if (!box) return;
-    const head = isReg ? viewTabs() : "";
-    if (!M) { box.innerHTML = head + `<p class="hint">${rt("r_missing")}</p>`; if (isReg) bindViews(); return; }
+    const head = (isReg ? viewTabs() : "") + `<div class="reg-form"><label>${rt("src")}<select id="${isReg ? "Rr" : "Rp"}Src">
+      <option value="copernicus"${sel.src === "copernicus" ? " selected" : ""}>${rt("src_cop")}</option>
+      <option value="classificatore"${sel.src === "classificatore" ? " selected" : ""}>${rt("src_cls")}</option></select></label></div>`;
+    const bindSrc = () => (document.getElementById((isReg ? "Rr" : "Rp") + "Src").onchange = async (e) => { sel.src = e.target.value; await loadM(); renderRese(level); });
+    if (!M) { box.innerHTML = head + `<p class="hint">${rt(sel.src === "classificatore" ? "src_missing" : "r_missing")}</p>`; if (isReg) bindViews(); bindSrc(); return; }
     const ROWS = isReg ? M.regRows : M.rows, P = isReg ? "Rr" : "Rp";
-    const fat = (c) => (M.taratura[c] ? M.taratura[c].fattore : 1);
+    // fattore di taratura della fonte; se il classificatore non ha abbastanza province, quello di Copernicus
+    const tarOf = (c) => M.taratura[c] || (cacheM.copernicus && cacheM.copernicus.taratura[c]) || null;
+    const fat = (c) => (tarOf(c) ? tarOf(c).fattore : 1);
     const provs = [...new Set(ROWS.map((r) => r.prov))].sort();
     const cls = [...new Set(ROWS.map((r) => r.cl))].sort((a, b) => a - b);
     if (!cls.includes(sel.rcl)) sel.rcl = cls[0];
@@ -133,8 +152,10 @@ const Regions = (() => {
     }
     const anni = [...new Set(ROWS.map((r) => r.y))].sort((a, b) => b - a);
     const mine = ROWS.filter((r) => r.prov === cur && r.cl === sel.rcl).sort((a, b) => a.y - b.y);
-    const f = fat(sel.rcl), T = M.taratura[sel.rcl];
+    const f = fat(sel.rcl), T = tarOf(sel.rcl);
     const f2 = (x) => (x == null ? "—" : f1(x));
+    const cls_ = sel.src === "classificatore", TH = rt("th_r").slice();
+    if (cls_) TH.splice(6, 0, rt("th_hs"));
     const righe = mine.map((r) => {
       const t = r.mod * f;
       // scarto % del modello tarato rispetto a ISTAT: "bad" oltre ±25 %
@@ -145,7 +166,8 @@ const Regions = (() => {
         scText = (sc > 0 ? "+" : "") + sc + "%";
       }
       return `<tr><td>${seasonLabel(r.y)}</td><td>${f2(r.ist)}</td><td>${f2(r.mod)}</td><td><b>${f2(t)}</b></td>` +
-        `<td class="${scClass}">${scText}</td><td>${r.ha ? Math.round(r.ha).toLocaleString() : "—"}</td><td>${r.px}</td></tr>`;
+        `<td class="${scClass}">${scText}</td><td>${r.ha ? Math.round(r.ha).toLocaleString() : "—"}</td>` +
+        (cls_ ? `<td>${r.hs != null ? Math.round(r.hs).toLocaleString() : "—"}</td>` : "") + `<td>${r.px}</td></tr>`;
     }).join("");
     box.innerHTML = head + `
       <div class="reg-form">
@@ -154,11 +176,12 @@ const Regions = (() => {
         <label>${rt("year")} (${LANG === "it" ? "grafico a dispersione" : "scatter chart"})<select id="${P}Y">${anni.map((y) => opt(y, y, sel.ranno)).join("")}</select></label>
       </div>
       ${T ? `<p class="reg-sentence">${rt("tar").replace("{c}", clName(sel.rcl).toLowerCase()).replace("{f}", T.fattore.toFixed(2)).replace("{n}", T.n).replace("{r2}", T.r2.toFixed(2)).replace("{e}", Math.round(T.errore_rel_tarato * 100))}</p>` : ""}
-      <div class="reg-table-wrap"><table class="reg-table"><thead><tr>${rt("th_r").map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${righe}</tbody></table></div>
+      <div class="reg-table-wrap"><table class="reg-table"><thead><tr>${TH.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${righe}</tbody></table></div>
       <figure class="reg-fig"><figcaption>${rt("ch_r")}</figcaption><div class="cbox"><canvas id="${P}Chart"></canvas></div></figure>
       <figure class="reg-fig"><figcaption>${rt(isReg ? "sc_rr" : "sc_r").replace("{y}", seasonLabel(sel.ranno))}</figcaption><div class="cbox"><canvas id="${P}Scatter"></canvas></div></figure>
       <p class="hint small">${rt("r_note")}${isReg ? " " + rt("reg_note") : ""} ${rt("upd")}: ${new Date(M.generato).toLocaleDateString(locale())}.</p>`;
     if (isReg) bindViews();
+    bindSrc();
     document.getElementById(P + "P").onchange = (e) => { sel.pick[level] = e.target.value; renderRese(level); };
     document.getElementById(P + "C").onchange = (e) => { sel.rcl = +e.target.value; sel.pick[level] = null; renderRese(level); };
     document.getElementById(P + "Y").onchange = (e) => { sel.ranno = +e.target.value; renderRese(level); };
@@ -322,5 +345,13 @@ const Regions = (() => {
     if (mLoaded && document.getElementById("provPanel")?.childElementCount) renderRese("prov");
     if (document.getElementById("regionsPanel")?.childElementCount) { if (sel.vista === "rese") renderRese("reg"); else if (D) render(); }
   }
-  return { showProvince, showRegions, render: renderAll, taratura: async () => ((await loadM()) || {}).taratura || null };
+  // taratura per la resa dei singoli campi: sempre quella di Copernicus
+  async function taratura() {
+    const keep = sel.src;
+    sel.src = "copernicus";
+    const m = await loadM();
+    sel.src = keep; M = cacheM[keep] !== undefined ? cacheM[keep] : M;
+    return (m || {}).taratura || null;
+  }
+  return { showProvince, showRegions, render: renderAll, taratura };
 })();
