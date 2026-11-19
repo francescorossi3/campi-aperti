@@ -1,7 +1,7 @@
 {
  "lodi": {
   "ok": true,
-  "s": 5.726699999999953,
+  "s": 5.516699999999953,
   "campi": 178,
   "date": [
    "2026-09-27"
@@ -11,7 +11,7 @@
  },
  "maccarese": {
   "ok": true,
-  "s": 6.1165,
+  "s": 10.641099999999977,
   "campi": 74,
   "date": [
    "2026-07-05"
@@ -21,7 +21,7 @@
  },
  "muccese": {
   "ok": true,
-  "s": 5.4425,
+  "s": 6.882800000000047,
   "campi": 157,
   "date": [
    "2026-08-27"
@@ -49,12 +49,13 @@
  ],
  "scatter": "3375 pixel da 2 campi; data più vicina a quella scelta per ogni campo (±0 giorni al massimo).",
  "resa_annate": "Calcola tutte le annate (circa 1–2 minuti)Nessuna annata stimabile: servono seminativi riconosciuti da Copernicus (anni 2017–2024) con una stagione intera.",
- "rilevamento": "Campi dell'area\n×\n\n157 campi trovati nell'area (509.2 ha).\n\nScarica GeoJSON\nScarica KML\nScarica tabella CSV\n\nConfini stimati automaticamente da Sentinel-2 (10 m): NDVI medio per data, coltura Copernicus dell'anno scelto in Mappe → Campi e colture. Licenza dei dati: CC BY-NC 4.0, citare Columella, Co",
- "rilevamento_s": 10,
+ "rilevamento": "Campi dell'area\n×\n\n4093 campi trovati nell'area (11891.7 ha).\n\nScarica GeoJSON\nScarica KML\nScarica tabella CSV\n\nConfini stimati automaticamente da Sentinel-2 (10 m): NDVI medio per data, coltura Copernicus dell'anno scelto in Mappe → Campi e colture. Licenza dei dati: CC BY-NC 4.0, citare Columella,",
+ "rilevamento_s": 82,
  "rilevamento_area_km": [
   11.3,
   12
  ],
+ "memoria_mb": 322,
  "regioni_rese": "Acqua per regione\nRese per regione: ISTAT e modello\nCampi della coltura individuati con\nMappa Copernicus HRL Crop Types (pixel 200 m puri)\nClassificatore delle colture (3 reti neurali MLP, pixel 200 m sicuri)\nRegione\nAbruzzo\nBasilicata\nCalabria\nCampania\nEmilia-Romagna\nFriuli-Venezia Giulia\nLazio\nLom",
  "strada": [
   [
@@ -97,6 +98,9 @@
   "Campi divisi per colture diverse: 60",
   "goatcounter: not counting because of: localhost",
   "Campi divisi per colture diverse: 40",
-  "Campi divisi per colture diverse: 35"
+  "Campi divisi per colture diverse: 343",
+  "Campi divisi per colture diverse: 348",
+  "Campi divisi per colture diverse: 296",
+  "Campi divisi per colture diverse: 116"
  ]
 }
