@@ -5,9 +5,12 @@
 # ripulito (Hampel) e smussato (tricubica ±20 giorni) come nel sito; radiazione ERA5 giornaliera nel baricentro della provincia.
 # Stessi parametri del sito (js/live.js, RESA_PAR). Il confronto con ISTAT dà, per ogni coltura, un fattore di taratura
 # (mediana ISTAT / modello) che il sito applica anche alla resa stimata del singolo campo.
-# Ingressi: data/province_ndvi/ndvi_*.parquet (10), data/province.json e data/rese.json (07),
-#           cache data/province_ndvi/radiazione.parquet; radiazione da Open-Meteo (riserva NASA POWER)
-# Uscita: data/monteith_province.json (e cache radiazione aggiornata)
+# Fonte dei campi (env FONTE): "copernicus" (def.) = pixel puri della mappa Crop Types (script 10);
+#   "classificatore" = pixel riconosciuti dal classificatore delle colture (script 20), con le superfici stimate.
+# Ingressi: data/province_ndvi/ndvi_*.parquet (10) o data/province_ndvi_cls/ndvi_*.parquet e superfici_*.parquet (20),
+#           data/province.json e data/rese.json (07), cache data/province_ndvi/radiazione.parquet;
+#           radiazione da Open-Meteo (riserva NASA POWER)
+# Uscita: data/monteith_province.json (copernicus) o data/monteith_province_cls.json (classificatore); cache radiazione
 # Esecuzione: workflow monteith.yml (poi hf_sync.py carica "province_ndvi") oppure Spyder
 # EN: Monteith (RUE × fAPAR × radiation) yield per province × crop × season, calibrated against ISTAT.
 
@@ -23,7 +26,10 @@ import geopandas as gpd
 PAR = {1: (2.8, 0.45, 0.13), 2: (2.7, 0.45, 0.13), 3: (3.8, 0.50, 0.155), 4: (2.6, 0.45, 0.14), 5: (2.6, 0.40, 0.13),
        7: (2.0, 0.35, 0.13), 8: (2.8, 0.75, 0.78), 9: (3.2, 0.65, 0.77), 10: (2.4, 0.33, 0.09), 11: (2.0, 0.40, 0.13), 12: (2.3, 0.30, 0.09)}
 
-nd = pd.concat([pd.read_parquet(f) for f in glob.glob(os.path.join("data", "province_ndvi", "ndvi_*.parquet"))], ignore_index=True)
+FONTE = os.environ.get("FONTE", "copernicus")
+CLS = FONTE == "classificatore"
+DIR = os.path.join("data", "province_ndvi_cls" if CLS else "province_ndvi")
+nd = pd.concat([pd.read_parquet(f) for f in glob.glob(os.path.join(DIR, "ndvi_*.parquet"))], ignore_index=True)
 nd = nd[nd.classe.isin(PAR)]
 nd["t"] = pd.to_datetime(nd.data)
 print(len(nd), "righe NDVI;", nd.anno.min(), "–", nd.anno.max())
@@ -176,13 +182,24 @@ for cls, g in cmp_.dropna(subset=["istat"]).groupby("classe"):
                      "errore_rel_tarato": round(float(np.median(np.abs(x - y) / y)), 3)}
 print(json.dumps(tar, indent=1))
 
+# superfici stimate dal classificatore (ettari di pixel sicuri) da confrontare con quelle ISTAT
+cmp_["ha_stimati"] = np.nan
+if CLS:
+    sf = pd.concat([pd.read_parquet(f) for f in glob.glob(os.path.join(DIR, "superfici_*.parquet"))], ignore_index=True)
+    cmp_ = cmp_.drop(columns="ha_stimati").merge(sf.rename(columns={"ha": "ha_stimati"})[["provincia", "classe", "anno", "ha_stimati"]],
+                                                 on=["provincia", "classe", "anno"], how="left")
+
+num = lambda v: None if pd.isna(v) else float(v)
 out = {
     "generato": pd.Timestamp.now("UTC").isoformat(),
-    "metodo": "Monteith: RUE × fAPAR(NDVI) × PAR ERA5 × indice di raccolto; NDVI medio dei pixel 200 m puri (≥80%) della coltura Copernicus nella provincia",
-    "colonne": ["provincia", "nuts", "classe", "anno", "modello", "istat", "ha_istat", "giorni", "ndvi_max", "pixel"],
-    "righe": [[r.provincia, r.nuts, int(r.classe), int(r.anno), r.modello, None if pd.isna(r.istat) else float(r.istat),
-               None if pd.isna(r.ha) else float(r.ha), r.giorni, r.ndvi_max, int(r.pixel)] for r in cmp_.itertuples()],
+    "fonte": FONTE,
+    "metodo": "Monteith: RUE × fAPAR(NDVI) × PAR ERA5 × indice di raccolto; NDVI medio dei pixel 200 m " +
+              ("riconosciuti dal classificatore delle colture (probabilità ≥ 0,6)" if CLS else "puri (≥80%) della coltura Copernicus") + " nella provincia",
+    "colonne": ["provincia", "nuts", "classe", "anno", "modello", "istat", "ha_istat", "giorni", "ndvi_max", "pixel", "ha_stimati"],
+    "righe": [[r.provincia, r.nuts, int(r.classe), int(r.anno), r.modello, num(r.istat), num(r.ha), r.giorni, r.ndvi_max, int(r.pixel), num(r.ha_stimati)]
+              for r in cmp_.itertuples()],
     "taratura": tar,
 }
-json.dump(out, open(os.path.join("data", "monteith_province.json"), "w"), ensure_ascii=False, separators=(",", ":"))
-print("scritto data/monteith_province.json:", len(out["righe"]), "righe")
+nome = "monteith_province_cls.json" if CLS else "monteith_province.json"
+json.dump(out, open(os.path.join("data", nome), "w"), ensure_ascii=False, separators=(",", ":"))
+print("scritto data/" + nome + ":", len(out["righe"]), "righe")
